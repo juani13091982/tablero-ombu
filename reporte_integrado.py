@@ -84,27 +84,42 @@ if archivo_eficiencias is not None and archivo_improductivas is not None:
         st.error(f"Error procesando archivos: {e}")
         st.stop()
 
-    # Nivel de Agrupación (Regla de Filtro Exacto)
+    # Nivel de Agrupación (Regla de Filtro Exacto con Cascada Planta > Línea > Puesto)
     st.sidebar.header("🔍 Nivel de Agrupación")
     
+    # 1. Filtro Planta
     plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
     planta_sel = st.sidebar.selectbox("Filtro Planta", plantas)
     
-    # Cascada de filtros
+    # 2. Cascada de filtros: Línea
     df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
     lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
     linea_sel = st.sidebar.selectbox("Filtro Línea", lineas)
+
+    # 3. NUEVO: Cascada de filtros: Puesto
+    df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
+    puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
+    puesto_sel = st.sidebar.selectbox("Filtro Puesto", puestos)
 
     # Aplicar filtros a DataFrames
     df_ef_filtrado = df_ef.copy()
     df_imp_filtrado = df_imp.copy()
 
+    # Aplicando filtros de Eficiencias
     if planta_sel != "Todas":
         df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Planta'] == planta_sel]
-        df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PLANTA'] == planta_sel]
     if linea_sel != "Todas":
         df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Linea'] == linea_sel]
+    if puesto_sel != "Todos":
+        df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Puesto_Trabajo'] == puesto_sel]
+
+    # Aplicando filtros de Improductivas (con validación de columnas por seguridad)
+    if planta_sel != "Todas" and 'PLANTA' in df_imp_filtrado.columns:
+        df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PLANTA'] == planta_sel]
+    if linea_sel != "Todas" and 'LÍNEA' in df_imp_filtrado.columns:
         df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['LÍNEA'] == linea_sel]
+    if puesto_sel != "Todos" and 'PUESTOS' in df_imp_filtrado.columns:
+        df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PUESTOS'] == puesto_sel]
 
     st.markdown("---")
 
@@ -454,4 +469,3 @@ if archivo_eficiencias is not None and archivo_improductivas is not None:
 
 else:
     st.info("👋 Por favor, sube los archivos de 'Datos Finales Eficiencias' y 'Horas Improductivas Limpias' en el panel izquierdo para generar el C.G.P. Reporte Integrado.")
-
