@@ -51,15 +51,20 @@ def dibujar_meses(ax, fechas):
 # ==========================================
 col_logo, col_title = st.columns([1, 4])
 with col_logo:
-    st.markdown("""
-        <div style='background-color:#1E3A8A; color:white; padding:15px; border-radius:10px; text-align:center; height: 100%; display:flex; flex-direction:column; justify-content:center;'>
-            <h1 style='margin:0; font-size:32px; font-weight:bold; letter-spacing: 2px;'>OMBÚ</h1>
-            <small style='font-size:14px; font-weight:bold;'>MAQUINARIA AGRÍCOLA</small>
-        </div>
-    """, unsafe_allow_html=True)
+    # Intenta cargar la imagen real del logo subida a GitHub
+    try:
+        st.image("LOGO OMBÚ.jpg", use_container_width=True)
+    except Exception:
+        # Fallback en caso de que la imagen no esté cargada en GitHub aún
+        st.markdown("""
+            <div style='background-color:#1E3A8A; color:white; padding:15px; border-radius:10px; text-align:center; height: 100%; display:flex; flex-direction:column; justify-content:center;'>
+                <h1 style='margin:0; font-size:32px; font-weight:bold; letter-spacing: 2px;'>OMBÚ</h1>
+                <small style='font-size:14px; font-weight:bold;'>[Sube LOGO OMBÚ.jpg a GitHub]</small>
+            </div>
+        """, unsafe_allow_html=True)
 with col_title:
     st.title("TABLERO MÉTRICAS - C.G.P. REPORTE Integrado")
-    st.subheader("Control de Gestión Productiva (600 Colaboradores)")
+    st.subheader("Control de Gestión Productiva")
 
 # ==========================================
 # MODO AUTOMÁTICO VS MANUAL (CARGA DE DATOS)
@@ -476,3 +481,6 @@ if not df_imp_filtrado.empty:
     ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=5, fontsize=10)
     
     st.pyplot(fig6)
+
+else:
+    st.info("👋 Por favor, sube los archivos de 'Datos Finales Eficiencias' y 'Horas Improductivas Limpias' en el panel izquierdo para generar el C.G.P. Reporte Integrado.")
