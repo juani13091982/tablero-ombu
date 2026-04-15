@@ -13,6 +13,15 @@ import os
 # ==========================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
+# ESCUDO DE INVISIBILIDAD CORPORATIVA (Oculta menú de Streamlit, "Share", "GitHub", etc.)
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
+
 # Regla Innegociable: Tamaños de fuente grandes y en negrita
 plt.rcParams.update({
     'font.size': 12,
@@ -450,7 +459,7 @@ st.markdown("---")
 # =========================================================================
 # MÉTRICA 6: EVOLUCIÓN % H.H. IMPRODUCTIVAS VS DISPONIBLES
 # =========================================================================
-st.header("6. EVOLEvolution % H.H. IMPRODUCTIVAS VS DISPONIBLES")
+st.header("6. EVOLUCIÓN % H.H. IMPRODUCTIVAS VS DISPONIBLES")
 
 if not df_imp_filtrado.empty:
     pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='FECHA', columns='TIPO_PARADA', aggfunc='sum').fillna(0)
