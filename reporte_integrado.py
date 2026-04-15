@@ -124,27 +124,35 @@ except Exception as e:
     st.error(f"Error al estandarizar fechas: {e}")
     st.stop()
 
-st.sidebar.header("🔍 Nivel de Agrupación")
+# ==========================================
+# FILTROS EN LA PARTE SUPERIOR (CASCADA)
+# ==========================================
+st.markdown("### 🔍 Nivel de Agrupación")
+col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
-# 1. Filtro Planta
-plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
-planta_sel = st.sidebar.selectbox("Filtro Planta", plantas)
+# 1. Filtro Planta (Ícono: Fábrica Diente de Sierra)
+with col_f1:
+    plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
+    planta_sel = st.selectbox("🏭 Planta", plantas)
 
-# 2. Filtro Línea
-df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
-lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
-linea_sel = st.sidebar.selectbox("Filtro Línea", lineas)
+# 2. Filtro Línea (Ícono: Engranajes de Producción)
+with col_f2:
+    df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
+    lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
+    linea_sel = st.selectbox("⚙️ Línea", lineas)
 
-# 3. Filtro Puesto
-df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
-puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
-puesto_sel = st.sidebar.selectbox("Filtro Puesto", puestos)
+# 3. Filtro Puesto (Ícono: Herramientas de Trabajo)
+with col_f3:
+    df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
+    puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
+    puesto_sel = st.selectbox("🛠️ Puesto de Trabajo", puestos)
 
-# 4. Filtro Mes (NUEVO)
-df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'] == puesto_sel] if puesto_sel != "Todos" else df_temp_puesto
-# Ordenar meses disponibles de forma segura
-meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
-mes_sel = st.sidebar.selectbox("Filtro Mes", ["Todos"] + meses_disponibles)
+# 4. Filtro Mes (Ícono: Calendario)
+with col_f4:
+    df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'] == puesto_sel] if puesto_sel != "Todos" else df_temp_puesto
+    # Ordenar meses disponibles de forma segura
+    meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
+    mes_sel = st.selectbox("📅 Mes", ["Todos"] + meses_disponibles)
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
