@@ -127,66 +127,66 @@ except Exception as e:
 st.markdown("### 🔍 Configuración del Escenario")
 
 # ==========================================
-# FILTROS EN LA PARTE SUPERIOR (ALINEACIÓN PERFECTA)
+# FILTROS EN LA PARTE SUPERIOR (CASCADA ESTRICTA)
 # ==========================================
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
-# 1. Filtro Planta
+# 1. Filtro Planta (Si está vacío, significa "Todas")
 with col_f1:
-    plantas = list(df_ef['Planta'].dropna().unique())
-    planta_sel = st.multiselect("🏭 Planta", ["Todas"] + plantas, default=["Todas"])
+    plantas_disponibles = list(df_ef['Planta'].dropna().unique())
+    planta_sel = st.multiselect("🏭 Planta", plantas_disponibles, placeholder="Todas (Dejar vacío)")
 
-# Lógica Cascada 1
-plantas_filtrar = plantas if "Todas" in planta_sel or not planta_sel else planta_sel
+# Lógica Cascada 1: Filtramos la base temporal si hay plantas seleccionadas
+plantas_filtrar = planta_sel if planta_sel else plantas_disponibles
 df_temp_linea = df_ef[df_ef['Planta'].isin(plantas_filtrar)]
 
 # 2. Filtro Línea
 with col_f2:
-    lineas = list(df_temp_linea['Linea'].dropna().unique())
-    linea_sel = st.multiselect("⚙️ Línea", ["Todas"] + lineas, default=["Todas"])
+    lineas_disponibles = list(df_temp_linea['Linea'].dropna().unique())
+    linea_sel = st.multiselect("⚙️ Línea", lineas_disponibles, placeholder="Todas (Dejar vacío)")
 
 # Lógica Cascada 2
-lineas_filtrar = lineas if "Todas" in linea_sel or not linea_sel else linea_sel
+lineas_filtrar = linea_sel if linea_sel else lineas_disponibles
 df_temp_puesto = df_temp_linea[df_temp_linea['Linea'].isin(lineas_filtrar)]
 
 # 3. Filtro Puesto
 with col_f3:
-    puestos = list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
-    puesto_sel = st.multiselect("🛠️ Puesto de Trabajo", ["Todos"] + puestos, default=["Todos"])
+    puestos_disponibles = list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
+    puesto_sel = st.multiselect("🛠️ Puesto de Trabajo", puestos_disponibles, placeholder="Todos (Dejar vacío)")
 
 # Lógica Cascada 3
-puestos_filtrar = puestos if "Todos" in puesto_sel or not puesto_sel else puesto_sel
+puestos_filtrar = puesto_sel if puesto_sel else puestos_disponibles
 df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'].isin(puestos_filtrar)]
 
 # 4. Filtro Mes
 with col_f4:
     meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
-    mes_sel = st.multiselect("📅 Mes", ["Todos"] + meses_disponibles, default=["Todos"])
+    mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
 
 # ==========================================
-# APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
+# APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES (ESTRICTO)
 # ==========================================
 df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
 
-# Eficiencias
-if "Todas" not in planta_sel and planta_sel: 
+# Eficiencias (Si la lista tiene elementos, filtramos. Si está vacía, no filtramos)
+if planta_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Planta'].isin(planta_sel)]
-if "Todas" not in linea_sel and linea_sel: 
+if linea_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Linea'].isin(linea_sel)]
-if "Todos" not in puesto_sel and puesto_sel: 
+if puesto_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Puesto_Trabajo'].isin(puesto_sel)]
-if "Todos" not in mes_sel and mes_sel: 
+if mes_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'].isin(mes_sel)]
 
 # Improductivas
-if "Todas" not in planta_sel and planta_sel and 'PLANTA' in df_imp_filtrado.columns: 
+if planta_sel and 'PLANTA' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PLANTA'].isin(planta_sel)]
-if "Todas" not in linea_sel and linea_sel and 'LÍNEA' in df_imp_filtrado.columns: 
+if linea_sel and 'LÍNEA' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['LÍNEA'].isin(linea_sel)]
-if "Todos" not in puesto_sel and puesto_sel and 'PUESTOS' in df_imp_filtrado.columns: 
+if puesto_sel and 'PUESTOS' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PUESTOS'].isin(puesto_sel)]
-if "Todos" not in mes_sel and mes_sel and 'Mes_Filtro' in df_imp_filtrado.columns: 
+if mes_sel and 'Mes_Filtro' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['Mes_Filtro'].isin(mes_sel)]
 
 st.markdown("---")
@@ -196,7 +196,8 @@ st.markdown("---")
 # =========================================================================
 st.header("1. % EFICIENCIA REAL")
 
-puestos_especificos = (len(puesto_sel) > 0 and "Todos" not in puesto_sel)
+# Lógica inteligente: Si hay algún puesto específico seleccionado, ignora la regla de la última estación
+puestos_especificos = (len(puesto_sel) > 0)
 
 if puestos_especificos:
     st.markdown("*Evaluando métricas exactas de los puestos seleccionados (Anula regla de última estación de línea).*")
