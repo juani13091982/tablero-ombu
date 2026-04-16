@@ -13,41 +13,46 @@ import os
 # ==========================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
-# ESCUDO DE INVISIBILIDAD CORPORATIVA E INYECCIÓN CSS PARA FILTROS INMÓVILES
-# 1. Oculta el menú superior para el público (A menos que uses ?admin=true en la URL)
-# 2. Rompe el bloqueo de scroll y clava el panel de filtros arriba usando un ancla infalible.
-css_styles = """
-<style>
-/* Desbloquear overflow para permitir el sticky */
-.main .block-container {
-    overflow: visible !important;
-}
-
-/* Buscar el contenedor Horizontal (las 4 columnas) que tiene nuestro ancla #filtro-ribbon y fijarlo */
-div[data-testid="stHorizontalBlock"]:has(#filtro-ribbon) {
+# ESCUDO DE INVISIBILIDAD Y PANEL INMÓVIL (STICKY) UNIFICADO
+# Este bloque CSS está blindado para no generar texto visible en pantalla.
+css_content = """
+/* Buscar el contenedor Horizontal de las columnas (el segundo bloque horizontal de la página) */
+div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
+    position: -webkit-sticky !important;
     position: sticky !important;
     top: 0px !important;
-    background-color: #0E1117 !important; /* Mismo fondo oscuro de la página */
+    background-color: #0E1117 !important; /* Mismo fondo oscuro de la página para tapar gráficos */
     z-index: 99999 !important;
-    padding-top: 15px !important;
-    padding-bottom: 15px !important;
+    padding: 15px 15px 15px 15px !important;
     border-bottom: 3px solid #1E3A8A !important; /* Línea azul corporativa Ombú */
-    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.6); /* Sombra para separar del contenido */
+    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.6) !important;
     margin-top: -10px !important;
 }
-</style>
+
+/* Regla de refuerzo para navegadores modernos usando nuestra ancla invisible */
+div[data-testid="stHorizontalBlock"]:has(#filtro-ribbon) {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0px !important;
+    background-color: #0E1117 !important;
+    z-index: 99999 !important;
+    padding: 15px 15px 15px 15px !important;
+    border-bottom: 3px solid #1E3A8A !important;
+    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.6) !important;
+    margin-top: -10px !important;
+}
 """
 
+# Si en la URL NO está la palabra "?admin=true", ocultamos los menús de Streamlit
 if "admin" not in st.query_params:
-    css_styles += """
-    <style>
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    </style>
+    css_content += """
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
     """
 
-st.markdown(css_styles, unsafe_allow_html=True)
+# Inyectamos todo el CSS de una sola vez
+st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
 
 # Regla Innegociable: Tamaños de fuente grandes y en negrita
 plt.rcParams.update({
