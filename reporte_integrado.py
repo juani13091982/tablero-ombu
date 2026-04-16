@@ -13,45 +13,41 @@ import os
 # ==========================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
-# ESCUDO DE INVISIBILIDAD Y PANEL INMÓVIL (STICKY) UNIFICADO
-css_styles = """
-<style>
-/* Forzar que todos los contenedores padres permitan elementos sticky (Inmóviles) */
-.stApp, .main, .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMain"] {
-    overflow: visible !important;
-}
-
-/* Seleccionar el contenedor de los 4 filtros y fijarlo */
-div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
-    position: -webkit-sticky !important;
-    position: sticky !important;
-    top: 0px !important;
-    background-color: #0E1117 !important; /* Fondo oscuro para tapar los gráficos que suben */
-    z-index: 99999 !important;
-    padding: 10px 5px 15px 5px !important;
-    border-bottom: 3px solid #1E3A8A !important; /* Línea azul corporativa */
-    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.8) !important; /* Sombra elegante */
-    border-radius: 0px 0px 10px 10px !important;
-}
-"""
+# ESCUDO DE INVISIBILIDAD Y PANEL INMÓVIL (STICKY) SEGURO
+css_styles = "<style>\n"
 
 if "admin" not in st.query_params:
     css_styles += """
+    /* Ocultar elementos de Streamlit para el público */
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     """
 else:
     css_styles += """
-    div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
+    /* Modo Administrador: Bajar un poco el panel fijo para que no tape la barra superior */
+    div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
         top: 55px !important; 
     }
     """
 
-css_styles += "</style>"
+css_styles += """
+/* FIJACIÓN DEL PANEL DE FILTROS (STICKY) SIN ROMPER EL SCROLL NI LA ALINEACIÓN */
+div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0px !important;
+    background-color: #0E1117 !important; /* Fondo oscuro nativo de Streamlit */
+    z-index: 99999 !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 3px solid #1E3A8A !important; /* Línea corporativa Ombú */
+}
+</style>
+"""
 st.markdown(css_styles, unsafe_allow_html=True)
 
-# Regla Innegociable: Tamaños de fuente grandes y en negrita (AUMENTADOS)
+# Regla Innegociable: Tamaños de fuente grandes y en negrita
 plt.rcParams.update({
     'font.size': 14, 
     'font.weight': 'bold',
@@ -143,38 +139,42 @@ except Exception as e:
     st.error(f"Error en fechas: {e}")
     st.stop()
 
-st.markdown("### 🔍 Configuración del Escenario")
-
 # ==========================================
-# FILTROS EN LA PARTE SUPERIOR (CASCADA)
+# FILTROS EN LA PARTE SUPERIOR (CASCADA) CON CONTENEDOR SEGURO
 # ==========================================
-col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+filtros_container = st.container()
 
-with col_f1:
-    st.markdown('<span id="filtro-ribbon"></span>', unsafe_allow_html=True)
-    plantas_disponibles = list(df_ef['Planta'].dropna().unique())
-    planta_sel = st.multiselect("🏭 Planta", plantas_disponibles, placeholder="Todas (Dejar vacío)")
+with filtros_container:
+    # Ancla invisible para el CSS Sticky
+    st.markdown('<div id="filtro-ribbon"></div>', unsafe_allow_html=True)
+    st.markdown("### 🔍 Configuración del Escenario")
+    
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
-plantas_filtrar = planta_sel if planta_sel else plantas_disponibles
-df_temp_linea = df_ef[df_ef['Planta'].isin(plantas_filtrar)]
+    with col_f1:
+        plantas_disponibles = list(df_ef['Planta'].dropna().unique())
+        planta_sel = st.multiselect("🏭 Planta", plantas_disponibles, placeholder="Todas (Dejar vacío)")
 
-with col_f2:
-    lineas_disponibles = list(df_temp_linea['Linea'].dropna().unique())
-    linea_sel = st.multiselect("⚙️ Línea", lineas_disponibles, placeholder="Todas (Dejar vacío)")
+    plantas_filtrar = planta_sel if planta_sel else plantas_disponibles
+    df_temp_linea = df_ef[df_ef['Planta'].isin(plantas_filtrar)]
 
-lineas_filtrar = linea_sel if linea_sel else lineas_disponibles
-df_temp_puesto = df_temp_linea[df_temp_linea['Linea'].isin(lineas_filtrar)]
+    with col_f2:
+        lineas_disponibles = list(df_temp_linea['Linea'].dropna().unique())
+        linea_sel = st.multiselect("⚙️ Línea", lineas_disponibles, placeholder="Todas (Dejar vacío)")
 
-with col_f3:
-    puestos_disponibles = list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
-    puesto_sel = st.multiselect("🛠️ Puesto de Trabajo", puestos_disponibles, placeholder="Todos (Dejar vacío)")
+    lineas_filtrar = linea_sel if linea_sel else lineas_disponibles
+    df_temp_puesto = df_temp_linea[df_temp_linea['Linea'].isin(lineas_filtrar)]
 
-puestos_filtrar = puesto_sel if puesto_sel else puestos_disponibles
-df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'].isin(puestos_filtrar)]
+    with col_f3:
+        puestos_disponibles = list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
+        puesto_sel = st.multiselect("🛠️ Puesto de Trabajo", puestos_disponibles, placeholder="Todos (Dejar vacío)")
 
-with col_f4:
-    meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
-    mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
+    puestos_filtrar = puesto_sel if puesto_sel else puestos_disponibles
+    df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'].isin(puestos_filtrar)]
+
+    with col_f4:
+        meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
+        mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
@@ -228,7 +228,6 @@ with col_m1:
         agrup_m1['Fecha_str'] = agrup_m1['Fecha'].dt.strftime('%b-%y')
 
         fig1, ax1 = plt.subplots(figsize=(14, 7))
-        # GARANTÍA DE TAMAÑO IDÉNTICO: Forzamos la caja de dibujo a ser exacta
         fig1.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
         
         ax2 = ax1.twinx()
@@ -274,7 +273,6 @@ with col_m1:
         
         st.pyplot(fig1)
 
-        # Contenedor inferior para alertas sin romper la altura de la cuadrícula
         if mostrar_alerta:
             st.markdown("<div style='height: 40px; color: #e74c3c; font-weight: bold;'>⚠️ La línea no posee salida ('SI'). Elija un puesto arriba.</div>", unsafe_allow_html=True)
         else:
@@ -284,7 +282,6 @@ with col_m1:
 
 with col_m2:
     st.header("2. EFICIENCIA PRODUCTIVA")
-    # Subtítulo idéntico en tamaño al de M1
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
 
     if not df_m1.empty:
@@ -298,7 +295,6 @@ with col_m2:
         agrup_m2['Fecha_str'] = agrup_m2['Fecha'].dt.strftime('%b-%y')
 
         fig2, ax1 = plt.subplots(figsize=(14, 7))
-        # GARANTÍA DE TAMAÑO IDÉNTICO
         fig2.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
 
         ax2 = ax1.twinx()
@@ -344,7 +340,6 @@ with col_m2:
         ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
         
         st.pyplot(fig2)
-        # Placeholder equivalente para igualar altura de la Métrica 1
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
     else:
         st.warning("⚠️ No hay datos evaluables.")
@@ -373,7 +368,6 @@ with col_m3:
         agrup_m3['Fecha_str'] = agrup_m3['Fecha'].dt.strftime('%b-%y')
 
         fig3, ax1 = plt.subplots(figsize=(14, 7))
-        # GARANTÍA DE TAMAÑO IDÉNTICO
         fig3.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
 
         x_indexes_m3 = np.arange(len(agrup_m3))
@@ -402,12 +396,11 @@ with col_m3:
             offset_y_gap = decl + (gap / 2) if gap > 0 else decl + (ax1.get_ylim()[1] * 0.05)
             ax1.annotate(f"GAP Oculto:\n{int(gap)}", (i, offset_y_gap), color='firebrick', bbox=bbox_white, ha='center', va='center', fontsize=14, fontweight='bold', zorder=10)
             
-            offset_y_disp = disp + (ax1.get_ylim()[1] * 0.08) # Empujado más arriba para no chocar
+            offset_y_disp = disp + (ax1.get_ylim()[1] * 0.08)
             ax1.annotate(f"{int(disp)}", (i, offset_y_disp), color='black', bbox=bbox_white, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_indexes_m3)
         ax1.set_xticklabels(agrup_m3['Fecha_str'], fontsize=14, fontweight='bold')
-        # Leyenda en 1 sola fila para mantener el tamaño interno del plot (ncol=3)
         ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=3)
         st.pyplot(fig3)
     else:
@@ -425,7 +418,6 @@ with col_m4:
         agrup_m4['Fecha_str'] = agrup_m4['Fecha'].dt.strftime('%b-%y')
 
         fig4, ax1 = plt.subplots(figsize=(14, 7))
-        # GARANTÍA DE TAMAÑO IDÉNTICO
         fig4.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
 
         ax2 = ax1.twinx()
@@ -454,7 +446,6 @@ with col_m4:
 
         ax1.set_xticks(x_indexes_m4)
         ax1.set_xticklabels(agrup_m4['Fecha_str'], fontsize=14, fontweight='bold')
-        # Leyenda en 1 sola fila (ncol=2)
         ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=2)
         ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
         st.pyplot(fig4)
@@ -486,7 +477,6 @@ with col_m5:
             pareto_df['%_Acumulado'] = (pareto_df['Promedio_Mensual'].cumsum() / pareto_df['Promedio_Mensual'].sum()) * 100
 
             fig5, ax1 = plt.subplots(figsize=(14, 7))
-            # Ajuste de tamaño, dejando más espacio abajo (bottom=0.25) para textos inclinados
             fig5.subplots_adjust(top=0.82, bottom=0.25, left=0.10, right=0.90)
 
             ax2 = ax1.twinx()
@@ -502,7 +492,6 @@ with col_m5:
             ax2.set_ylim(0, 140)
             ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-            # Textos más cortos para no pisarse (fill=12)
             labels_wrapped = [textwrap.fill(str(l), 12) for l in pareto_df['TIPO_PARADA']]
             ax1.set_xticks(x_pos)
             ax1.set_xticklabels(labels_wrapped, rotation=90, fontsize=12, fontweight='bold')
@@ -525,7 +514,7 @@ with col_m5:
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 with col_m6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
@@ -544,7 +533,6 @@ with col_m6:
         x_m6 = np.arange(len(df_m6))
         
         fig6, ax1 = plt.subplots(figsize=(14, 7))
-        # Ajuste de tamaño idéntico a M5 para que queden alineadas abajo
         fig6.subplots_adjust(top=0.82, bottom=0.25, left=0.10, right=0.90)
 
         ax2 = ax1.twinx()
@@ -591,7 +579,6 @@ with col_m6:
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        # Mover leyenda hacia ARRIBA (igual que todas las demás métricas) para evitar desalineación inferior
         ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=4, fontsize=10)
         
         st.pyplot(fig6)
