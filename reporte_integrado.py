@@ -35,15 +35,17 @@ div[data-testid="stHorizontalBlock"]:has(#filtro-ribbon) {
     box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.6); /* Sombra para separar del contenido */
     margin-top: -10px !important;
 }
+</style>
 """
 
 if "admin" not in st.query_params:
     css_styles += """
+    <style>
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
+    </style>
     """
-css_styles += "</style>"
 
 st.markdown(css_styles, unsafe_allow_html=True)
 
@@ -147,7 +149,7 @@ except Exception as e:
 st.markdown("### 🔍 Configuración del Escenario")
 
 # ==========================================
-# FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA INMÓVIL)
+# FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA INMÓVIL MULTIPLE)
 # ==========================================
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
@@ -155,26 +157,35 @@ col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 with col_f1:
     # Este span oculto es el "ancla" que lee el CSS para fijar esta fila exacta arriba
     st.markdown('<span id="filtro-ribbon"></span>', unsafe_allow_html=True)
-    plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
-    planta_sel = st.selectbox("🏭 Planta", plantas)
+    plantas = list(df_ef['Planta'].dropna().unique())
+    planta_sel = st.multiselect("🏭 Planta", ["Todas"] + plantas, default=["Todas"])
+
+# Lógica Cascada 1
+plantas_filtrar = plantas if "Todas" in planta_sel or not planta_sel else planta_sel
+df_temp_linea = df_ef[df_ef['Planta'].isin(plantas_filtrar)]
 
 # 2. Filtro Línea
 with col_f2:
-    df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
-    lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
-    linea_sel = st.selectbox("⚙️ Línea", lineas)
+    lineas = list(df_temp_linea['Linea'].dropna().unique())
+    linea_sel = st.multiselect("⚙️ Línea", ["Todas"] + lineas, default=["Todas"])
+
+# Lógica Cascada 2
+lineas_filtrar = lineas if "Todas" in linea_sel or not linea_sel else linea_sel
+df_temp_puesto = df_temp_linea[df_temp_linea['Linea'].isin(lineas_filtrar)]
 
 # 3. Filtro Puesto
 with col_f3:
-    df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
-    puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
-    puesto_sel = st.selectbox("🛠️ Puesto de Trabajo", puestos)
+    puestos = list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
+    puesto_sel = st.multiselect("🛠️ Puesto de Trabajo", ["Todos"] + puestos, default=["Todos"])
+
+# Lógica Cascada 3
+puestos_filtrar = puestos if "Todos" in puesto_sel or not puesto_sel else puesto_sel
+df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'].isin(puestos_filtrar)]
 
 # 4. Filtro Mes
 with col_f4:
-    df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'] == puesto_sel] if puesto_sel != "Todos" else df_temp_puesto
     meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
-    mes_sel = st.selectbox("📅 Mes", ["Todos"] + meses_disponibles)
+    mes_sel = st.multiselect("📅 Mes", ["Todos"] + meses_disponibles, default=["Todos"])
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
@@ -183,16 +194,24 @@ df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
 
 # Eficiencias
-if planta_sel != "Todas": df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Planta'] == planta_sel]
-if linea_sel != "Todas": df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Linea'] == linea_sel]
-if puesto_sel != "Todos": df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Puesto_Trabajo'] == puesto_sel]
-if mes_sel != "Todos": df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'] == mes_sel]
+if "Todas" not in planta_sel and planta_sel: 
+    df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Planta'].isin(planta_sel)]
+if "Todas" not in linea_sel and linea_sel: 
+    df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Linea'].isin(linea_sel)]
+if "Todos" not in puesto_sel and puesto_sel: 
+    df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Puesto_Trabajo'].isin(puesto_sel)]
+if "Todos" not in mes_sel and mes_sel: 
+    df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'].isin(mes_sel)]
 
 # Improductivas
-if planta_sel != "Todas" and 'PLANTA' in df_imp_filtrado.columns: df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PLANTA'] == planta_sel]
-if linea_sel != "Todas" and 'LÍNEA' in df_imp_filtrado.columns: df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['LÍNEA'] == linea_sel]
-if puesto_sel != "Todos" and 'PUESTOS' in df_imp_filtrado.columns: df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PUESTOS'] == puesto_sel]
-if mes_sel != "Todos" and 'Mes_Filtro' in df_imp_filtrado.columns: df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['Mes_Filtro'] == mes_sel]
+if "Todas" not in planta_sel and planta_sel and 'PLANTA' in df_imp_filtrado.columns: 
+    df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PLANTA'].isin(planta_sel)]
+if "Todas" not in linea_sel and linea_sel and 'LÍNEA' in df_imp_filtrado.columns: 
+    df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['LÍNEA'].isin(linea_sel)]
+if "Todos" not in puesto_sel and puesto_sel and 'PUESTOS' in df_imp_filtrado.columns: 
+    df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PUESTOS'].isin(puesto_sel)]
+if "Todos" not in mes_sel and mes_sel and 'Mes_Filtro' in df_imp_filtrado.columns: 
+    df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['Mes_Filtro'].isin(mes_sel)]
 
 st.markdown("---")
 
@@ -201,8 +220,10 @@ st.markdown("---")
 # =========================================================================
 st.header("1. % EFICIENCIA REAL")
 
-if puesto_sel != "Todos":
-    st.markdown(f"*Evaluando métricas exactas del puesto: **{puesto_sel}** (Anula regla de última estación de línea).*")
+puestos_especificos = (len(puesto_sel) > 0 and "Todos" not in puesto_sel)
+
+if puestos_especificos:
+    st.markdown("*Evaluando métricas exactas de los puestos seleccionados (Anula regla de última estación de línea).*")
     df_m1 = df_ef_filtrado.copy()
 else:
     st.markdown("*Lógica Estricta de Línea: Sumatoria(HH STD) / Sumatoria(HH Disponibles) SOLO en última estación.*")
