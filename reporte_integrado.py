@@ -319,21 +319,26 @@ st.markdown("---")
 st.header("3. GAP DE HH (EVALUACIÓN GLOBAL)")
 
 if not df_ef_filtrado.empty:
+    # Lógica inteligente para detectar la columna HH_Productivas sin GAP
+    col_prod_pura = 'HH_Productivas' if 'HH_Productivas' in df_ef_filtrado.columns else 'HH Productivas'
+    
     agrup_m3 = df_ef_filtrado.groupby('Fecha').agg({
-        'HH_Productivas_C/GAP': 'sum',
+        col_prod_pura: 'sum',
         'HH_Improductivas': 'sum',
         'HH_Disponibles': 'sum'
     }).reset_index()
-    agrup_m3['Total_Declaradas'] = agrup_m3['HH_Productivas_C/GAP'] + agrup_m3['HH_Improductivas']
+    
+    # Cálculo con las Horas Productivas Puras
+    agrup_m3['Total_Declaradas'] = agrup_m3[col_prod_pura] + agrup_m3['HH_Improductivas']
     agrup_m3['Fecha_str'] = agrup_m3['Fecha'].dt.strftime('%b-%y')
 
     fig3, ax1 = plt.subplots(figsize=(14, 7))
     x_indexes = np.arange(len(agrup_m3))
     
-    bar_prod = ax1.bar(x_indexes, agrup_m3['HH_Productivas_C/GAP'], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
-    bar_imp = ax1.bar(x_indexes, agrup_m3['HH_Improductivas'], bottom=agrup_m3['HH_Productivas_C/GAP'], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+    bar_prod = ax1.bar(x_indexes, agrup_m3[col_prod_pura], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+    bar_imp = ax1.bar(x_indexes, agrup_m3['HH_Improductivas'], bottom=agrup_m3[col_prod_pura], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
     
-    labels_prod = [f'{int(val)}' if val / tot > 0.05 else '' for val, tot in zip(agrup_m3['HH_Productivas_C/GAP'], agrup_m3['Total_Declaradas'])]
+    labels_prod = [f'{int(val)}' if val / tot > 0.05 else '' for val, tot in zip(agrup_m3[col_prod_pura], agrup_m3['Total_Declaradas'])]
     labels_imp = [f'{int(val)}' if val / tot > 0.05 else '' for val, tot in zip(agrup_m3['HH_Improductivas'], agrup_m3['Total_Declaradas'])]
     
     ax1.bar_label(bar_prod, labels=labels_prod, label_type='center', color='white', fontweight='bold', fontsize=14, path_effects=outline_black, zorder=4)
@@ -351,7 +356,7 @@ if not df_ef_filtrado.empty:
         
         ax1.plot([i, i], [decl, disp], color='dimgray', linewidth=5, alpha=0.6, linestyle='-', zorder=3)
         
-        # NUEVO: Zorder=10 para carteles y desfasaje matemático de la línea negra
+        # Zorder=10 para carteles y desfasaje matemático de la línea negra
         offset_y_gap = decl + (gap / 2) if gap > 0 else decl + (ax1.get_ylim()[1] * 0.05)
         ax1.annotate(f"GAP HH Ocultas:\n{int(gap)}", (i, offset_y_gap), color='firebrick', bbox=bbox_white, ha='center', va='center', fontsize=12, fontweight='bold', zorder=10)
         
