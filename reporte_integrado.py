@@ -13,17 +13,39 @@ import os
 # ==========================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
-# ESCUDO DE INVISIBILIDAD CORPORATIVA INTELIGENTE
-# Oculta el menú superior (Share, GitHub, etc.) para el público.
-# Para que tú puedas verlo, agrega "?admin=true" al final de la URL en tu navegador.
+# ESCUDO DE INVISIBILIDAD CORPORATIVA E INYECCIÓN CSS PARA FILTROS INMÓVILES
+# 1. Oculta el menú superior (Share, GitHub, etc.) para el público (A menos que uses ?admin=true)
+# 2. Rompe el bloqueo de scroll de Streamlit y clava el panel de filtros arriba.
+css_styles = """
+<style>
+/* Forzar que el contenedor principal permita elementos sticky (Inmóviles) */
+.main .block-container {
+    overflow: visible !important;
+}
+
+/* Capturar el contenedor exacto de los filtros usando el ID que inyectaremos y fijarlo arriba */
+div[data-testid="stVerticalBlock"]:has(#filtro-ribbon) {
+    position: sticky !important;
+    top: 0px !important;
+    background-color: #0E1117 !important; /* Mismo fondo oscuro de la página */
+    z-index: 9999 !important;
+    padding-top: 15px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 3px solid #1E3A8A !important; /* Línea azul corporativa Ombú */
+    margin-top: -20px !important;
+    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.5); /* Sombra elegante */
+}
+"""
+
 if "admin" not in st.query_params:
-    st.markdown("""
-        <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-        </style>
-        """, unsafe_allow_html=True)
+    css_styles += """
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    """
+css_styles += "</style>"
+
+st.markdown(css_styles, unsafe_allow_html=True)
 
 # Regla Innegociable: Tamaños de fuente grandes y en negrita
 plt.rcParams.update({
@@ -44,12 +66,12 @@ bbox_red = dict(boxstyle="round,pad=0.3", fc="firebrick", ec="white", lw=1.5)
 bbox_white = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # ==========================================
-# FUNCIONES AUXILIARES ESTRICTAS
+# FUNCIONES AUXILIARES ESTRICTAS (ANTI-SOLAPAMIENTO MEJORADO)
 # ==========================================
 def aplicar_anti_overlap(ax, max_val):
-    """Regla Crítica: Límite superior forzado a max_val * 1.50 para evitar choques con carteles altos"""
+    """Regla Crítica: Límite superior forzado a max_val * 1.60 para evitar choques con carteles altos"""
     if max_val > 0:
-        ax.set_ylim(0, max_val * 1.50)
+        ax.set_ylim(0, max_val * 1.60)
     else:
         ax.set_ylim(0, 100) # Fallback
 
@@ -128,52 +150,38 @@ except Exception as e:
 # ==========================================
 # FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA INMÓVIL)
 # ==========================================
-st.markdown("### 🔍 Configuración del Escenario")
+filtros_container = st.container()
 
-# INYECCIÓN CSS: Hace que la fila de columnas sea pegajosa (Sticky) en la parte superior
-st.markdown(
-    """
-    <style>
-    /* Selecciona la fila de los filtros y la clava arriba */
-    div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
-        position: sticky !important;
-        top: 0px !important;
-        background-color: #0E1117 !important; /* Fondo oscuro original para ocultar gráficos al scrollear */
-        z-index: 9999 !important;
-        padding-top: 10px !important;
-        padding-bottom: 15px !important;
-        border-bottom: 2px solid #1E3A8A !important;
-        margin-top: -10px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True
-)
+with filtros_container:
+    # Este div invisible es el "ancla" que le dice al CSS qué bloque debe quedar inmovilizado arriba
+    st.markdown('<div id="filtro-ribbon"></div>', unsafe_allow_html=True)
+    st.markdown("### 🔍 Configuración del Escenario")
+    
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
-col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+    # 1. Filtro Planta (Ícono: Fábrica Diente de Sierra)
+    with col_f1:
+        plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
+        planta_sel = st.selectbox("🏭 Planta", plantas)
 
-# 1. Filtro Planta (Ícono: Fábrica Diente de Sierra)
-with col_f1:
-    plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
-    planta_sel = st.selectbox("🏭 Planta", plantas)
+    # 2. Filtro Línea (Ícono: Engranajes de Producción)
+    with col_f2:
+        df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
+        lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
+        linea_sel = st.selectbox("⚙️ Línea", lineas)
 
-# 2. Filtro Línea (Ícono: Engranajes de Producción)
-with col_f2:
-    df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
-    lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
-    linea_sel = st.selectbox("⚙️ Línea", lineas)
+    # 3. Filtro Puesto (Ícono: Herramientas de Trabajo)
+    with col_f3:
+        df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
+        puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
+        puesto_sel = st.selectbox("🛠️ Puesto de Trabajo", puestos)
 
-# 3. Filtro Puesto (Ícono: Herramientas de Trabajo)
-with col_f3:
-    df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
-    puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
-    puesto_sel = st.selectbox("🛠️ Puesto de Trabajo", puestos)
-
-# 4. Filtro Mes (Ícono: Calendario)
-with col_f4:
-    df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'] == puesto_sel] if puesto_sel != "Todos" else df_temp_puesto
-    # Ordenar meses disponibles de forma segura
-    meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
-    mes_sel = st.selectbox("📅 Mes", ["Todos"] + meses_disponibles)
+    # 4. Filtro Mes (Ícono: Calendario)
+    with col_f4:
+        df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'] == puesto_sel] if puesto_sel != "Todos" else df_temp_puesto
+        # Ordenar meses disponibles de forma segura
+        meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
+        mes_sel = st.selectbox("📅 Mes", ["Todos"] + meses_disponibles)
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
@@ -228,36 +236,30 @@ if not df_m1.empty:
     
     aplicar_anti_overlap(ax1, agrup_m1['HH_Disponibles'].max())
     
-    # NUEVO: Etiquetas de datos en las barras verticales
     ax1.bar_label(bars_std, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
     ax1.bar_label(bars_disp, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
 
     dibujar_meses(ax1, x_indexes)
 
-    # Cantidad Producida
     for i, bar in enumerate(bars_std):
         cant = int(agrup_m1['Cant._Prod._A1'].iloc[i])
         if cant > 0:
             ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() * 0.05, f"{cant} UND", 
                      rotation=90, color='white', ha='center', va='bottom', fontsize=16, fontweight='bold', path_effects=outline_black, zorder=4)
 
-    # Eje Secundario
     ax2.plot(x_indexes, agrup_m1['Eficiencia_Real'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Real', zorder=5)
     ax2.axhline(y=85, color='forestgreen', linestyle='--', linewidth=3, label='Meta (85%)', zorder=1)
     
-    # Ajuste dinámico de Eje Secundario para evitar choques con el tope
     max_ef_real = agrup_m1['Eficiencia_Real'].max()
-    ax2.set_ylim(0, max(120, max_ef_real * 1.4))
+    ax2.set_ylim(0, max(120, max_ef_real * 1.5))
     ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-    # Línea de Tendencia
     if len(x_indexes) > 1:
         z = np.polyfit(x_indexes, agrup_m1['Eficiencia_Real'], 1)
         p = np.poly1d(z)
         ax2.plot(x_indexes, p(x_indexes), color='dimgray', linestyle=':', alpha=0.8, linewidth=2, zorder=1)
 
-    # NUEVO: Desfasaje dinámico para etiquetas de la línea
-    offset_y2 = ax2.get_ylim()[1] * 0.06
+    offset_y2 = ax2.get_ylim()[1] * 0.08
     for i, val in enumerate(agrup_m1['Eficiencia_Real']):
         ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
 
@@ -296,7 +298,6 @@ if not df_m1.empty:
     max_val2 = max(agrup_m2['HH_STD_TOTAL'].max(), agrup_m2['HH_Productivas_C/GAP'].max())
     aplicar_anti_overlap(ax1, max_val2)
     
-    # NUEVO: Etiquetas de datos en las barras verticales
     ax1.bar_label(bars_std2, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
     ax1.bar_label(bars_prod2, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
 
@@ -311,9 +312,8 @@ if not df_m1.empty:
     ax2.plot(x_indexes, agrup_m2['Eficiencia_Prod'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Prod.', zorder=5)
     ax2.axhline(y=100, color='forestgreen', linestyle='--', linewidth=3, label='Meta (100%)', zorder=1)
     
-    # Ajuste dinámico de Eje Secundario
     max_ef_prod = agrup_m2['Eficiencia_Prod'].max()
-    ax2.set_ylim(0, max(150, max_ef_prod * 1.4))
+    ax2.set_ylim(0, max(150, max_ef_prod * 1.5))
     ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     if len(x_indexes) > 1:
@@ -321,8 +321,7 @@ if not df_m1.empty:
         p2 = np.poly1d(z2)
         ax2.plot(x_indexes, p2(x_indexes), color='dimgray', linestyle=':', alpha=0.8, linewidth=2, zorder=1)
 
-    # NUEVO: Desfasaje dinámico
-    offset_y2_m2 = ax2.get_ylim()[1] * 0.06
+    offset_y2_m2 = ax2.get_ylim()[1] * 0.08
     for i, val in enumerate(agrup_m2['Eficiencia_Prod']):
         ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2_m2), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
 
@@ -335,7 +334,7 @@ if not df_m1.empty:
 st.markdown("---")
 
 # =========================================================================
-# MÉTRICA 3: GAP DE HH (EVALUACIÓN GLOBAL)
+# MÉTRICA 3: GAP DE HH (EVALUACIÓN GLOBAL) - *Usando HH Productivas Puras*
 # =========================================================================
 st.header("3. GAP DE HH (EVALUACIÓN GLOBAL)")
 
@@ -377,11 +376,11 @@ if not df_ef_filtrado.empty:
         
         ax1.plot([i, i], [decl, disp], color='dimgray', linewidth=5, alpha=0.6, linestyle='-', zorder=3)
         
-        # Zorder=10 para carteles y desfasaje matemático de la línea negra
+        # Desfasaje matemático mejorado para evitar colisiones
         offset_y_gap = decl + (gap / 2) if gap > 0 else decl + (ax1.get_ylim()[1] * 0.05)
         ax1.annotate(f"GAP HH Ocultas:\n{int(gap)}", (i, offset_y_gap), color='firebrick', bbox=bbox_white, ha='center', va='center', fontsize=12, fontweight='bold', zorder=10)
         
-        offset_y_disp = disp + (ax1.get_ylim()[1] * 0.06) # Alejado del diamante
+        offset_y_disp = disp + (ax1.get_ylim()[1] * 0.08) # Más alejado del diamante hacia arriba
         ax1.annotate(f"{int(disp)}", (i, offset_y_disp), color='black', bbox=bbox_white, ha='center', fontsize=12, fontweight='bold', zorder=10)
 
     ax1.set_xticks(x_indexes)
@@ -412,19 +411,18 @@ if not df_ef_filtrado.empty:
     
     ax2.plot(x_indexes, agrup_m4['Costo_Improd._$'], color='maroon', marker='s', markersize=10, linewidth=5, path_effects=outline_white, label='COSTO ARS', zorder=5)
     
-    # Eje secundario con margen del 40%
+    # Eje secundario con margen superior gigante (1.60)
     max_costo = agrup_m4['Costo_Improd._$'].max()
-    ax2.set_ylim(0, max(max_costo * 1.40, 1000))
+    ax2.set_ylim(0, max(max_costo * 1.60, 1000))
     
     ticks_y = ax2.get_yticks()
     ax2.set_yticklabels([f'${int(x/1000000)}M' for x in ticks_y], fontweight='bold')
 
-    # Desplazar el cartel central bien arriba (90%) y zorder=10
     costo_total = agrup_m4['Costo_Improd._$'].sum()
     ax1.text(len(x_indexes)/2 - 0.5, ax1.get_ylim()[1]*0.90, f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}", 
              ha='center', va='center', fontsize=18, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
 
-    offset_y2_m4 = ax2.get_ylim()[1] * 0.06
+    offset_y2_m4 = ax2.get_ylim()[1] * 0.08
     for i, val in enumerate(agrup_m4['Costo_Improd._$']):
         ax2.annotate(f"${val:,.0f}", (x_indexes[i], val + offset_y2_m4), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
 
@@ -464,25 +462,28 @@ if not df_imp_filtrado.empty:
         
         ax2.plot(x_pos, pareto_df['%_Acumulado'], color='red', marker='D', markersize=8, linewidth=4, path_effects=outline_white, zorder=5)
         ax2.axhline(y=80, color='gray', linestyle='--', linewidth=2, zorder=1)
-        ax2.set_ylim(0, 115)
+        
+        # Limite aumentado a 130% para que los números nunca toquen el borde superior
+        ax2.set_ylim(0, 130)
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         labels_wrapped = [textwrap.fill(str(l), 15) for l in pareto_df['TIPO_PARADA']]
         ax1.set_xticks(x_pos)
         ax1.set_xticklabels(labels_wrapped, rotation=90, fontsize=11, fontweight='bold')
         
-        offset_y2_m5 = ax2.get_ylim()[1] * 0.05
+        # Etiquetas de la línea roja empujadas +6 hacia arriba
         for i, val in enumerate(pareto_df['%_Acumulado']):
-            ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, ha='center', fontsize=10, fontweight='bold', zorder=10)
+            ax2.annotate(f"{val:.1f}%", (x_pos[i], val + 6), color='white', bbox=bbox_gray, ha='center', fontsize=10, fontweight='bold', zorder=10)
 
+        # NUEVO: Desplazamos los carteles de Suma Promedio y TOP 5 a la zona INFERIOR DERECHA (completamente vacía)
         suma_promedio = pareto_df['Promedio_Mensual'].sum()
-        ax1.text(len(x_pos)*0.8, ax1.get_ylim()[1]*0.85, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
+        ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.45, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
                  bbox=bbox_gray, color='white', fontsize=14, fontweight='bold', ha='center', zorder=10)
         
         top5 = pareto_df.head(5)['TIPO_PARADA'].tolist()
         top5_str = "TOP 5 Causas:\n" + "\n".join([f"- {c}" for c in top5])
-        ax1.text(len(x_pos)*0.8, ax1.get_ylim()[1]*0.55, top5_str, 
-                 bbox=bbox_yellow, color='black', fontsize=12, fontweight='bold', ha='center', zorder=10)
+        ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.15, top5_str, 
+                 bbox=bbox_yellow, color='black', fontsize=12, fontweight='bold', ha='center', va='bottom', zorder=10)
 
         st.pyplot(fig5)
     else:
@@ -532,7 +533,7 @@ if not df_imp_filtrado.empty:
                          (i, offset_y_imp), ha='center', bbox=bbox_yellow, fontsize=11, fontweight='bold', zorder=10)
 
     ax2.plot(x_m6, df_m6['Incidencia_%'], color='red', marker='o', markersize=9, linewidth=4, path_effects=outline_white, label='% Incidencia', zorder=5)
-    lim_secundario = df_m6['Incidencia_%'].max() * 1.4 if df_m6['Incidencia_%'].max() > 0 else 100
+    lim_secundario = df_m6['Incidencia_%'].max() * 1.5 if df_m6['Incidencia_%'].max() > 0 else 100
     ax2.set_ylim(0, lim_secundario)
     ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
     
@@ -541,7 +542,7 @@ if not df_imp_filtrado.empty:
         p6 = np.poly1d(z6)
         ax2.plot(x_m6, p6(x_m6), color='darkred', linestyle='--', linewidth=3, zorder=1)
 
-    offset_y2_m6 = lim_secundario * 0.06
+    offset_y2_m6 = lim_secundario * 0.08
     for i, val in enumerate(df_m6['Incidencia_%']):
         ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=14, fontweight='bold', path_effects=outline_white, zorder=10)
 
