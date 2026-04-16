@@ -14,26 +14,26 @@ import os
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
 # ESCUDO DE INVISIBILIDAD CORPORATIVA E INYECCIÓN CSS PARA FILTROS INMÓVILES
-# 1. Oculta el menú superior (Share, GitHub, etc.) para el público (A menos que uses ?admin=true)
-# 2. Rompe el bloqueo de scroll de Streamlit y clava el panel de filtros arriba.
+# 1. Oculta el menú superior para el público (A menos que uses ?admin=true en la URL)
+# 2. Rompe el bloqueo de scroll y clava el panel de filtros arriba usando un ancla infalible.
 css_styles = """
 <style>
-/* Forzar que el contenedor principal permita elementos sticky (Inmóviles) */
+/* Desbloquear overflow para permitir el sticky */
 .main .block-container {
     overflow: visible !important;
 }
 
-/* Capturar el contenedor exacto de los filtros usando el ID que inyectaremos y fijarlo arriba */
-div[data-testid="stVerticalBlock"]:has(#filtro-ribbon) {
+/* Buscar el contenedor Horizontal (las 4 columnas) que tiene nuestro ancla #filtro-ribbon y fijarlo */
+div[data-testid="stHorizontalBlock"]:has(#filtro-ribbon) {
     position: sticky !important;
     top: 0px !important;
     background-color: #0E1117 !important; /* Mismo fondo oscuro de la página */
-    z-index: 9999 !important;
+    z-index: 99999 !important;
     padding-top: 15px !important;
-    padding-bottom: 10px !important;
+    padding-bottom: 15px !important;
     border-bottom: 3px solid #1E3A8A !important; /* Línea azul corporativa Ombú */
-    margin-top: -20px !important;
-    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.5); /* Sombra elegante */
+    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.6); /* Sombra para separar del contenido */
+    margin-top: -10px !important;
 }
 """
 
@@ -66,12 +66,13 @@ bbox_red = dict(boxstyle="round,pad=0.3", fc="firebrick", ec="white", lw=1.5)
 bbox_white = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # ==========================================
-# FUNCIONES AUXILIARES ESTRICTAS (ANTI-SOLAPAMIENTO MEJORADO)
+# FUNCIONES AUXILIARES ESTRICTAS (ANTI-SOLAPAMIENTO EXTREMO)
 # ==========================================
-def aplicar_anti_overlap(ax, max_val):
-    """Regla Crítica: Límite superior forzado a max_val * 1.60 para evitar choques con carteles altos"""
+def aplicar_anti_overlap(ax, max_val, multiplier=2.0):
+    """Regla Crítica: Empuja las barras hacia abajo (multiplier 2.0 por defecto) 
+       para liberar la mitad superior del gráfico y que NADA se solape con las líneas/carteles."""
     if max_val > 0:
-        ax.set_ylim(0, max_val * 1.60)
+        ax.set_ylim(0, max_val * multiplier)
     else:
         ax.set_ylim(0, 100) # Fallback
 
@@ -89,11 +90,10 @@ with col_logo:
     try:
         st.image("LOGO OMBÚ.jpg", use_container_width=True)
     except Exception:
-        # Fallback en caso de que la imagen no esté cargada en GitHub aún
+        # Fallback
         st.markdown("""
             <div style='background-color:#1E3A8A; color:white; padding:15px; border-radius:10px; text-align:center; height: 100%; display:flex; flex-direction:column; justify-content:center;'>
                 <h1 style='margin:0; font-size:32px; font-weight:bold; letter-spacing: 2px;'>OMBÚ</h1>
-                <small style='font-size:14px; font-weight:bold;'>[Sube LOGO OMBÚ.jpg a GitHub]</small>
             </div>
         """, unsafe_allow_html=True)
 with col_title:
@@ -107,7 +107,6 @@ ruta_ef = "eficiencias.xlsx"
 ruta_imp = "improductivas.xlsx"
 
 if os.path.exists(ruta_ef) and os.path.exists(ruta_imp):
-    # Modo 100% Automático: NO invocamos st.sidebar para que el menú lateral desaparezca por completo
     try:
         df_ef = pd.read_excel(ruta_ef)
         df_imp = pd.read_excel(ruta_imp)
@@ -115,21 +114,20 @@ if os.path.exists(ruta_ef) and os.path.exists(ruta_imp):
         st.error(f"Error leyendo los Excel del servidor: {e}")
         st.stop()
 else:
-    # Modo Manual (Sidebar visible)
     st.sidebar.header("📁 Carga de Datos")
-    st.sidebar.info("Modo Manual: Para que el Tablero sea automático, sube a GitHub tus Excel renombrados como 'eficiencias.xlsx' e 'improductivas.xlsx'.")
+    st.sidebar.info("Modo Manual activo. Faltan archivos en servidor.")
     archivo_eficiencias = st.sidebar.file_uploader("Base Eficiencias (CSV/Excel)", type=['csv', 'xlsx'])
     archivo_improductivas = st.sidebar.file_uploader("Base Hrs Improductivas (CSV/Excel)", type=['csv', 'xlsx'])
     
     if archivo_eficiencias is None or archivo_improductivas is None:
-        st.info("👋 Por favor, sube los archivos en el panel izquierdo para comenzar.")
-        st.stop() # Frena la ejecución hasta que se suban datos
+        st.info("👋 Sube los archivos en el panel izquierdo para comenzar.")
+        st.stop()
     
     try:
         df_ef = pd.read_csv(archivo_eficiencias) if archivo_eficiencias.name.endswith('.csv') else pd.read_excel(archivo_eficiencias)
         df_imp = pd.read_csv(archivo_improductivas) if archivo_improductivas.name.endswith('.csv') else pd.read_excel(archivo_improductivas)
     except Exception as e:
-        st.error(f"Error procesando los archivos subidos: {e}")
+        st.error(f"Error procesando los archivos: {e}")
         st.stop()
 
 # ==========================================
@@ -140,48 +138,43 @@ try:
     df_imp['FECHA'] = pd.to_datetime(df_imp['FECHA'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
     
-    # Crear cadenas de mes para el filtro
     df_ef['Mes_Filtro'] = df_ef['Fecha'].dt.strftime('%b-%Y')
     df_imp['Mes_Filtro'] = df_imp['FECHA'].dt.strftime('%b-%Y')
 except Exception as e:
     st.error(f"Error al estandarizar fechas: {e}")
     st.stop()
 
+st.markdown("### 🔍 Configuración del Escenario")
+
 # ==========================================
 # FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA INMÓVIL)
 # ==========================================
-filtros_container = st.container()
+col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
-with filtros_container:
-    # Este div invisible es el "ancla" que le dice al CSS qué bloque debe quedar inmovilizado arriba
-    st.markdown('<div id="filtro-ribbon"></div>', unsafe_allow_html=True)
-    st.markdown("### 🔍 Configuración del Escenario")
-    
-    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+# 1. Filtro Planta
+with col_f1:
+    # Este span oculto es el "ancla" que lee el CSS para fijar esta fila exacta arriba
+    st.markdown('<span id="filtro-ribbon"></span>', unsafe_allow_html=True)
+    plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
+    planta_sel = st.selectbox("🏭 Planta", plantas)
 
-    # 1. Filtro Planta (Ícono: Fábrica Diente de Sierra)
-    with col_f1:
-        plantas = ["Todas"] + list(df_ef['Planta'].dropna().unique())
-        planta_sel = st.selectbox("🏭 Planta", plantas)
+# 2. Filtro Línea
+with col_f2:
+    df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
+    lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
+    linea_sel = st.selectbox("⚙️ Línea", lineas)
 
-    # 2. Filtro Línea (Ícono: Engranajes de Producción)
-    with col_f2:
-        df_temp_linea = df_ef[df_ef['Planta'] == planta_sel] if planta_sel != "Todas" else df_ef
-        lineas = ["Todas"] + list(df_temp_linea['Linea'].dropna().unique())
-        linea_sel = st.selectbox("⚙️ Línea", lineas)
+# 3. Filtro Puesto
+with col_f3:
+    df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
+    puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
+    puesto_sel = st.selectbox("🛠️ Puesto de Trabajo", puestos)
 
-    # 3. Filtro Puesto (Ícono: Herramientas de Trabajo)
-    with col_f3:
-        df_temp_puesto = df_temp_linea[df_temp_linea['Linea'] == linea_sel] if linea_sel != "Todas" else df_temp_linea
-        puestos = ["Todos"] + list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
-        puesto_sel = st.selectbox("🛠️ Puesto de Trabajo", puestos)
-
-    # 4. Filtro Mes (Ícono: Calendario)
-    with col_f4:
-        df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'] == puesto_sel] if puesto_sel != "Todos" else df_temp_puesto
-        # Ordenar meses disponibles de forma segura
-        meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
-        mes_sel = st.selectbox("📅 Mes", ["Todos"] + meses_disponibles)
+# 4. Filtro Mes
+with col_f4:
+    df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'] == puesto_sel] if puesto_sel != "Todos" else df_temp_puesto
+    meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
+    mes_sel = st.selectbox("📅 Mes", ["Todos"] + meses_disponibles)
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
@@ -204,11 +197,10 @@ if mes_sel != "Todos" and 'Mes_Filtro' in df_imp_filtrado.columns: df_imp_filtra
 st.markdown("---")
 
 # =========================================================================
-# MÉTRICA 1: % EFICIENCIA REAL (LÓGICA INTELIGENTE PUESTO/LÍNEA)
+# MÉTRICA 1: % EFICIENCIA REAL
 # =========================================================================
 st.header("1. % EFICIENCIA REAL")
 
-# LÓGICA INTELIGENTE: Si se selecciona un puesto, evalúa ese puesto. Si es "Todos", busca la salida de línea ('SI')
 if puesto_sel != "Todos":
     st.markdown(f"*Evaluando métricas exactas del puesto: **{puesto_sel}** (Anula regla de última estación de línea).*")
     df_m1 = df_ef_filtrado.copy()
@@ -234,7 +226,8 @@ if not df_m1.empty:
     bars_std = ax1.bar(x_indexes - width/2, agrup_m1['HH_STD_TOTAL'], width, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
     bars_disp = ax1.bar(x_indexes + width/2, agrup_m1['HH_Disponibles'], width, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
     
-    aplicar_anti_overlap(ax1, agrup_m1['HH_Disponibles'].max())
+    # Empujar barras a la mitad inferior (Multiplier 2.0)
+    aplicar_anti_overlap(ax1, agrup_m1['HH_Disponibles'].max(), multiplier=2.0)
     
     ax1.bar_label(bars_std, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
     ax1.bar_label(bars_disp, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
@@ -250,6 +243,7 @@ if not df_m1.empty:
     ax2.plot(x_indexes, agrup_m1['Eficiencia_Real'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Real', zorder=5)
     ax2.axhline(y=85, color='forestgreen', linestyle='--', linewidth=3, label='Meta (85%)', zorder=1)
     
+    # Elevar límite secundario para que la línea respire (Multiplier 1.5)
     max_ef_real = agrup_m1['Eficiencia_Real'].max()
     ax2.set_ylim(0, max(120, max_ef_real * 1.5))
     ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -259,7 +253,7 @@ if not df_m1.empty:
         p = np.poly1d(z)
         ax2.plot(x_indexes, p(x_indexes), color='dimgray', linestyle=':', alpha=0.8, linewidth=2, zorder=1)
 
-    offset_y2 = ax2.get_ylim()[1] * 0.08
+    offset_y2 = ax2.get_ylim()[1] * 0.06
     for i, val in enumerate(agrup_m1['Eficiencia_Real']):
         ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
 
@@ -295,8 +289,9 @@ if not df_m1.empty:
     bars_std2 = ax1.bar(x_indexes - width/2, agrup_m2['HH_STD_TOTAL'], width, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
     bars_prod2 = ax1.bar(x_indexes + width/2, agrup_m2['HH_Productivas_C/GAP'], width, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
     
+    # Empujar barras a la mitad inferior
     max_val2 = max(agrup_m2['HH_STD_TOTAL'].max(), agrup_m2['HH_Productivas_C/GAP'].max())
-    aplicar_anti_overlap(ax1, max_val2)
+    aplicar_anti_overlap(ax1, max_val2, multiplier=2.0)
     
     ax1.bar_label(bars_std2, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
     ax1.bar_label(bars_prod2, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
@@ -312,6 +307,7 @@ if not df_m1.empty:
     ax2.plot(x_indexes, agrup_m2['Eficiencia_Prod'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Prod.', zorder=5)
     ax2.axhline(y=100, color='forestgreen', linestyle='--', linewidth=3, label='Meta (100%)', zorder=1)
     
+    # Elevar límite secundario
     max_ef_prod = agrup_m2['Eficiencia_Prod'].max()
     ax2.set_ylim(0, max(150, max_ef_prod * 1.5))
     ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -321,7 +317,7 @@ if not df_m1.empty:
         p2 = np.poly1d(z2)
         ax2.plot(x_indexes, p2(x_indexes), color='dimgray', linestyle=':', alpha=0.8, linewidth=2, zorder=1)
 
-    offset_y2_m2 = ax2.get_ylim()[1] * 0.08
+    offset_y2_m2 = ax2.get_ylim()[1] * 0.06
     for i, val in enumerate(agrup_m2['Eficiencia_Prod']):
         ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2_m2), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
 
@@ -339,7 +335,6 @@ st.markdown("---")
 st.header("3. GAP DE HH (EVALUACIÓN GLOBAL)")
 
 if not df_ef_filtrado.empty:
-    # Lógica inteligente para detectar la columna HH_Productivas sin GAP
     col_prod_pura = 'HH_Productivas' if 'HH_Productivas' in df_ef_filtrado.columns else 'HH Productivas'
     
     agrup_m3 = df_ef_filtrado.groupby('Fecha').agg({
@@ -348,7 +343,6 @@ if not df_ef_filtrado.empty:
         'HH_Disponibles': 'sum'
     }).reset_index()
     
-    # Cálculo con las Horas Productivas Puras
     agrup_m3['Total_Declaradas'] = agrup_m3[col_prod_pura] + agrup_m3['HH_Improductivas']
     agrup_m3['Fecha_str'] = agrup_m3['Fecha'].dt.strftime('%b-%y')
 
@@ -366,7 +360,7 @@ if not df_ef_filtrado.empty:
 
     ax1.plot(x_indexes, agrup_m3['HH_Disponibles'], color='black', marker='D', markersize=10, linewidth=4, path_effects=outline_white, label='HH DISPONIBLES', zorder=5)
     
-    aplicar_anti_overlap(ax1, agrup_m3['HH_Disponibles'].max())
+    aplicar_anti_overlap(ax1, agrup_m3['HH_Disponibles'].max(), multiplier=1.60)
     dibujar_meses(ax1, x_indexes)
 
     for i in range(len(x_indexes)):
@@ -376,11 +370,11 @@ if not df_ef_filtrado.empty:
         
         ax1.plot([i, i], [decl, disp], color='dimgray', linewidth=5, alpha=0.6, linestyle='-', zorder=3)
         
-        # Desfasaje matemático mejorado para evitar colisiones
+        # Desfasaje matemático seguro
         offset_y_gap = decl + (gap / 2) if gap > 0 else decl + (ax1.get_ylim()[1] * 0.05)
         ax1.annotate(f"GAP HH Ocultas:\n{int(gap)}", (i, offset_y_gap), color='firebrick', bbox=bbox_white, ha='center', va='center', fontsize=12, fontweight='bold', zorder=10)
         
-        offset_y_disp = disp + (ax1.get_ylim()[1] * 0.08) # Más alejado del diamante hacia arriba
+        offset_y_disp = disp + (ax1.get_ylim()[1] * 0.08)
         ax1.annotate(f"{int(disp)}", (i, offset_y_disp), color='black', bbox=bbox_white, ha='center', fontsize=12, fontweight='bold', zorder=10)
 
     ax1.set_xticks(x_indexes)
@@ -407,13 +401,15 @@ if not df_ef_filtrado.empty:
     
     bars_imp = ax1.bar(x_indexes, agrup_m4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
     ax1.bar_label(bars_imp, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, zorder=4)
-    aplicar_anti_overlap(ax1, agrup_m4['HH_Improductivas'].max())
+    
+    # Barras en la mitad inferior
+    aplicar_anti_overlap(ax1, agrup_m4['HH_Improductivas'].max(), multiplier=2.0)
     
     ax2.plot(x_indexes, agrup_m4['Costo_Improd._$'], color='maroon', marker='s', markersize=10, linewidth=5, path_effects=outline_white, label='COSTO ARS', zorder=5)
     
-    # Eje secundario con margen superior gigante (1.60)
+    # Eje secundario elevado
     max_costo = agrup_m4['Costo_Improd._$'].max()
-    ax2.set_ylim(0, max(max_costo * 1.60, 1000))
+    ax2.set_ylim(0, max(max_costo * 1.50, 1000))
     
     ticks_y = ax2.get_yticks()
     ax2.set_yticklabels([f'${int(x/1000000)}M' for x in ticks_y], fontweight='bold')
@@ -457,13 +453,15 @@ if not df_imp_filtrado.empty:
         
         x_pos = np.arange(len(pareto_df))
         bars_pareto = ax1.bar(x_pos, pareto_df['Promedio_Mensual'], color='maroon', edgecolor='white', zorder=2)
-        aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max())
-        ax1.bar_label(bars_pareto, padding=4, color='black', fontweight='bold', fontsize=12, fmt='%.1f', zorder=4)
+        
+        # Incrementar límite para alejar las barras del techo
+        aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max(), multiplier=1.60)
+        ax1.bar_label(bars_pareto, padding=4, color='black', fontweight='bold', fontsize=11, fmt='%.1f', zorder=4)
         
         ax2.plot(x_pos, pareto_df['%_Acumulado'], color='red', marker='D', markersize=8, linewidth=4, path_effects=outline_white, zorder=5)
         ax2.axhline(y=80, color='gray', linestyle='--', linewidth=2, zorder=1)
         
-        # Limite aumentado a 130% para que los números nunca toquen el borde superior
+        # Limite elevado para que la curva roja viva sin tocar el techo (130%)
         ax2.set_ylim(0, 130)
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
@@ -471,18 +469,20 @@ if not df_imp_filtrado.empty:
         ax1.set_xticks(x_pos)
         ax1.set_xticklabels(labels_wrapped, rotation=90, fontsize=11, fontweight='bold')
         
-        # Etiquetas de la línea roja empujadas +6 hacia arriba
+        # Etiquetas de porcentajes: Rotadas a 45 grados y con tamaño reducido para NO chocar entre sí en la zona plana
+        offset_y2_m5 = ax2.get_ylim()[1] * 0.04
         for i, val in enumerate(pareto_df['%_Acumulado']):
-            ax2.annotate(f"{val:.1f}%", (x_pos[i], val + 6), color='white', bbox=bbox_gray, ha='center', fontsize=10, fontweight='bold', zorder=10)
+            ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
+                         ha='center', va='bottom', fontsize=9, fontweight='bold', rotation=45, zorder=10)
 
-        # NUEVO: Desplazamos los carteles de Suma Promedio y TOP 5 a la zona INFERIOR DERECHA (completamente vacía)
+        # MOVIDOS: Carteles a la zona inferior derecha del Pareto (Siempre vacía)
         suma_promedio = pareto_df['Promedio_Mensual'].sum()
-        ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.45, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
+        ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.35, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
                  bbox=bbox_gray, color='white', fontsize=14, fontweight='bold', ha='center', zorder=10)
         
         top5 = pareto_df.head(5)['TIPO_PARADA'].tolist()
         top5_str = "TOP 5 Causas:\n" + "\n".join([f"- {c}" for c in top5])
-        ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.15, top5_str, 
+        ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.10, top5_str, 
                  bbox=bbox_yellow, color='black', fontsize=12, fontweight='bold', ha='center', va='bottom', zorder=10)
 
         st.pyplot(fig5)
@@ -522,7 +522,8 @@ if not df_imp_filtrado.empty:
         ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=12, zorder=4)
         bottoms += values
 
-    aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max())
+    # Bajar las barras
+    aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.0)
     
     for i in range(len(x_m6)):
         imp_val = df_m6['Total_Imp'].iloc[i]
