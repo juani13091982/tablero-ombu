@@ -13,14 +13,15 @@ import os
 # ==========================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
-# ESCUDO DE INVISIBILIDAD CORPORATIVA (Oculta menú de Streamlit, "Share", "GitHub", etc.)
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    </style>
-    """, unsafe_allow_html=True)
+# NOTA: El "Escudo de invisibilidad" ha sido desactivado temporalmente 
+# para que puedas ver el menú de "Share" en Streamlit y confirmar tus configuraciones.
+# st.markdown("""
+#     <style>
+#     #MainMenu {visibility: hidden;}
+#     header {visibility: hidden;}
+#     footer {visibility: hidden;}
+#     </style>
+#     """, unsafe_allow_html=True)
 
 # Regla Innegociable: Tamaños de fuente grandes y en negrita
 plt.rcParams.update({
@@ -78,15 +79,12 @@ with col_title:
 # ==========================================
 # MODO AUTOMÁTICO VS MANUAL (CARGA DE DATOS)
 # ==========================================
-st.sidebar.header("📁 Carga de Datos")
-
-# Rutas para lectura automática si se suben a GitHub
+# Ocultamos este menú si los archivos están en GitHub, para dejar la pantalla más limpia
 ruta_ef = "eficiencias.xlsx"
 ruta_imp = "improductivas.xlsx"
 
-# Lógica inteligente de detección de archivos
 if os.path.exists(ruta_ef) and os.path.exists(ruta_imp):
-    st.sidebar.success("✅ Bases de datos conectadas y actualizadas desde el servidor. El tablero es 100% público.")
+    # Modo 100% Automático
     try:
         df_ef = pd.read_excel(ruta_ef)
         df_imp = pd.read_excel(ruta_imp)
@@ -94,6 +92,8 @@ if os.path.exists(ruta_ef) and os.path.exists(ruta_imp):
         st.error(f"Error leyendo los Excel del servidor: {e}")
         st.stop()
 else:
+    # Modo Manual (Sidebar visible)
+    st.sidebar.header("📁 Carga de Datos")
     st.sidebar.info("Modo Manual: Para que el Tablero sea automático, sube a GitHub tus Excel renombrados como 'eficiencias.xlsx' e 'improductivas.xlsx'.")
     archivo_eficiencias = st.sidebar.file_uploader("Base Eficiencias (CSV/Excel)", type=['csv', 'xlsx'])
     archivo_improductivas = st.sidebar.file_uploader("Base Hrs Improductivas (CSV/Excel)", type=['csv', 'xlsx'])
@@ -110,7 +110,7 @@ else:
         st.stop()
 
 # ==========================================
-# LIMPIEZA DE DATOS Y FILTROS CASCADA (Planta > Línea > Puesto > Mes)
+# LIMPIEZA DE DATOS Y GENERACIÓN DE FILTROS
 # ==========================================
 try:
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
@@ -125,9 +125,9 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# FILTROS EN LA PARTE SUPERIOR (CASCADA)
+# FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA)
 # ==========================================
-st.markdown("### 🔍 Nivel de Agrupación")
+st.markdown("### 🔍 Configuración del Escenario")
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
 # 1. Filtro Planta (Ícono: Fábrica Diente de Sierra)
