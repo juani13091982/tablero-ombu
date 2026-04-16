@@ -13,48 +13,18 @@ import os
 # ==========================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
-# ESCUDO DE INVISIBILIDAD Y PANEL INMÓVIL (STICKY) UNIFICADO
-# CSS Avanzado para romper el bloqueo de scroll de Streamlit y alinear perfectamente.
-css_styles = """
-<style>
-/* 1. Forzar que todos los contenedores padres permitan elementos sticky (Inmóviles) */
-.stApp, .main, .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMain"] {
-    overflow: visible !important;
-}
-
-/* 2. Seleccionar el contenedor de los 4 filtros (es el segundo bloque horizontal) y fijarlo */
-div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
-    position: -webkit-sticky !important;
-    position: sticky !important;
-    top: 0px !important;
-    background-color: #0E1117 !important; /* Fondo oscuro para tapar los gráficos que suben */
-    z-index: 99999 !important;
-    padding: 10px 5px 15px 5px !important;
-    border-bottom: 3px solid #1E3A8A !important; /* Línea azul corporativa */
-    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.8) !important; /* Sombra elegante */
-    border-radius: 0px 0px 10px 10px !important;
-}
-"""
-
-# 3. Lógica Inteligente de Administrador
+# ESCUDO DE INVISIBILIDAD CORPORATIVA
+# Oculta el menú superior para el público (A menos que uses ?admin=true en la URL)
+css_styles = "<style>"
 if "admin" not in st.query_params:
-    # Modo Público: Ocultar todo el header y menús
     css_styles += """
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     """
-else:
-    # Modo Administrador (Tú): Bajar un poco el panel sticky para que no tape la barra superior de Streamlit
-    css_styles += """
-    div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
-        top: 55px !important; 
-    }
-    """
-
 css_styles += "</style>"
 
-# Inyectamos todo el CSS de una sola vez
+# Inyectamos el CSS para la limpieza visual
 st.markdown(css_styles, unsafe_allow_html=True)
 
 # Regla Innegociable: Tamaños de fuente grandes y en negrita
@@ -157,7 +127,7 @@ except Exception as e:
 st.markdown("### 🔍 Configuración del Escenario")
 
 # ==========================================
-# FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA INMÓVIL MULTIPLE)
+# FILTROS EN LA PARTE SUPERIOR (ALINEACIÓN PERFECTA)
 # ==========================================
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
