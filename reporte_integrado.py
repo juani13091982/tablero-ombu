@@ -196,15 +196,23 @@ st.markdown("---")
 # =========================================================================
 st.header("1. % EFICIENCIA REAL")
 
-# Lógica inteligente: Si hay algún puesto específico seleccionado, ignora la regla de la última estación
+# Lógica inteligente: Si hay algún puesto específico seleccionado, evalúa solo esos
 puestos_especificos = (len(puesto_sel) > 0)
 
 if puestos_especificos:
     st.markdown("*Evaluando métricas exactas de los puestos seleccionados (Anula regla de última estación de línea).*")
     df_m1 = df_ef_filtrado.copy()
 else:
-    st.markdown("*Lógica Estricta de Línea: Sumatoria(HH STD) / Sumatoria(HH Disponibles) SOLO en última estación.*")
-    df_m1 = df_ef_filtrado[df_ef_filtrado['Es_Ultimo_Puesto'] == 'SI'].copy()
+    # Intenta buscar los puestos "SI"
+    df_m1_si = df_ef_filtrado[df_ef_filtrado['Es_Ultimo_Puesto'] == 'SI'].copy()
+    
+    # NUEVA REGLA: Si la línea NO tiene ningún 'SI', advierte y muestra el gráfico general en vez de error
+    if df_m1_si.empty and not df_ef_filtrado.empty:
+        st.warning("⚠️ **ATENCIÓN:** La selección actual no posee un Último Puesto ('SI'). **Por favor, ELIJA UN PUESTO DE TRABAJO en el menú superior.** (Mostrando gráfico general de la línea de forma temporal).")
+        df_m1 = df_ef_filtrado.copy()
+    else:
+        st.markdown("*Lógica Estricta de Línea: Sumatoria(HH STD) / Sumatoria(HH Disponibles) SOLO en última estación.*")
+        df_m1 = df_m1_si
 
 if not df_m1.empty:
     agrup_m1 = df_m1.groupby('Fecha').agg({
