@@ -27,13 +27,13 @@ css_styles += "</style>"
 # Inyectamos el CSS para la limpieza visual
 st.markdown(css_styles, unsafe_allow_html=True)
 
-# Regla Innegociable: Tamaños de fuente grandes y en negrita
+# Regla Innegociable: Tamaños de fuente grandes y en negrita (TAMAÑO AUMENTADO PARA 2 COLUMNAS)
 plt.rcParams.update({
-    'font.size': 12,
+    'font.size': 14, # Aumentado de 12 a 14
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'axes.titleweight': 'bold',
-    'figure.titlesize': 16,
+    'figure.titlesize': 18, # Aumentado de 16 a 18
     'figure.titleweight': 'bold'
 })
 
@@ -131,45 +131,37 @@ st.markdown("### 🔍 Configuración del Escenario")
 # ==========================================
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
-# 1. Filtro Planta (Si está vacío, significa "Todas")
 with col_f1:
     plantas_disponibles = list(df_ef['Planta'].dropna().unique())
     planta_sel = st.multiselect("🏭 Planta", plantas_disponibles, placeholder="Todas (Dejar vacío)")
 
-# Lógica Cascada 1: Filtramos la base temporal si hay plantas seleccionadas
 plantas_filtrar = planta_sel if planta_sel else plantas_disponibles
 df_temp_linea = df_ef[df_ef['Planta'].isin(plantas_filtrar)]
 
-# 2. Filtro Línea
 with col_f2:
     lineas_disponibles = list(df_temp_linea['Linea'].dropna().unique())
     linea_sel = st.multiselect("⚙️ Línea", lineas_disponibles, placeholder="Todas (Dejar vacío)")
 
-# Lógica Cascada 2
 lineas_filtrar = linea_sel if linea_sel else lineas_disponibles
 df_temp_puesto = df_temp_linea[df_temp_linea['Linea'].isin(lineas_filtrar)]
 
-# 3. Filtro Puesto
 with col_f3:
     puestos_disponibles = list(df_temp_puesto['Puesto_Trabajo'].dropna().unique())
     puesto_sel = st.multiselect("🛠️ Puesto de Trabajo", puestos_disponibles, placeholder="Todos (Dejar vacío)")
 
-# Lógica Cascada 3
 puestos_filtrar = puesto_sel if puesto_sel else puestos_disponibles
 df_temp_mes = df_temp_puesto[df_temp_puesto['Puesto_Trabajo'].isin(puestos_filtrar)]
 
-# 4. Filtro Mes
 with col_f4:
     meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
     mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
 
 # ==========================================
-# APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES (ESTRICTO)
+# APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
 # ==========================================
 df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
 
-# Eficiencias (Si la lista tiene elementos, filtramos. Si está vacía, no filtramos)
 if planta_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Planta'].isin(planta_sel)]
 if linea_sel: 
@@ -179,7 +171,6 @@ if puesto_sel:
 if mes_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'].isin(mes_sel)]
 
-# Improductivas
 if planta_sel and 'PLANTA' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['PLANTA'].isin(planta_sel)]
 if linea_sel and 'LÍNEA' in df_imp_filtrado.columns: 
@@ -197,23 +188,20 @@ st.markdown("---")
 col_m1, col_m2 = st.columns(2)
 
 with col_m1:
-    st.header("1. % EFICIENCIA REAL")
+    # Título corto para mantener la misma altura de línea que el gráfico vecino
+    st.header("1. EFICIENCIA REAL")
 
-    # Lógica inteligente: Si hay algún puesto específico seleccionado, evalúa solo esos
     puestos_especificos = (len(puesto_sel) > 0)
-
+    mostrar_alerta = False
+    
     if puestos_especificos:
-        st.markdown("*Evaluando métricas exactas de los puestos seleccionados.*")
         df_m1 = df_ef_filtrado.copy()
     else:
-        # Intenta buscar los puestos "SI"
         df_m1_si = df_ef_filtrado[df_ef_filtrado['Es_Ultimo_Puesto'] == 'SI'].copy()
-        
         if df_m1_si.empty and not df_ef_filtrado.empty:
-            st.warning("⚠️ **ATENCIÓN:** Elija un puesto de trabajo en el filtro superior.")
+            mostrar_alerta = True
             df_m1 = df_ef_filtrado.copy()
         else:
-            st.markdown("*Lógica Estricta: Sumatoria(HH STD) / Sumatoria(HH Disp.) en última estación.*")
             df_m1 = df_m1_si
 
     if not df_m1.empty:
@@ -236,16 +224,18 @@ with col_m1:
         
         aplicar_anti_overlap(ax1, agrup_m1['HH_Disponibles'].max(), multiplier=2.0)
         
-        ax1.bar_label(bars_std, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
-        ax1.bar_label(bars_disp, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
+        # FUENTES AUMENTADAS A 14
+        ax1.bar_label(bars_std, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
+        ax1.bar_label(bars_disp, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
 
         dibujar_meses(ax1, x_indexes)
 
         for i, bar in enumerate(bars_std):
             cant = int(agrup_m1['Cant._Prod._A1'].iloc[i])
             if cant > 0:
+                # FUENTE AUMENTADA A 18
                 ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() * 0.05, f"{cant} UND", 
-                         rotation=90, color='white', ha='center', va='bottom', fontsize=16, fontweight='bold', path_effects=outline_black, zorder=4)
+                         rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=outline_black, zorder=4)
 
         ax2.plot(x_indexes, agrup_m1['Eficiencia_Real'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Real', zorder=5)
         ax2.axhline(y=85, color='forestgreen', linestyle='--', linewidth=3, label='Meta (85%)', zorder=1)
@@ -261,18 +251,29 @@ with col_m1:
 
         offset_y2 = ax2.get_ylim()[1] * 0.06
         for i, val in enumerate(agrup_m1['Eficiencia_Real']):
-            ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
+            # FUENTE AUMENTADA A 14
+            ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_indexes)
-        ax1.set_xticklabels(agrup_m1['Fecha_str'], fontsize=12, fontweight='bold')
+        ax1.set_xticklabels(agrup_m1['Fecha_str'], fontsize=14, fontweight='bold')
         ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=2)
         ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
+        
+        # GRÁFICO PLASMADO (alineado perfectamente al top)
         st.pyplot(fig1)
+
+        # TEXTOS Y ALERTAS DESPLAZADOS A LA PARTE INFERIOR PARA NO ROMPER ALINEACIÓN
+        if mostrar_alerta:
+            st.error("⚠️ La línea no posee una estación de salida ('SI'). Elija un puesto de trabajo arriba.")
+        elif puestos_especificos:
+            st.caption("📌 Evaluando métricas exactas de los puestos seleccionados.")
+        else:
+            st.caption("📌 Lógica Estricta: Se contabiliza solo la última estación de la línea.")
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 with col_m2:
-    st.header("2. % EFICIENCIA PRODUCTIVA")
+    st.header("2. EFICIENCIA PRODUCTIVA")
 
     if not df_m1.empty:
         agrup_m2 = df_m1.groupby('Fecha').agg({
@@ -295,8 +296,9 @@ with col_m2:
         max_val2 = max(agrup_m2['HH_STD_TOTAL'].max(), agrup_m2['HH_Productivas_C/GAP'].max())
         aplicar_anti_overlap(ax1, max_val2, multiplier=2.0)
         
-        ax1.bar_label(bars_std2, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
-        ax1.bar_label(bars_prod2, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, fmt='%.0f', zorder=3)
+        # FUENTES AUMENTADAS A 14
+        ax1.bar_label(bars_std2, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
+        ax1.bar_label(bars_prod2, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
 
         dibujar_meses(ax1, x_indexes)
 
@@ -304,7 +306,7 @@ with col_m2:
             cant = int(agrup_m2['Cant._Prod._A1'].iloc[i])
             if cant > 0:
                 ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() * 0.05, f"{cant} UND", 
-                         rotation=90, color='white', ha='center', va='bottom', fontsize=16, fontweight='bold', path_effects=outline_black, zorder=4)
+                         rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=outline_black, zorder=4)
 
         ax2.plot(x_indexes, agrup_m2['Eficiencia_Prod'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Prod.', zorder=5)
         ax2.axhline(y=100, color='forestgreen', linestyle='--', linewidth=3, label='Meta (100%)', zorder=1)
@@ -320,15 +322,17 @@ with col_m2:
 
         offset_y2_m2 = ax2.get_ylim()[1] * 0.06
         for i, val in enumerate(agrup_m2['Eficiencia_Prod']):
-            ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2_m2), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
+            ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2_m2), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_indexes)
-        ax1.set_xticklabels(agrup_m2['Fecha_str'], fontsize=12, fontweight='bold')
+        ax1.set_xticklabels(agrup_m2['Fecha_str'], fontsize=14, fontweight='bold')
         ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=2)
         ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
+        
         st.pyplot(fig2)
+        st.caption("📌 Indicador basado en horas productivas reales.")
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 st.markdown("---")
 
@@ -338,7 +342,7 @@ st.markdown("---")
 col_m3, col_m4 = st.columns(2)
 
 with col_m3:
-    st.header("3. GAP DE HH (EVALUACIÓN GLOBAL)")
+    st.header("3. GAP HH GLOBAL")
 
     if not df_ef_filtrado.empty:
         col_prod_pura = 'HH_Productivas' if 'HH_Productivas' in df_ef_filtrado.columns else 'HH Productivas'
@@ -361,8 +365,8 @@ with col_m3:
         labels_prod = [f'{int(val)}' if val / tot > 0.05 else '' for val, tot in zip(agrup_m3[col_prod_pura], agrup_m3['Total_Declaradas'])]
         labels_imp = [f'{int(val)}' if val / tot > 0.05 else '' for val, tot in zip(agrup_m3['HH_Improductivas'], agrup_m3['Total_Declaradas'])]
         
-        ax1.bar_label(bar_prod, labels=labels_prod, label_type='center', color='white', fontweight='bold', fontsize=14, path_effects=outline_black, zorder=4)
-        ax1.bar_label(bar_imp, labels=labels_imp, label_type='center', color='white', fontweight='bold', fontsize=14, path_effects=outline_black, zorder=4)
+        ax1.bar_label(bar_prod, labels=labels_prod, label_type='center', color='white', fontweight='bold', fontsize=15, path_effects=outline_black, zorder=4)
+        ax1.bar_label(bar_imp, labels=labels_imp, label_type='center', color='white', fontweight='bold', fontsize=15, path_effects=outline_black, zorder=4)
 
         ax1.plot(x_indexes_m3, agrup_m3['HH_Disponibles'], color='black', marker='D', markersize=10, linewidth=4, path_effects=outline_white, label='HH DISPONIBLES', zorder=5)
         
@@ -377,20 +381,20 @@ with col_m3:
             ax1.plot([i, i], [decl, disp], color='dimgray', linewidth=5, alpha=0.6, linestyle='-', zorder=3)
             
             offset_y_gap = decl + (gap / 2) if gap > 0 else decl + (ax1.get_ylim()[1] * 0.05)
-            ax1.annotate(f"GAP HH Ocultas:\n{int(gap)}", (i, offset_y_gap), color='firebrick', bbox=bbox_white, ha='center', va='center', fontsize=12, fontweight='bold', zorder=10)
+            ax1.annotate(f"GAP Oculto:\n{int(gap)}", (i, offset_y_gap), color='firebrick', bbox=bbox_white, ha='center', va='center', fontsize=14, fontweight='bold', zorder=10)
             
             offset_y_disp = disp + (ax1.get_ylim()[1] * 0.08)
-            ax1.annotate(f"{int(disp)}", (i, offset_y_disp), color='black', bbox=bbox_white, ha='center', fontsize=12, fontweight='bold', zorder=10)
+            ax1.annotate(f"{int(disp)}", (i, offset_y_disp), color='black', bbox=bbox_white, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_indexes_m3)
-        ax1.set_xticklabels(agrup_m3['Fecha_str'], fontsize=12, fontweight='bold')
+        ax1.set_xticklabels(agrup_m3['Fecha_str'], fontsize=14, fontweight='bold')
         ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=3)
         st.pyplot(fig3)
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 with col_m4:
-    st.header("4. COSTOS H.H. IMPRODUCTIVAS DECLARADAS")
+    st.header("4. COSTOS IMPRODUCTIVOS")
 
     if not df_ef_filtrado.empty:
         agrup_m4 = df_ef_filtrado.groupby('Fecha').agg({
@@ -404,7 +408,7 @@ with col_m4:
         x_indexes_m4 = np.arange(len(agrup_m4))
         
         bars_imp = ax1.bar(x_indexes_m4, agrup_m4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
-        ax1.bar_label(bars_imp, padding=4, color='black', fontweight='bold', fontsize=12, path_effects=outline_white, zorder=4)
+        ax1.bar_label(bars_imp, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, zorder=4)
         
         aplicar_anti_overlap(ax1, agrup_m4['HH_Improductivas'].max(), multiplier=2.0)
         
@@ -418,19 +422,19 @@ with col_m4:
 
         costo_total = agrup_m4['Costo_Improd._$'].sum()
         ax1.text(len(x_indexes_m4)/2 - 0.5, ax1.get_ylim()[1]*0.90, f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}", 
-                 ha='center', va='center', fontsize=18, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
+                 ha='center', va='center', fontsize=20, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
 
         offset_y2_m4 = ax2.get_ylim()[1] * 0.08
         for i, val in enumerate(agrup_m4['Costo_Improd._$']):
-            ax2.annotate(f"${val:,.0f}", (x_indexes_m4[i], val + offset_y2_m4), color='white', bbox=bbox_gray, ha='center', fontsize=12, fontweight='bold', zorder=10)
+            ax2.annotate(f"${val:,.0f}", (x_indexes_m4[i], val + offset_y2_m4), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_indexes_m4)
-        ax1.set_xticklabels(agrup_m4['Fecha_str'], fontsize=12, fontweight='bold')
+        ax1.set_xticklabels(agrup_m4['Fecha_str'], fontsize=14, fontweight='bold')
         ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15))
         ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
         st.pyplot(fig4)
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 st.markdown("---")
 
@@ -440,7 +444,7 @@ st.markdown("---")
 col_m5, col_m6 = st.columns(2)
 
 with col_m5:
-    st.header("5. DIAGRAMA DE PARETO GLOBAL (ÚLTIMO TRIMESTRE)")
+    st.header("5. PARETO DE CAUSAS")
 
     if not df_imp_filtrado.empty:
         max_date = df_imp_filtrado['FECHA'].max()
@@ -462,7 +466,7 @@ with col_m5:
             bars_pareto = ax1.bar(x_pos, pareto_df['Promedio_Mensual'], color='maroon', edgecolor='white', zorder=2)
             
             aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max(), multiplier=1.60)
-            ax1.bar_label(bars_pareto, padding=4, color='black', fontweight='bold', fontsize=11, fmt='%.1f', zorder=4)
+            ax1.bar_label(bars_pareto, padding=4, color='black', fontweight='bold', fontsize=13, fmt='%.1f', zorder=4)
             
             ax2.plot(x_pos, pareto_df['%_Acumulado'], color='red', marker='D', markersize=8, linewidth=4, path_effects=outline_white, zorder=5)
             ax2.axhline(y=80, color='gray', linestyle='--', linewidth=2, zorder=1)
@@ -472,21 +476,21 @@ with col_m5:
 
             labels_wrapped = [textwrap.fill(str(l), 10) for l in pareto_df['TIPO_PARADA']]
             ax1.set_xticks(x_pos)
-            ax1.set_xticklabels(labels_wrapped, rotation=90, fontsize=10, fontweight='bold')
+            ax1.set_xticklabels(labels_wrapped, rotation=90, fontsize=12, fontweight='bold')
             
             offset_y2_m5 = ax2.get_ylim()[1] * 0.04
             for i, val in enumerate(pareto_df['%_Acumulado']):
                 ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
-                             ha='center', va='bottom', fontsize=9, fontweight='bold', rotation=45, zorder=10)
+                             ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
 
             suma_promedio = pareto_df['Promedio_Mensual'].sum()
             ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.35, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
-                     bbox=bbox_gray, color='white', fontsize=12, fontweight='bold', ha='center', zorder=10)
+                     bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='center', zorder=10)
             
             top5 = pareto_df.head(5)['TIPO_PARADA'].tolist()
             top5_str = "TOP 5 Causas:\n" + "\n".join([f"- {c}" for c in top5])
             ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.10, top5_str, 
-                     bbox=bbox_yellow, color='black', fontsize=11, fontweight='bold', ha='center', va='bottom', zorder=10)
+                     bbox=bbox_yellow, color='black', fontsize=13, fontweight='bold', ha='center', va='bottom', zorder=10)
 
             st.pyplot(fig5)
         else:
@@ -495,7 +499,7 @@ with col_m5:
         st.warning("⚠️ No hay datos evaluables para la selección actual.")
 
 with col_m6:
-    st.header("6. EVOLUCIÓN % H.H. IMPRODUCTIVAS VS DISPONIBLES")
+    st.header("6. EVOLUCIÓN INCIDENCIA %")
 
     if not df_imp_filtrado.empty:
         pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='FECHA', columns='TIPO_PARADA', aggfunc='sum').fillna(0)
@@ -520,7 +524,7 @@ with col_m6:
             container = ax1.bar(x_m6, values, bottom=bottoms, label=col, color=colors[idx % len(colors)], edgecolor='white', zorder=2)
             
             labels_seg = [f'{int(val)}' if tot > 0 and (val/tot) > 0.05 else '' for val, tot in zip(values, df_m6['Total_Imp'])]
-            ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=12, zorder=4)
+            ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
             bottoms += values
 
         aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.0)
@@ -531,7 +535,7 @@ with col_m6:
             if imp_val > 0:
                 offset_y_imp = imp_val + (ax1.get_ylim()[1] * 0.05)
                 ax1.annotate(f"Imp: {int(imp_val)}\nDisp: {int(disp_val)}", 
-                             (i, offset_y_imp), ha='center', bbox=bbox_yellow, fontsize=11, fontweight='bold', zorder=10)
+                             (i, offset_y_imp), ha='center', bbox=bbox_yellow, fontsize=13, fontweight='bold', zorder=10)
 
         ax2.plot(x_m6, df_m6['Incidencia_%'], color='red', marker='o', markersize=9, linewidth=4, path_effects=outline_white, label='% Incidencia', zorder=5)
         lim_secundario = df_m6['Incidencia_%'].max() * 1.5 if df_m6['Incidencia_%'].max() > 0 else 100
@@ -545,17 +549,16 @@ with col_m6:
 
         offset_y2_m6 = lim_secundario * 0.08
         for i, val in enumerate(df_m6['Incidencia_%']):
-            ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=14, fontweight='bold', path_effects=outline_white, zorder=10)
+            ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=15, fontweight='bold', path_effects=outline_white, zorder=10)
 
         ax1.text(len(x_m6)/2 - 0.5, ax1.get_ylim()[1]*0.92, 
                  f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
-                 bbox=bbox_gray, color='white', ha='center', fontsize=14, fontweight='bold', zorder=10)
+                 bbox=bbox_gray, color='white', ha='center', fontsize=16, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_m6)
-        ax1.set_xticklabels(fechas_str, fontsize=12, fontweight='bold')
+        ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        # Adjust legend to avoid taking too much horizontal space in 2-column mode
-        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=3, fontsize=9)
+        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=3, fontsize=10)
         
         st.pyplot(fig6)
     else:
