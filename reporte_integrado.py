@@ -14,45 +14,48 @@ import os
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
 # ESCUDO DE INVISIBILIDAD Y PANEL INMÓVIL (STICKY) UNIFICADO
-# Este bloque CSS está blindado para no generar texto visible en pantalla.
-css_content = """
-/* Buscar el contenedor Horizontal de las columnas (el segundo bloque horizontal de la página) */
+# CSS Avanzado para romper el bloqueo de scroll de Streamlit y alinear perfectamente.
+css_styles = """
+<style>
+/* 1. Forzar que todos los contenedores padres permitan elementos sticky (Inmóviles) */
+.stApp, .main, .block-container, [data-testid="stAppViewBlockContainer"], [data-testid="stMain"] {
+    overflow: visible !important;
+}
+
+/* 2. Seleccionar el contenedor de los 4 filtros (es el segundo bloque horizontal) y fijarlo */
 div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
     position: -webkit-sticky !important;
     position: sticky !important;
     top: 0px !important;
-    background-color: #0E1117 !important; /* Mismo fondo oscuro de la página para tapar gráficos */
+    background-color: #0E1117 !important; /* Fondo oscuro para tapar los gráficos que suben */
     z-index: 99999 !important;
-    padding: 15px 15px 15px 15px !important;
-    border-bottom: 3px solid #1E3A8A !important; /* Línea azul corporativa Ombú */
-    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.6) !important;
-    margin-top: -10px !important;
-}
-
-/* Regla de refuerzo para navegadores modernos usando nuestra ancla invisible */
-div[data-testid="stHorizontalBlock"]:has(#filtro-ribbon) {
-    position: -webkit-sticky !important;
-    position: sticky !important;
-    top: 0px !important;
-    background-color: #0E1117 !important;
-    z-index: 99999 !important;
-    padding: 15px 15px 15px 15px !important;
-    border-bottom: 3px solid #1E3A8A !important;
-    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.6) !important;
-    margin-top: -10px !important;
+    padding: 10px 5px 15px 5px !important;
+    border-bottom: 3px solid #1E3A8A !important; /* Línea azul corporativa */
+    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.8) !important; /* Sombra elegante */
+    border-radius: 0px 0px 10px 10px !important;
 }
 """
 
-# Si en la URL NO está la palabra "?admin=true", ocultamos los menús de Streamlit
+# 3. Lógica Inteligente de Administrador
 if "admin" not in st.query_params:
-    css_content += """
+    # Modo Público: Ocultar todo el header y menús
+    css_styles += """
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     """
+else:
+    # Modo Administrador (Tú): Bajar un poco el panel sticky para que no tape la barra superior de Streamlit
+    css_styles += """
+    div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
+        top: 55px !important; 
+    }
+    """
+
+css_styles += "</style>"
 
 # Inyectamos todo el CSS de una sola vez
-st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+st.markdown(css_styles, unsafe_allow_html=True)
 
 # Regla Innegociable: Tamaños de fuente grandes y en negrita
 plt.rcParams.update({
@@ -160,8 +163,6 @@ col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
 # 1. Filtro Planta
 with col_f1:
-    # Este span oculto es el "ancla" que lee el CSS para fijar esta fila exacta arriba
-    st.markdown('<span id="filtro-ribbon"></span>', unsafe_allow_html=True)
     plantas = list(df_ef['Planta'].dropna().unique())
     planta_sel = st.multiselect("🏭 Planta", ["Todas"] + plantas, default=["Todas"])
 
