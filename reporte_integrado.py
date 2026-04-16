@@ -13,15 +13,17 @@ import os
 # ==========================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide")
 
-# NOTA: El "Escudo de invisibilidad" ha sido desactivado temporalmente 
-# para que puedas ver el menú de "Share" en Streamlit y confirmar tus configuraciones.
-# st.markdown("""
-#     <style>
-#     #MainMenu {visibility: hidden;}
-#     header {visibility: hidden;}
-#     footer {visibility: hidden;}
-#     </style>
-#     """, unsafe_allow_html=True)
+# ESCUDO DE INVISIBILIDAD CORPORATIVA INTELIGENTE
+# Oculta el menú superior (Share, GitHub, etc.) para el público.
+# Para que tú puedas verlo, agrega "?admin=true" al final de la URL en tu navegador.
+if "admin" not in st.query_params:
+    st.markdown("""
+        <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        </style>
+        """, unsafe_allow_html=True)
 
 # Regla Innegociable: Tamaños de fuente grandes y en negrita
 plt.rcParams.update({
@@ -79,12 +81,11 @@ with col_title:
 # ==========================================
 # MODO AUTOMÁTICO VS MANUAL (CARGA DE DATOS)
 # ==========================================
-# Ocultamos este menú si los archivos están en GitHub, para dejar la pantalla más limpia
 ruta_ef = "eficiencias.xlsx"
 ruta_imp = "improductivas.xlsx"
 
 if os.path.exists(ruta_ef) and os.path.exists(ruta_imp):
-    # Modo 100% Automático
+    # Modo 100% Automático: NO invocamos st.sidebar para que el menú lateral desaparezca por completo
     try:
         df_ef = pd.read_excel(ruta_ef)
         df_imp = pd.read_excel(ruta_imp)
@@ -125,9 +126,29 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA)
+# FILTROS EN LA PARTE SUPERIOR (RIBBON CASCADA INMÓVIL)
 # ==========================================
 st.markdown("### 🔍 Configuración del Escenario")
+
+# INYECCIÓN CSS: Hace que la fila de columnas sea pegajosa (Sticky) en la parte superior
+st.markdown(
+    """
+    <style>
+    /* Selecciona la fila de los filtros y la clava arriba */
+    div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
+        position: sticky !important;
+        top: 0px !important;
+        background-color: #0E1117 !important; /* Fondo oscuro original para ocultar gráficos al scrollear */
+        z-index: 9999 !important;
+        padding-top: 10px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 2px solid #1E3A8A !important;
+        margin-top: -10px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True
+)
+
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
 # 1. Filtro Planta (Ícono: Fábrica Diente de Sierra)
