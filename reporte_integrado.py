@@ -183,11 +183,11 @@ with filtros_container:
         meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
         mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
 
-# Generamos el texto estricto que irá en el margen superior izquierdo de cada gráfico
+# TEXTO DE FILTROS SUPERIOR (REGLA 2: Tamaño 8, Bold, Margen Superior Izquierdo)
 txt_filtro_planta = formatear_seleccion(planta_sel, "Todas")
 txt_filtro_linea = formatear_seleccion(linea_sel, "Todas")
 txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
-texto_filtros_header = f"Filtros aplicados: {txt_filtro_planta} > {txt_filtro_linea} > {txt_filtro_puesto}"
+texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO DE TRABAJO: {txt_filtro_puesto}"
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
@@ -240,12 +240,13 @@ with col_m1:
         agrup_m1['Eficiencia_Real'] = (agrup_m1['HH_STD_TOTAL'] / agrup_m1['HH_Disponibles']).replace([np.inf, -np.inf], 0).fillna(0) * 100
         agrup_m1['Fecha_str'] = agrup_m1['Fecha'].dt.strftime('%b-%y')
 
-        fig1, ax1 = plt.subplots(figsize=(14, 7))
-        # ALINEACIÓN PERFECTA: Forzamos la caja de dibujo a ser idéntica
-        fig1.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+        # AUMENTO DE TAMAÑO VERTICAL: figsize=(14, 10)
+        fig1, ax1 = plt.subplots(figsize=(14, 10))
+        # ALINEACIÓN Y ÁREA IDÉNTICA (Margen superior amplio para suptitle y leyendas flotantes)
+        fig1.subplots_adjust(top=0.88, bottom=0.20, left=0.08, right=0.92)
         
-        # INCRIPCIÓN MARGEN SUPERIOR IZQUIERDO (REGLA 2)
-        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
+        # INCRIPCIÓN MARGEN SUPERIOR IZQUIERDO ABSOLUTO (No colisiona con nada)
+        fig1.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
         
         ax2 = ax1.twinx()
         x_indexes = np.arange(len(agrup_m1))
@@ -254,7 +255,6 @@ with col_m1:
         bars_std = ax1.bar(x_indexes - width/2, agrup_m1['HH_STD_TOTAL'], width, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bars_disp = ax1.bar(x_indexes + width/2, agrup_m1['HH_Disponibles'], width, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
-        # MULTIPLICADOR ALTO = CERO SOLAPAMIENTO
         aplicar_anti_overlap(ax1, agrup_m1['HH_Disponibles'].max(), multiplier=2.4)
         
         ax1.bar_label(bars_std, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
@@ -272,7 +272,7 @@ with col_m1:
         ax2.axhline(y=85, color='forestgreen', linestyle='--', linewidth=3, label='Meta (85%)', zorder=1)
         
         max_ef_real = agrup_m1['Eficiencia_Real'].max()
-        ax2.set_ylim(0, max(120, max_ef_real * 1.6))
+        ax2.set_ylim(0, max(120, max_ef_real * 1.5))
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         if len(x_indexes) > 1:
@@ -280,14 +280,16 @@ with col_m1:
             p = np.poly1d(z)
             ax2.plot(x_indexes, p(x_indexes), color='dimgray', linestyle=':', alpha=0.8, linewidth=2, zorder=1)
 
-        offset_y2 = ax2.get_ylim()[1] * 0.05
+        offset_y2 = ax2.get_ylim()[1] * 0.06
         for i, val in enumerate(agrup_m1['Eficiencia_Real']):
             ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_indexes)
         ax1.set_xticklabels(agrup_m1['Fecha_str'], fontsize=14, fontweight='bold')
-        ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=2)
-        ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
+        
+        # CERO SOLAPAMIENTO: Leyendas por ENCIMA del gráfico (lower left en y=1.02)
+        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         
         st.pyplot(fig1)
 
@@ -312,12 +314,11 @@ with col_m2:
         agrup_m2['Eficiencia_Prod'] = (agrup_m2['HH_STD_TOTAL'] / agrup_m2['HH_Productivas_C/GAP']).replace([np.inf, -np.inf], 0).fillna(0) * 100
         agrup_m2['Fecha_str'] = agrup_m2['Fecha'].dt.strftime('%b-%y')
 
-        fig2, ax1 = plt.subplots(figsize=(14, 7))
-        # ALINEACIÓN PERFECTA
-        fig2.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+        fig2, ax1 = plt.subplots(figsize=(14, 10))
+        fig2.subplots_adjust(top=0.88, bottom=0.20, left=0.08, right=0.92)
         
-        # INCRIPCIÓN MARGEN SUPERIOR IZQUIERDO
-        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
+        # INCRIPCIÓN MARGEN SUPERIOR IZQUIERDO ABSOLUTO
+        fig2.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
         x_indexes = np.arange(len(agrup_m2))
@@ -344,7 +345,7 @@ with col_m2:
         ax2.axhline(y=100, color='forestgreen', linestyle='--', linewidth=3, label='Meta (100%)', zorder=1)
         
         max_ef_prod = agrup_m2['Eficiencia_Prod'].max()
-        ax2.set_ylim(0, max(150, max_ef_prod * 1.6))
+        ax2.set_ylim(0, max(150, max_ef_prod * 1.5))
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         if len(x_indexes) > 1:
@@ -358,8 +359,9 @@ with col_m2:
 
         ax1.set_xticks(x_indexes)
         ax1.set_xticklabels(agrup_m2['Fecha_str'], fontsize=14, fontweight='bold')
-        ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=2)
-        ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
+        
+        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         
         st.pyplot(fig2)
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
@@ -389,10 +391,9 @@ with col_m3:
         agrup_m3['Total_Declaradas'] = agrup_m3[col_prod_pura] + agrup_m3['HH_Improductivas']
         agrup_m3['Fecha_str'] = agrup_m3['Fecha'].dt.strftime('%b-%y')
 
-        fig3, ax1 = plt.subplots(figsize=(14, 7))
-        # ALINEACIÓN PERFECTA
-        fig3.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
-        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
+        fig3, ax1 = plt.subplots(figsize=(14, 10))
+        fig3.subplots_adjust(top=0.88, bottom=0.20, left=0.08, right=0.92)
+        fig3.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         x_indexes_m3 = np.arange(len(agrup_m3))
         
@@ -407,7 +408,7 @@ with col_m3:
 
         ax1.plot(x_indexes_m3, agrup_m3['HH_Disponibles'], color='black', marker='D', markersize=10, linewidth=4, path_effects=outline_white, label='HH DISPONIBLES', zorder=5)
         
-        aplicar_anti_overlap(ax1, agrup_m3['HH_Disponibles'].max(), multiplier=2.0)
+        aplicar_anti_overlap(ax1, agrup_m3['HH_Disponibles'].max(), multiplier=2.4)
         dibujar_meses(ax1, x_indexes_m3)
 
         for i in range(len(x_indexes_m3)):
@@ -425,7 +426,8 @@ with col_m3:
 
         ax1.set_xticks(x_indexes_m3)
         ax1.set_xticklabels(agrup_m3['Fecha_str'], fontsize=14, fontweight='bold')
-        ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=3)
+        
+        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True)
         st.pyplot(fig3)
     else:
         st.warning("⚠️ No hay datos evaluables.")
@@ -441,10 +443,9 @@ with col_m4:
         }).reset_index()
         agrup_m4['Fecha_str'] = agrup_m4['Fecha'].dt.strftime('%b-%y')
 
-        fig4, ax1 = plt.subplots(figsize=(14, 7))
-        # ALINEACIÓN PERFECTA
-        fig4.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
-        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
+        fig4, ax1 = plt.subplots(figsize=(14, 10))
+        fig4.subplots_adjust(top=0.88, bottom=0.20, left=0.08, right=0.92)
+        fig4.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
         x_indexes_m4 = np.arange(len(agrup_m4))
@@ -462,9 +463,8 @@ with col_m4:
         ticks_y = ax2.get_yticks()
         ax2.set_yticklabels([f'${int(x/1000000)}M' for x in ticks_y], fontweight='bold')
 
-        # CARTEL ABSOLUTO (Cero solapamiento) usando coordenadas relativas transAxes
         costo_total = agrup_m4['Costo_Improd._$'].sum()
-        ax1.text(0.5, 0.95, f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}", 
+        ax1.text(0.5, 0.90, f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}", 
                  transform=ax1.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
 
         offset_y2_m4 = ax2.get_ylim()[1] * 0.05
@@ -473,8 +473,9 @@ with col_m4:
 
         ax1.set_xticks(x_indexes_m4)
         ax1.set_xticklabels(agrup_m4['Fecha_str'], fontsize=14, fontweight='bold')
-        ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=2)
-        ax2.legend(loc='upper right', bbox_to_anchor=(1, 1.15))
+        
+        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig4)
     else:
         st.warning("⚠️ No hay datos evaluables.")
@@ -503,16 +504,15 @@ with col_m5:
             pareto_df = pareto_df.sort_values(by='Promedio_Mensual', ascending=False)
             pareto_df['%_Acumulado'] = (pareto_df['Promedio_Mensual'].cumsum() / pareto_df['Promedio_Mensual'].sum()) * 100
 
-            fig5, ax1 = plt.subplots(figsize=(14, 7))
-            # ALINEACIÓN PERFECTA
-            fig5.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
-            ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
+            fig5, ax1 = plt.subplots(figsize=(14, 10))
+            fig5.subplots_adjust(top=0.88, bottom=0.20, left=0.08, right=0.92)
+            fig5.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
             ax2 = ax1.twinx()
             x_pos = np.arange(len(pareto_df))
             bars_pareto = ax1.bar(x_pos, pareto_df['Promedio_Mensual'], color='maroon', edgecolor='white', zorder=2)
             
-            aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max(), multiplier=2.6)
+            aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max(), multiplier=2.4)
             ax1.bar_label(bars_pareto, padding=4, color='black', fontweight='bold', fontsize=13, fmt='%.1f', zorder=4)
             
             ax2.plot(x_pos, pareto_df['%_Acumulado'], color='red', marker='D', markersize=8, linewidth=4, path_effects=outline_white, zorder=5)
@@ -530,7 +530,7 @@ with col_m5:
                 ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
                              ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
 
-            # CARTELES ABSOLUTOS (Cero solapamiento) anclados a la zona inferior derecha vacía
+            # CARTELES ABSOLUTOS (Cero solapamiento) anclados a la zona inferior derecha vacía (transAxes)
             suma_promedio = pareto_df['Promedio_Mensual'].sum()
             ax1.text(0.98, 0.65, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
                      transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='right', va='top', zorder=10)
@@ -562,10 +562,9 @@ with col_m6:
         fechas_str = [d.strftime('%b-%y') for d in df_m6.index]
         x_m6 = np.arange(len(df_m6))
         
-        fig6, ax1 = plt.subplots(figsize=(14, 7))
-        # ALINEACIÓN PERFECTA
-        fig6.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
-        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
+        fig6, ax1 = plt.subplots(figsize=(14, 10))
+        fig6.subplots_adjust(top=0.88, bottom=0.20, left=0.08, right=0.92)
+        fig6.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
         
@@ -580,7 +579,7 @@ with col_m6:
             ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
             bottoms += values
 
-        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.6)
+        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.4)
         
         for i in range(len(x_m6)):
             imp_val = df_m6['Total_Imp'].iloc[i]
@@ -604,14 +603,15 @@ with col_m6:
         for i, val in enumerate(df_m6['Incidencia_%']):
             ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=15, fontweight='bold', path_effects=outline_white, zorder=10)
 
-        # CARTEL ABSOLUTO (Cero solapamiento) anclado firmemente arriba
+        # CARTEL ABSOLUTO fijo arriba (Cero solapamiento)
         ax1.text(0.5, 0.95, f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
                  transform=ax1.transAxes, bbox=bbox_gray, color='white', ha='center', va='top', fontsize=16, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=4, fontsize=10)
+        # Leyenda ubicada abajo para no cruzar el título
+        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.10), ncol=4, fontsize=10)
         
         st.pyplot(fig6)
     else:
