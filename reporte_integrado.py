@@ -94,6 +94,21 @@ def clean_match(text):
     t = str(text).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
     return re.sub(r'[^A-Z0-9]', '', t)
 
+def robust_match(val_sel, val_imp):
+    """Motor Fuzzy: Fuerza la coincidencia por código numérico o subcadena limpia."""
+    if pd.isna(val_imp): return False
+    c1 = clean_match(val_sel)
+    c2 = clean_match(val_imp)
+    if not c1 or not c2: return False
+    if c1 in c2 or c2 in c1: return True
+    
+    # Búsqueda implacable por número de estación (Ej: "473")
+    n1 = set(re.findall(r'\d+', str(val_sel)))
+    n2 = set(re.findall(r'\d+', str(val_imp)))
+    if n1 and n2 and n1.intersection(n2):
+        return True
+    return False
+
 # ==========================================
 # HEADER: IDENTIDAD CORPORATIVA
 # ==========================================
@@ -197,7 +212,7 @@ txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
 texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO DE TRABAJO: {txt_filtro_puesto}"
 
 # ==========================================
-# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS (TOLERANCIA A ERRORES EN EXCEL)
+# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS Y FALLBACK
 # ==========================================
 df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
@@ -212,31 +227,30 @@ if puesto_sel:
 if mes_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'].isin(mes_sel)]
 
-# Filtrar IMPRODUCTIVAS (Mapeo inteligente y coincidencias cruzadas)
+# Filtrar IMPRODUCTIVAS
 col_planta_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PLANTA', 'PLANTAS', 'ÁREA', 'AREA']), None)
 col_linea_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['LÍNEA', 'LINEA', 'LINEAS']), None)
 col_puesto_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PUESTO', 'PUESTOS', 'PUESTO_TRABAJO', 'PUESTO DE TRABAJO']), None)
 
 if planta_sel and col_planta_imp: 
-    sel_cleaned = [clean_match(x) for x in planta_sel]
-    mask = df_imp_filtrado[col_planta_imp].apply(
-        lambda x: any(s in clean_match(x) or clean_match(x) in s for s in sel_cleaned) if str(x).strip() else False
-    )
+    mask = df_imp_filtrado[col_planta_imp].apply(lambda x: any(robust_match(s, x) for s in planta_sel))
     df_imp_filtrado = df_imp_filtrado[mask]
     
 if linea_sel and col_linea_imp: 
-    sel_cleaned = [clean_match(x) for x in linea_sel]
-    mask = df_imp_filtrado[col_linea_imp].apply(
-        lambda x: any(s in clean_match(x) or clean_match(x) in s for s in sel_cleaned) if str(x).strip() else False
-    )
+    mask = df_imp_filtrado[col_linea_imp].apply(lambda x: any(robust_match(s, x) for s in linea_sel))
     df_imp_filtrado = df_imp_filtrado[mask]
 
+# === EL BLINDANTE PARA M5 y M6 ===
+fallback_puesto_activo = False
 if puesto_sel and col_puesto_imp: 
-    sel_cleaned = [clean_match(x) for x in puesto_sel]
-    mask = df_imp_filtrado[col_puesto_imp].apply(
-        lambda x: any(s in clean_match(x) or clean_match(x) in s for s in sel_cleaned) if str(x).strip() else False
-    )
-    df_imp_filtrado = df_imp_filtrado[mask]
+    mask = df_imp_filtrado[col_puesto_imp].apply(lambda x: any(robust_match(s, x) for s in puesto_sel))
+    temp_df = df_imp_filtrado[mask]
+    
+    # Si al filtrar el puesto la base de Improductivas se vacía (ej: Bateas), rescatamos los datos de la Línea
+    if temp_df.empty and not df_imp_filtrado.empty:
+        fallback_puesto_activo = True
+    else:
+        df_imp_filtrado = temp_df
     
 if mes_sel and 'Mes_Filtro' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['Mes_Filtro'].isin(mes_sel)]
@@ -577,6 +591,11 @@ with col_m5:
                      transform=ax1.transAxes, bbox=bbox_yellow, color='black', fontsize=13, fontweight='bold', ha='left', va='top', zorder=10)
 
             st.pyplot(fig5)
+            
+            # Etiqueta de aviso si operó el fallback
+            if fallback_puesto_activo:
+                st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
+                
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
     else:
@@ -652,5 +671,9 @@ with col_m6:
         ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
         
         st.pyplot(fig6)
+        
+        if fallback_puesto_activo:
+            st.caption("📌 Nota: Mostrando Evolución a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
+
     else:
         st.warning("⚠️ No hay datos evaluables.")
