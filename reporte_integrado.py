@@ -37,11 +37,11 @@ div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
     position: -webkit-sticky !important;
     position: sticky !important;
     top: 0px !important;
-    background-color: #0E1117 !important; /* Fondo oscuro nativo de Streamlit */
+    background-color: #0E1117 !important; 
     z-index: 99999 !important;
     padding-top: 10px !important;
     padding-bottom: 10px !important;
-    border-bottom: 3px solid #1E3A8A !important; /* Línea corporativa Ombú */
+    border-bottom: 3px solid #1E3A8A !important; 
 }
 </style>
 """
@@ -125,7 +125,7 @@ else:
     archivo_improductivas = st.sidebar.file_uploader("Base Hrs Improductivas", type=['csv', 'xlsx'])
     
     if archivo_eficiencias is None or archivo_improductivas is None:
-        st.info("👋 Sube los archivos en el panel izquierdo.")
+        st.info("👋 Sube los archivos en el panel izquierdo para comenzar.")
         st.stop()
     
     try:
@@ -188,10 +188,10 @@ with filtros_container:
 txt_filtro_planta = formatear_seleccion(planta_sel, "Todas")
 txt_filtro_linea = formatear_seleccion(linea_sel, "Todas")
 txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
-texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO: {txt_filtro_puesto}"
+texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO DE TRABAJO: {txt_filtro_puesto}"
 
 # ==========================================
-# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS (Evita errores por espacios vacíos o Mayúsculas/Minúsculas)
+# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS (TOLERANCIA A ERRORES EN EXCEL)
 # ==========================================
 df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
@@ -206,17 +206,32 @@ if puesto_sel:
 if mes_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'].isin(mes_sel)]
 
-# Filtrar IMPRODUCTIVAS (Mapeo inteligente de columnas)
+# Filtrar IMPRODUCTIVAS (Mapeo inteligente y coincidencias cruzadas)
 col_planta_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PLANTA', 'PLANTAS', 'ÁREA', 'AREA']), None)
 col_linea_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['LÍNEA', 'LINEA', 'LINEAS']), None)
 col_puesto_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PUESTO', 'PUESTOS', 'PUESTO_TRABAJO', 'PUESTO DE TRABAJO']), None)
 
 if planta_sel and col_planta_imp: 
-    df_imp_filtrado = df_imp_filtrado[df_imp_filtrado[col_planta_imp].astype(str).str.strip().str.upper().isin([str(x).strip().upper() for x in planta_sel])]
+    sel_upper = [str(x).strip().upper() for x in planta_sel]
+    mask = df_imp_filtrado[col_planta_imp].fillna('').astype(str).str.strip().str.upper().apply(
+        lambda x: any(s in x or x in s for s in sel_upper) if x else False
+    )
+    df_imp_filtrado = df_imp_filtrado[mask]
+    
 if linea_sel and col_linea_imp: 
-    df_imp_filtrado = df_imp_filtrado[df_imp_filtrado[col_linea_imp].astype(str).str.strip().str.upper().isin([str(x).strip().upper() for x in linea_sel])]
+    sel_upper = [str(x).strip().upper() for x in linea_sel]
+    mask = df_imp_filtrado[col_linea_imp].fillna('').astype(str).str.strip().str.upper().apply(
+        lambda x: any(s in x or x in s for s in sel_upper) if x else False
+    )
+    df_imp_filtrado = df_imp_filtrado[mask]
+
 if puesto_sel and col_puesto_imp: 
-    df_imp_filtrado = df_imp_filtrado[df_imp_filtrado[col_puesto_imp].astype(str).str.strip().str.upper().isin([str(x).strip().upper() for x in puesto_sel])]
+    sel_upper = [str(x).strip().upper() for x in puesto_sel]
+    mask = df_imp_filtrado[col_puesto_imp].fillna('').astype(str).str.strip().str.upper().apply(
+        lambda x: any(s in x or x in s for s in sel_upper) if x else False
+    )
+    df_imp_filtrado = df_imp_filtrado[mask]
+    
 if mes_sel and 'Mes_Filtro' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['Mes_Filtro'].isin(mes_sel)]
 
@@ -256,8 +271,8 @@ with col_m1:
         agrup_m1['Fecha_str'] = agrup_m1['Fecha'].dt.strftime('%b-%y')
 
         fig1, ax1 = plt.subplots(figsize=(14, 10))
-        # Ajuste riguroso de cuadrícula y márgenes
-        fig1.subplots_adjust(top=0.72, bottom=0.15, left=0.08, right=0.92)
+        # ALINEACIÓN PERFECTA: top elevado para expandir gráfico
+        fig1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
         
         # INCRIPCIÓN DE FILTROS - TAMAÑO 8 BOLD (REGLA 2)
         fig1.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
@@ -304,7 +319,7 @@ with col_m1:
         ax1.set_xticks(x_indexes)
         ax1.set_xticklabels(agrup_m1['Fecha_str'], fontsize=14, fontweight='bold')
         
-        # LEYENDA SEPARADA Y ARRIBA DEL GRÁFICO
+        # LEYENDA SEPARADA Y ARRIBA DEL GRÁFICO (CERO SOLAPAMIENTO)
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
         ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         
@@ -315,7 +330,7 @@ with col_m1:
         else:
             st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
     else:
-        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
+        st.warning("⚠️ No hay datos evaluables para la selección actual.")
 
 with col_m2:
     st.header("2. EFICIENCIA PRODUCTIVA")
@@ -332,7 +347,9 @@ with col_m2:
         agrup_m2['Fecha_str'] = agrup_m2['Fecha'].dt.strftime('%b-%y')
 
         fig2, ax1 = plt.subplots(figsize=(14, 10))
-        fig2.subplots_adjust(top=0.72, bottom=0.15, left=0.08, right=0.92)
+        fig2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+        
+        # INCRIPCIÓN DE FILTROS - TAMAÑO 8 BOLD
         fig2.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
@@ -384,7 +401,7 @@ with col_m2:
         st.pyplot(fig2)
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
     else:
-        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
+        st.warning("⚠️ No hay datos evaluables para la selección actual.")
 
 st.markdown("---")
 
@@ -410,7 +427,7 @@ with col_m3:
         agrup_m3['Fecha_str'] = agrup_m3['Fecha'].dt.strftime('%b-%y')
 
         fig3, ax1 = plt.subplots(figsize=(14, 10))
-        fig3.subplots_adjust(top=0.72, bottom=0.15, left=0.08, right=0.92)
+        fig3.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
         fig3.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         x_indexes_m3 = np.arange(len(agrup_m3))
@@ -444,10 +461,11 @@ with col_m3:
 
         ax1.set_xticks(x_indexes_m3)
         ax1.set_xticklabels(agrup_m3['Fecha_str'], fontsize=14, fontweight='bold')
+        
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True)
         st.pyplot(fig3)
     else:
-        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
+        st.warning("⚠️ No hay datos evaluables para la selección actual.")
 
 with col_m4:
     st.header("4. COSTOS IMPRODUCTIVOS")
@@ -461,7 +479,7 @@ with col_m4:
         agrup_m4['Fecha_str'] = agrup_m4['Fecha'].dt.strftime('%b-%y')
 
         fig4, ax1 = plt.subplots(figsize=(14, 10))
-        fig4.subplots_adjust(top=0.72, bottom=0.15, left=0.08, right=0.92)
+        fig4.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
         fig4.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
@@ -522,7 +540,7 @@ with col_m5:
             pareto_df['%_Acumulado'] = (pareto_df['Promedio_Mensual'].cumsum() / pareto_df['Promedio_Mensual'].sum()) * 100
 
             fig5, ax1 = plt.subplots(figsize=(14, 10))
-            fig5.subplots_adjust(top=0.72, bottom=0.25, left=0.08, right=0.92)
+            fig5.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
             fig5.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
             ax2 = ax1.twinx()
@@ -581,7 +599,7 @@ with col_m6:
         x_m6 = np.arange(len(df_m6))
         
         fig6, ax1 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.72, bottom=0.15, left=0.08, right=0.92) # Igualado a M1-M4
+        fig6.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92) # Igualado a M1-M4
         fig6.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
@@ -634,7 +652,7 @@ with col_m6:
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        # Leyenda movida al Techo Libre, sin cruzar con x-axis ni títulos
+        # Leyenda movida al Techo Libre, sin cruzar con x-axis ni títulos (CERO SOLAPAMIENTO)
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=4, frameon=True, fontsize=10)
         
         st.pyplot(fig6)
