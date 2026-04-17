@@ -7,6 +7,7 @@ import matplotlib.patheffects as path_effects
 import textwrap
 import datetime
 import os
+import re
 
 # ==========================================
 # CONFIGURACIÓN DE LA PÁGINA Y ESTILOS GLOBALES
@@ -86,6 +87,12 @@ def formatear_seleccion(lista_sel, default_str):
     if len(lista_sel) > 2: 
         return f"Varios ({len(lista_sel)})"
     return " + ".join(lista_sel)
+
+def clean_match(text):
+    """Limpia puntuación, espacios y tildes para un macheo a prueba de balas."""
+    if pd.isna(text): return ""
+    t = str(text).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
+    return re.sub(r'[^A-Z0-9]', '', t)
 
 # ==========================================
 # HEADER: IDENTIDAD CORPORATIVA
@@ -183,18 +190,19 @@ with filtros_container:
         meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
         mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
 
-# TEXTO DE FILTROS SUPERIOR (Tamaño 8, Bold, Margen Superior Izquierdo)
+# TEXTO DE FILTROS SUPERIOR
 txt_filtro_planta = formatear_seleccion(planta_sel, "Todas")
 txt_filtro_linea = formatear_seleccion(linea_sel, "Todas")
 txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
 texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO DE TRABAJO: {txt_filtro_puesto}"
 
 # ==========================================
-# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS
+# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS (TOLERANCIA A ERRORES EN EXCEL)
 # ==========================================
 df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
 
+# Filtrar EFICIENCIAS
 if planta_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Planta'].astype(str).str.strip().str.upper().isin([str(x).strip().upper() for x in planta_sel])]
 if linea_sel: 
@@ -204,28 +212,29 @@ if puesto_sel:
 if mes_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'].isin(mes_sel)]
 
+# Filtrar IMPRODUCTIVAS (Mapeo inteligente y coincidencias cruzadas)
 col_planta_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PLANTA', 'PLANTAS', 'ÁREA', 'AREA']), None)
 col_linea_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['LÍNEA', 'LINEA', 'LINEAS']), None)
 col_puesto_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PUESTO', 'PUESTOS', 'PUESTO_TRABAJO', 'PUESTO DE TRABAJO']), None)
 
 if planta_sel and col_planta_imp: 
-    sel_upper = [str(x).strip().upper() for x in planta_sel]
-    mask = df_imp_filtrado[col_planta_imp].fillna('').astype(str).str.strip().str.upper().apply(
-        lambda x: any(s in x or x in s for s in sel_upper) if x else False
+    sel_cleaned = [clean_match(x) for x in planta_sel]
+    mask = df_imp_filtrado[col_planta_imp].apply(
+        lambda x: any(s in clean_match(x) or clean_match(x) in s for s in sel_cleaned) if str(x).strip() else False
     )
     df_imp_filtrado = df_imp_filtrado[mask]
     
 if linea_sel and col_linea_imp: 
-    sel_upper = [str(x).strip().upper() for x in linea_sel]
-    mask = df_imp_filtrado[col_linea_imp].fillna('').astype(str).str.strip().str.upper().apply(
-        lambda x: any(s in x or x in s for s in sel_upper) if x else False
+    sel_cleaned = [clean_match(x) for x in linea_sel]
+    mask = df_imp_filtrado[col_linea_imp].apply(
+        lambda x: any(s in clean_match(x) or clean_match(x) in s for s in sel_cleaned) if str(x).strip() else False
     )
     df_imp_filtrado = df_imp_filtrado[mask]
 
 if puesto_sel and col_puesto_imp: 
-    sel_upper = [str(x).strip().upper() for x in puesto_sel]
-    mask = df_imp_filtrado[col_puesto_imp].fillna('').astype(str).str.strip().str.upper().apply(
-        lambda x: any(s in x or x in s for s in sel_upper) if x else False
+    sel_cleaned = [clean_match(x) for x in puesto_sel]
+    mask = df_imp_filtrado[col_puesto_imp].apply(
+        lambda x: any(s in clean_match(x) or clean_match(x) in s for s in sel_cleaned) if str(x).strip() else False
     )
     df_imp_filtrado = df_imp_filtrado[mask]
     
@@ -532,7 +541,6 @@ with col_m5:
             pareto_df['%_Acumulado'] = (pareto_df['Promedio_Mensual'].cumsum() / pareto_df['Promedio_Mensual'].sum()) * 100
 
             fig5, ax1 = plt.subplots(figsize=(14, 10))
-            # Ajuste de tamaño idéntico a M6 y expandido hacia arriba
             fig5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92)
             fig5.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
@@ -591,7 +599,6 @@ with col_m6:
         x_m6 = np.arange(len(df_m6))
         
         fig6, ax1 = plt.subplots(figsize=(14, 10))
-        # Ajuste idéntico a M5 y expandido hacia arriba para evitar que quede chato
         fig6.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92) 
         fig6.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
@@ -608,7 +615,6 @@ with col_m6:
             ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
             bottoms += values
 
-        # Multiplicador reducido de 2.6 a 2.2 para que las barras sean mucho más altas y no queden chatas
         aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.2)
         
         for i in range(len(x_m6)):
@@ -625,7 +631,6 @@ with col_m6:
         ax2.text(x_m6[0], 15 + (ax2.get_ylim()[1]*0.01), 'META = 15%', color='white', bbox=bbox_green, fontsize=14, fontweight='bold', ha='center', va='bottom', zorder=10)
 
         max_incidencia = df_m6['Incidencia_%'].max()
-        # Multiplicador de la línea roja ajustado a 1.8 para que la línea también se expanda verticalmente
         ax2.set_ylim(0, max(40, max_incidencia * 1.8))
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
         
@@ -644,7 +649,6 @@ with col_m6:
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        # Leyenda movida abajo para que no empuje el gráfico hacia abajo y se desalinee de M5
         ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
         
         st.pyplot(fig6)
