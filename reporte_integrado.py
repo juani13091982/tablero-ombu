@@ -68,8 +68,8 @@ bbox_white = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 # ==========================================
 # FUNCIONES AUXILIARES ESTRICTAS
 # ==========================================
-def aplicar_anti_overlap(ax, max_val, multiplier=2.2):
-    """Fuerza un cielo despejado para que no choquen etiquetas de barras con líneas."""
+def aplicar_anti_overlap(ax, max_val, multiplier=2.4):
+    """Fuerza un cielo despejado empujando las barras muy abajo (multiplier alto)."""
     if max_val > 0:
         ax.set_ylim(0, max_val * multiplier)
     else:
@@ -78,6 +78,14 @@ def aplicar_anti_overlap(ax, max_val, multiplier=2.2):
 def dibujar_meses(ax, fechas):
     for x in range(len(fechas)):
         ax.axvline(x=x, color='lightgray', linestyle='--', linewidth=1, zorder=0)
+
+def formatear_seleccion(lista_sel, default_str):
+    """Acorta la lista de filtros para el cartel de la esquina si son más de 2."""
+    if not lista_sel: 
+        return default_str
+    if len(lista_sel) > 2: 
+        return f"Varios ({len(lista_sel)})"
+    return " / ".join(lista_sel)
 
 # ==========================================
 # HEADER: IDENTIDAD CORPORATIVA
@@ -140,12 +148,11 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# FILTROS EN LA PARTE SUPERIOR (CASCADA) CON CONTENEDOR SEGURO
+# FILTROS EN LA PARTE SUPERIOR (CASCADA)
 # ==========================================
 filtros_container = st.container()
 
 with filtros_container:
-    # Ancla invisible para el CSS Sticky
     st.markdown('<div id="filtro-ribbon"></div>', unsafe_allow_html=True)
     st.markdown("### 🔍 Configuración del Escenario")
     
@@ -175,6 +182,12 @@ with filtros_container:
     with col_f4:
         meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
         mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
+
+# Generamos el texto estricto que irá en el margen superior izquierdo de cada gráfico
+txt_filtro_planta = formatear_seleccion(planta_sel, "Todas")
+txt_filtro_linea = formatear_seleccion(linea_sel, "Todas")
+txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
+texto_filtros_header = f"Filtros aplicados: {txt_filtro_planta} > {txt_filtro_linea} > {txt_filtro_puesto}"
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS A LAS BASES
@@ -228,7 +241,11 @@ with col_m1:
         agrup_m1['Fecha_str'] = agrup_m1['Fecha'].dt.strftime('%b-%y')
 
         fig1, ax1 = plt.subplots(figsize=(14, 7))
-        fig1.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
+        # ALINEACIÓN PERFECTA: Forzamos la caja de dibujo a ser idéntica
+        fig1.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+        
+        # INCRIPCIÓN MARGEN SUPERIOR IZQUIERDO (REGLA 2)
+        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
         
         ax2 = ax1.twinx()
         x_indexes = np.arange(len(agrup_m1))
@@ -237,7 +254,8 @@ with col_m1:
         bars_std = ax1.bar(x_indexes - width/2, agrup_m1['HH_STD_TOTAL'], width, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bars_disp = ax1.bar(x_indexes + width/2, agrup_m1['HH_Disponibles'], width, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
-        aplicar_anti_overlap(ax1, agrup_m1['HH_Disponibles'].max(), multiplier=2.2)
+        # MULTIPLICADOR ALTO = CERO SOLAPAMIENTO
+        aplicar_anti_overlap(ax1, agrup_m1['HH_Disponibles'].max(), multiplier=2.4)
         
         ax1.bar_label(bars_std, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
         ax1.bar_label(bars_disp, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
@@ -254,7 +272,7 @@ with col_m1:
         ax2.axhline(y=85, color='forestgreen', linestyle='--', linewidth=3, label='Meta (85%)', zorder=1)
         
         max_ef_real = agrup_m1['Eficiencia_Real'].max()
-        ax2.set_ylim(0, max(120, max_ef_real * 1.5))
+        ax2.set_ylim(0, max(120, max_ef_real * 1.6))
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         if len(x_indexes) > 1:
@@ -262,7 +280,7 @@ with col_m1:
             p = np.poly1d(z)
             ax2.plot(x_indexes, p(x_indexes), color='dimgray', linestyle=':', alpha=0.8, linewidth=2, zorder=1)
 
-        offset_y2 = ax2.get_ylim()[1] * 0.06
+        offset_y2 = ax2.get_ylim()[1] * 0.05
         for i, val in enumerate(agrup_m1['Eficiencia_Real']):
             ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
@@ -295,7 +313,11 @@ with col_m2:
         agrup_m2['Fecha_str'] = agrup_m2['Fecha'].dt.strftime('%b-%y')
 
         fig2, ax1 = plt.subplots(figsize=(14, 7))
-        fig2.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
+        # ALINEACIÓN PERFECTA
+        fig2.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+        
+        # INCRIPCIÓN MARGEN SUPERIOR IZQUIERDO
+        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
 
         ax2 = ax1.twinx()
         x_indexes = np.arange(len(agrup_m2))
@@ -305,7 +327,7 @@ with col_m2:
         bars_prod2 = ax1.bar(x_indexes + width/2, agrup_m2['HH_Productivas_C/GAP'], width, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
         max_val2 = max(agrup_m2['HH_STD_TOTAL'].max(), agrup_m2['HH_Productivas_C/GAP'].max())
-        aplicar_anti_overlap(ax1, max_val2, multiplier=2.2)
+        aplicar_anti_overlap(ax1, max_val2, multiplier=2.4)
         
         ax1.bar_label(bars_std2, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
         ax1.bar_label(bars_prod2, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, fmt='%.0f', zorder=3)
@@ -322,7 +344,7 @@ with col_m2:
         ax2.axhline(y=100, color='forestgreen', linestyle='--', linewidth=3, label='Meta (100%)', zorder=1)
         
         max_ef_prod = agrup_m2['Eficiencia_Prod'].max()
-        ax2.set_ylim(0, max(150, max_ef_prod * 1.5))
+        ax2.set_ylim(0, max(150, max_ef_prod * 1.6))
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         if len(x_indexes) > 1:
@@ -330,7 +352,7 @@ with col_m2:
             p2 = np.poly1d(z2)
             ax2.plot(x_indexes, p2(x_indexes), color='dimgray', linestyle=':', alpha=0.8, linewidth=2, zorder=1)
 
-        offset_y2_m2 = ax2.get_ylim()[1] * 0.06
+        offset_y2_m2 = ax2.get_ylim()[1] * 0.05
         for i, val in enumerate(agrup_m2['Eficiencia_Prod']):
             ax2.annotate(f"{val:.1f}%", (x_indexes[i], val + offset_y2_m2), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
@@ -368,7 +390,9 @@ with col_m3:
         agrup_m3['Fecha_str'] = agrup_m3['Fecha'].dt.strftime('%b-%y')
 
         fig3, ax1 = plt.subplots(figsize=(14, 7))
-        fig3.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
+        # ALINEACIÓN PERFECTA
+        fig3.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
 
         x_indexes_m3 = np.arange(len(agrup_m3))
         
@@ -383,7 +407,7 @@ with col_m3:
 
         ax1.plot(x_indexes_m3, agrup_m3['HH_Disponibles'], color='black', marker='D', markersize=10, linewidth=4, path_effects=outline_white, label='HH DISPONIBLES', zorder=5)
         
-        aplicar_anti_overlap(ax1, agrup_m3['HH_Disponibles'].max(), multiplier=2.2)
+        aplicar_anti_overlap(ax1, agrup_m3['HH_Disponibles'].max(), multiplier=2.0)
         dibujar_meses(ax1, x_indexes_m3)
 
         for i in range(len(x_indexes_m3)):
@@ -418,7 +442,9 @@ with col_m4:
         agrup_m4['Fecha_str'] = agrup_m4['Fecha'].dt.strftime('%b-%y')
 
         fig4, ax1 = plt.subplots(figsize=(14, 7))
-        fig4.subplots_adjust(top=0.82, bottom=0.15, left=0.10, right=0.90)
+        # ALINEACIÓN PERFECTA
+        fig4.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
 
         ax2 = ax1.twinx()
         x_indexes_m4 = np.arange(len(agrup_m4))
@@ -426,21 +452,22 @@ with col_m4:
         bars_imp = ax1.bar(x_indexes_m4, agrup_m4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax1.bar_label(bars_imp, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, zorder=4)
         
-        aplicar_anti_overlap(ax1, agrup_m4['HH_Improductivas'].max(), multiplier=2.2)
+        aplicar_anti_overlap(ax1, agrup_m4['HH_Improductivas'].max(), multiplier=2.4)
         
         ax2.plot(x_indexes_m4, agrup_m4['Costo_Improd._$'], color='maroon', marker='s', markersize=10, linewidth=5, path_effects=outline_white, label='COSTO ARS', zorder=5)
         
         max_costo = agrup_m4['Costo_Improd._$'].max()
-        ax2.set_ylim(0, max(max_costo * 1.60, 1000))
+        ax2.set_ylim(0, max(1000, max_costo * 1.6))
         
         ticks_y = ax2.get_yticks()
         ax2.set_yticklabels([f'${int(x/1000000)}M' for x in ticks_y], fontweight='bold')
 
+        # CARTEL ABSOLUTO (Cero solapamiento) usando coordenadas relativas transAxes
         costo_total = agrup_m4['Costo_Improd._$'].sum()
-        ax1.text(len(x_indexes_m4)/2 - 0.5, ax1.get_ylim()[1]*0.90, f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}", 
-                 ha='center', va='center', fontsize=20, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
+        ax1.text(0.5, 0.95, f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}", 
+                 transform=ax1.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
 
-        offset_y2_m4 = ax2.get_ylim()[1] * 0.08
+        offset_y2_m4 = ax2.get_ylim()[1] * 0.05
         for i, val in enumerate(agrup_m4['Costo_Improd._$']):
             ax2.annotate(f"${val:,.0f}", (x_indexes_m4[i], val + offset_y2_m4), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
 
@@ -477,44 +504,47 @@ with col_m5:
             pareto_df['%_Acumulado'] = (pareto_df['Promedio_Mensual'].cumsum() / pareto_df['Promedio_Mensual'].sum()) * 100
 
             fig5, ax1 = plt.subplots(figsize=(14, 7))
-            fig5.subplots_adjust(top=0.82, bottom=0.25, left=0.10, right=0.90)
+            # ALINEACIÓN PERFECTA
+            fig5.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+            ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
 
             ax2 = ax1.twinx()
             x_pos = np.arange(len(pareto_df))
             bars_pareto = ax1.bar(x_pos, pareto_df['Promedio_Mensual'], color='maroon', edgecolor='white', zorder=2)
             
-            aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max(), multiplier=2.2)
+            aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max(), multiplier=2.6)
             ax1.bar_label(bars_pareto, padding=4, color='black', fontweight='bold', fontsize=13, fmt='%.1f', zorder=4)
             
             ax2.plot(x_pos, pareto_df['%_Acumulado'], color='red', marker='D', markersize=8, linewidth=4, path_effects=outline_white, zorder=5)
             ax2.axhline(y=80, color='gray', linestyle='--', linewidth=2, zorder=1)
             
-            ax2.set_ylim(0, 140)
+            ax2.set_ylim(0, 160)
             ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
             labels_wrapped = [textwrap.fill(str(l), 12) for l in pareto_df['TIPO_PARADA']]
             ax1.set_xticks(x_pos)
             ax1.set_xticklabels(labels_wrapped, rotation=90, fontsize=12, fontweight='bold')
             
-            offset_y2_m5 = ax2.get_ylim()[1] * 0.04
+            offset_y2_m5 = ax2.get_ylim()[1] * 0.03
             for i, val in enumerate(pareto_df['%_Acumulado']):
                 ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
                              ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
 
+            # CARTELES ABSOLUTOS (Cero solapamiento) anclados a la zona inferior derecha vacía
             suma_promedio = pareto_df['Promedio_Mensual'].sum()
-            ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.35, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
-                     bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='center', zorder=10)
+            ax1.text(0.98, 0.65, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
+                     transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='right', va='top', zorder=10)
             
             top5 = pareto_df.head(5)['TIPO_PARADA'].tolist()
             top5_str = "TOP 5 Causas:\n" + "\n".join([f"- {c}" for c in top5])
-            ax1.text(len(x_pos)*0.75, ax1.get_ylim()[1]*0.10, top5_str, 
-                     bbox=bbox_yellow, color='black', fontsize=13, fontweight='bold', ha='center', va='bottom', zorder=10)
+            ax1.text(0.98, 0.40, top5_str, 
+                     transform=ax1.transAxes, bbox=bbox_yellow, color='black', fontsize=13, fontweight='bold', ha='right', va='top', zorder=10)
 
             st.pyplot(fig5)
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
     else:
-        st.warning("⚠️ No hay datos evaluables.")
+        st.warning("⚠️ No hay datos evaluables para la selección actual.")
 
 with col_m6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
@@ -533,7 +563,9 @@ with col_m6:
         x_m6 = np.arange(len(df_m6))
         
         fig6, ax1 = plt.subplots(figsize=(14, 7))
-        fig6.subplots_adjust(top=0.82, bottom=0.25, left=0.10, right=0.90)
+        # ALINEACIÓN PERFECTA
+        fig6.subplots_adjust(top=0.80, bottom=0.22, left=0.10, right=0.90)
+        ax1.set_title(texto_filtros_header, loc='left', fontsize=9, color='dimgray', fontweight='bold', pad=15)
 
         ax2 = ax1.twinx()
         
@@ -548,7 +580,7 @@ with col_m6:
             ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
             bottoms += values
 
-        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.2)
+        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.6)
         
         for i in range(len(x_m6)):
             imp_val = df_m6['Total_Imp'].iloc[i]
@@ -560,7 +592,7 @@ with col_m6:
 
         ax2.plot(x_m6, df_m6['Incidencia_%'], color='red', marker='o', markersize=9, linewidth=4, path_effects=outline_white, label='% Incidencia', zorder=5)
         lim_secundario = df_m6['Incidencia_%'].max() * 1.5 if df_m6['Incidencia_%'].max() > 0 else 100
-        ax2.set_ylim(0, lim_secundario)
+        ax2.set_ylim(0, lim_secundario * 1.3)
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
         
         if len(x_m6) > 1:
@@ -568,18 +600,18 @@ with col_m6:
             p6 = np.poly1d(z6)
             ax2.plot(x_m6, p6(x_m6), color='darkred', linestyle='--', linewidth=3, zorder=1)
 
-        offset_y2_m6 = lim_secundario * 0.08
+        offset_y2_m6 = ax2.get_ylim()[1] * 0.05
         for i, val in enumerate(df_m6['Incidencia_%']):
             ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=15, fontweight='bold', path_effects=outline_white, zorder=10)
 
-        ax1.text(len(x_m6)/2 - 0.5, ax1.get_ylim()[1]*0.92, 
-                 f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
-                 bbox=bbox_gray, color='white', ha='center', fontsize=16, fontweight='bold', zorder=10)
+        # CARTEL ABSOLUTO (Cero solapamiento) anclado firmemente arriba
+        ax1.text(0.5, 0.95, f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
+                 transform=ax1.transAxes, bbox=bbox_gray, color='white', ha='center', va='top', fontsize=16, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        ax1.legend(loc='upper left', bbox_to_anchor=(0, 1.15), ncol=4, fontsize=10)
+        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=4, fontsize=10)
         
         st.pyplot(fig6)
     else:
