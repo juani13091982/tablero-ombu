@@ -188,7 +188,7 @@ with filtros_container:
 txt_filtro_planta = formatear_seleccion(planta_sel, "Todas")
 txt_filtro_linea = formatear_seleccion(linea_sel, "Todas")
 txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
-texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO DE TRABAJO: {txt_filtro_puesto}"
+texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO: {txt_filtro_puesto}"
 
 # ==========================================
 # APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS (TOLERANCIA A ERRORES EN EXCEL)
@@ -271,10 +271,7 @@ with col_m1:
         agrup_m1['Fecha_str'] = agrup_m1['Fecha'].dt.strftime('%b-%y')
 
         fig1, ax1 = plt.subplots(figsize=(14, 10))
-        # ALINEACIÓN PERFECTA: top elevado para expandir gráfico
         fig1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
-        
-        # INCRIPCIÓN DE FILTROS - TAMAÑO 8 BOLD (REGLA 2)
         fig1.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
         
         ax2 = ax1.twinx()
@@ -299,7 +296,6 @@ with col_m1:
 
         ax2.plot(x_indexes, agrup_m1['Eficiencia_Real'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Real', zorder=5)
         
-        # LÍNEA META 85% VERDE OSCURO (REGLA C)
         ax2.axhline(y=85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax2.text(x_indexes[0], 85 + (ax2.get_ylim()[1]*0.01), 'META = 85%', color='white', bbox=bbox_green, fontsize=14, fontweight='bold', ha='center', va='bottom', zorder=10)
         
@@ -319,7 +315,6 @@ with col_m1:
         ax1.set_xticks(x_indexes)
         ax1.set_xticklabels(agrup_m1['Fecha_str'], fontsize=14, fontweight='bold')
         
-        # LEYENDA SEPARADA Y ARRIBA DEL GRÁFICO (CERO SOLAPAMIENTO)
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
         ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         
@@ -330,7 +325,7 @@ with col_m1:
         else:
             st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 with col_m2:
     st.header("2. EFICIENCIA PRODUCTIVA")
@@ -348,8 +343,6 @@ with col_m2:
 
         fig2, ax1 = plt.subplots(figsize=(14, 10))
         fig2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
-        
-        # INCRIPCIÓN DE FILTROS - TAMAÑO 8 BOLD
         fig2.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
@@ -375,7 +368,6 @@ with col_m2:
 
         ax2.plot(x_indexes, agrup_m2['Eficiencia_Prod'], color='dimgray', marker='o', markersize=10, linewidth=4, path_effects=outline_white, label='% Efic. Prod.', zorder=5)
         
-        # LÍNEA META 100% VERDE OSCURO (REGLA D)
         ax2.axhline(y=100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax2.text(x_indexes[0], 100 + (ax2.get_ylim()[1]*0.01), 'META = 100%', color='white', bbox=bbox_green, fontsize=14, fontweight='bold', ha='center', va='bottom', zorder=10)
         
@@ -401,7 +393,7 @@ with col_m2:
         st.pyplot(fig2)
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 st.markdown("---")
 
@@ -465,7 +457,7 @@ with col_m3:
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True)
         st.pyplot(fig3)
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 with col_m4:
     st.header("4. COSTOS IMPRODUCTIVOS")
@@ -498,9 +490,13 @@ with col_m4:
         ticks_y = ax2.get_yticks()
         ax2.set_yticklabels([f'${int(x/1000000)}M' for x in ticks_y], fontweight='bold')
 
+        # CARTEL ABSOLUTO ACTUALIZADO: COSTO + HH IMPRODUCTIVAS
         costo_total = agrup_m4['Costo_Improd._$'].sum()
-        ax1.text(0.5, 0.90, f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}", 
-                 transform=ax1.transAxes, ha='center', va='top', fontsize=20, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
+        hh_imp_total = agrup_m4['HH_Improductivas'].sum()
+        texto_cartel_m4 = f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}\n(Total: {hh_imp_total:,.0f} HH Imp.)"
+        
+        ax1.text(0.5, 0.90, texto_cartel_m4, 
+                 transform=ax1.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
 
         offset_y2_m4 = ax2.get_ylim()[1] * 0.05
         for i, val in enumerate(agrup_m4['Costo_Improd._$']):
@@ -513,7 +509,7 @@ with col_m4:
         ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig4)
     else:
-        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
+        st.warning("⚠️ No hay datos evaluables.")
 
 st.markdown("---")
 
@@ -553,7 +549,6 @@ with col_m5:
             ax2.plot(x_pos, pareto_df['%_Acumulado'], color='red', marker='D', markersize=8, linewidth=4, path_effects=outline_white, zorder=5)
             ax2.axhline(y=80, color='gray', linestyle='--', linewidth=2, zorder=1)
             
-            # Forzamos que el 100% quede en la mitad exacta del gráfico (Cero solapamiento garantizado)
             ax2.set_ylim(0, 200)
             ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
@@ -566,7 +561,6 @@ with col_m5:
                 ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
                              ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
 
-            # CARTELES FIJADOS EN EL CIELO (transAxes), NUNCA TOCARÁN LAS BARRAS
             suma_promedio = pareto_df['Promedio_Mensual'].sum()
             ax1.text(0.98, 0.90, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
                      transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='right', va='top', zorder=10)
@@ -580,7 +574,7 @@ with col_m5:
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
     else:
-        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
+        st.warning("⚠️ No hay datos evaluables para la selección actual.")
 
 with col_m6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
@@ -599,7 +593,7 @@ with col_m6:
         x_m6 = np.arange(len(df_m6))
         
         fig6, ax1 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92) # Igualado a M1-M4
+        fig6.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
         fig6.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
@@ -627,11 +621,9 @@ with col_m6:
 
         ax2.plot(x_m6, df_m6['Incidencia_%'], color='red', marker='o', markersize=9, linewidth=4, path_effects=outline_white, label='% Incidencia', zorder=5)
         
-        # LÍNEA META 15% VERDE OSCURO (REGLA B)
         ax2.axhline(y=15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax2.text(x_m6[0], 15 + (ax2.get_ylim()[1]*0.01), 'META = 15%', color='white', bbox=bbox_green, fontsize=14, fontweight='bold', ha='center', va='bottom', zorder=10)
 
-        # Forzar que la línea roja quede abajo y no toque el cartel
         max_incidencia = df_m6['Incidencia_%'].max()
         ax2.set_ylim(0, max(40, max_incidencia * 2.5))
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -645,16 +637,14 @@ with col_m6:
         for i, val in enumerate(df_m6['Incidencia_%']):
             ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=15, fontweight='bold', path_effects=outline_white, zorder=10)
 
-        # CARTEL ABSOLUTO fijo a la derecha (Nunca tocará la línea roja)
         ax1.text(0.98, 0.90, f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
                  transform=ax1.transAxes, bbox=bbox_gray, color='white', ha='right', va='top', fontsize=16, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        # Leyenda movida al Techo Libre, sin cruzar con x-axis ni títulos (CERO SOLAPAMIENTO)
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=4, frameon=True, fontsize=10)
         
         st.pyplot(fig6)
     else:
-        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
+        st.warning("⚠️ No hay datos evaluables.")
