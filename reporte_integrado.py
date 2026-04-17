@@ -64,7 +64,7 @@ bbox_gray = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
 bbox_yellow = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
 bbox_red = dict(boxstyle="round,pad=0.3", fc="firebrick", ec="white", lw=1.5)
 bbox_white = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
-bbox_green = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5) # Caja para carteles META
+bbox_green = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
 
 # ==========================================
 # FUNCIONES AUXILIARES ESTRICTAS
@@ -81,7 +81,6 @@ def dibujar_meses(ax, fechas):
         ax.axvline(x=x, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def formatear_seleccion(lista_sel, default_str):
-    """Acorta la lista de filtros para el cartel de la esquina."""
     if not lista_sel: 
         return default_str
     if len(lista_sel) > 2: 
@@ -184,19 +183,18 @@ with filtros_container:
         meses_disponibles = list(df_temp_mes['Mes_Filtro'].dropna().unique())
         mes_sel = st.multiselect("📅 Mes", meses_disponibles, placeholder="Todos (Dejar vacío)")
 
-# TEXTO DE FILTROS SUPERIOR (REGLA 2: Tamaño 8, Bold, Margen Superior Izquierdo)
+# TEXTO DE FILTROS SUPERIOR (Tamaño 8, Bold, Margen Superior Izquierdo)
 txt_filtro_planta = formatear_seleccion(planta_sel, "Todas")
 txt_filtro_linea = formatear_seleccion(linea_sel, "Todas")
 txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
-texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO: {txt_filtro_puesto}"
+texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO DE TRABAJO: {txt_filtro_puesto}"
 
 # ==========================================
-# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS (TOLERANCIA A ERRORES EN EXCEL)
+# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS
 # ==========================================
 df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
 
-# Filtrar EFICIENCIAS
 if planta_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Planta'].astype(str).str.strip().str.upper().isin([str(x).strip().upper() for x in planta_sel])]
 if linea_sel: 
@@ -206,7 +204,6 @@ if puesto_sel:
 if mes_sel: 
     df_ef_filtrado = df_ef_filtrado[df_ef_filtrado['Mes_Filtro'].isin(mes_sel)]
 
-# Filtrar IMPRODUCTIVAS (Mapeo inteligente y coincidencias cruzadas)
 col_planta_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PLANTA', 'PLANTAS', 'ÁREA', 'AREA']), None)
 col_linea_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['LÍNEA', 'LINEA', 'LINEAS']), None)
 col_puesto_imp = next((c for c in df_imp_filtrado.columns if str(c).strip().upper() in ['PUESTO', 'PUESTOS', 'PUESTO_TRABAJO', 'PUESTO DE TRABAJO']), None)
@@ -490,7 +487,6 @@ with col_m4:
         ticks_y = ax2.get_yticks()
         ax2.set_yticklabels([f'${int(x/1000000)}M' for x in ticks_y], fontweight='bold')
 
-        # CARTEL ABSOLUTO ACTUALIZADO: COSTO + HH IMPRODUCTIVAS
         costo_total = agrup_m4['Costo_Improd._$'].sum()
         hh_imp_total = agrup_m4['HH_Improductivas'].sum()
         texto_cartel_m4 = f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}\n(Total: {hh_imp_total:,.0f} HH Imp.)"
@@ -509,7 +505,7 @@ with col_m4:
         ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig4)
     else:
-        st.warning("⚠️ No hay datos evaluables.")
+        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
 
 st.markdown("---")
 
@@ -536,7 +532,8 @@ with col_m5:
             pareto_df['%_Acumulado'] = (pareto_df['Promedio_Mensual'].cumsum() / pareto_df['Promedio_Mensual'].sum()) * 100
 
             fig5, ax1 = plt.subplots(figsize=(14, 10))
-            fig5.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+            # Ajuste de tamaño idéntico a M6 y expandido hacia arriba
+            fig5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92)
             fig5.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
             ax2 = ax1.twinx()
@@ -561,14 +558,15 @@ with col_m5:
                 ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
                              ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
 
+            # CARTELES FIJADOS EN EL LADO IZQUIERDO (Cero solapamiento)
             suma_promedio = pareto_df['Promedio_Mensual'].sum()
-            ax1.text(0.98, 0.90, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
-                     transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='right', va='top', zorder=10)
+            ax1.text(0.02, 0.96, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
+                     transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='left', va='top', zorder=10)
             
             top5 = pareto_df.head(5)['TIPO_PARADA'].tolist()
             top5_str = "TOP 5 Causas:\n" + "\n".join([f"- {c}" for c in top5])
-            ax1.text(0.98, 0.70, top5_str, 
-                     transform=ax1.transAxes, bbox=bbox_yellow, color='black', fontsize=13, fontweight='bold', ha='right', va='top', zorder=10)
+            ax1.text(0.02, 0.82, top5_str, 
+                     transform=ax1.transAxes, bbox=bbox_yellow, color='black', fontsize=13, fontweight='bold', ha='left', va='top', zorder=10)
 
             st.pyplot(fig5)
         else:
@@ -593,7 +591,8 @@ with col_m6:
         x_m6 = np.arange(len(df_m6))
         
         fig6, ax1 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+        # Ajuste idéntico a M5 y expandido hacia arriba para evitar que quede chato
+        fig6.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92) 
         fig6.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
 
         ax2 = ax1.twinx()
@@ -609,7 +608,8 @@ with col_m6:
             ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
             bottoms += values
 
-        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.6)
+        # Multiplicador reducido de 2.6 a 2.2 para que las barras sean mucho más altas y no queden chatas
+        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.2)
         
         for i in range(len(x_m6)):
             imp_val = df_m6['Total_Imp'].iloc[i]
@@ -625,7 +625,8 @@ with col_m6:
         ax2.text(x_m6[0], 15 + (ax2.get_ylim()[1]*0.01), 'META = 15%', color='white', bbox=bbox_green, fontsize=14, fontweight='bold', ha='center', va='bottom', zorder=10)
 
         max_incidencia = df_m6['Incidencia_%'].max()
-        ax2.set_ylim(0, max(40, max_incidencia * 2.5))
+        # Multiplicador de la línea roja ajustado a 1.8 para que la línea también se expanda verticalmente
+        ax2.set_ylim(0, max(40, max_incidencia * 1.8))
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
         
         if len(x_m6) > 1:
@@ -637,13 +638,14 @@ with col_m6:
         for i, val in enumerate(df_m6['Incidencia_%']):
             ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=15, fontweight='bold', path_effects=outline_white, zorder=10)
 
-        ax1.text(0.98, 0.90, f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
+        ax1.text(0.98, 0.95, f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
                  transform=ax1.transAxes, bbox=bbox_gray, color='white', ha='right', va='top', fontsize=16, fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=4, frameon=True, fontsize=10)
+        # Leyenda movida abajo para que no empuje el gráfico hacia abajo y se desalinee de M5
+        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
         
         st.pyplot(fig6)
     else:
