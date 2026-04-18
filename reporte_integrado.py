@@ -596,16 +596,15 @@ with col_m5:
                 st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
             
             # ==========================================
-            # NUEVO: MOTOR DE PLAN DE ACCIÓN (DRILL-DOWN)
+            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN)
             # ==========================================
-            st.markdown("### 🔍 Análisis de Causa Raíz")
-            st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para generar el Plan de Acción</i></div>", unsafe_allow_html=True)
+            st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             
             motivos_disponibles = pareto_df['TIPO_PARADA'].tolist()
-            motivo_seleccionado = st.selectbox("🎯 Filtrar Motivo Específico:", motivos_disponibles)
+            motivo_seleccionado = st.selectbox("🎯 Selecciona Motivo para auditar detalles:", motivos_disponibles)
             
             if motivo_seleccionado:
-                # Buscamos de forma flexible la columna de detalle en tu CSV (Ej. 'Sub_Motivo_Detalle')
+                # Buscamos de forma flexible la columna de detalle en tu CSV
                 col_sub = next((c for c in df_imp_filtrado.columns if 'SUB' in str(c).upper() or 'DETALLE' in str(c).upper()), None)
                 
                 if col_sub:
@@ -617,38 +616,38 @@ with col_m5:
                         df_sub = df_foco.groupby(col_sub)['HH_IMPRODUCTIVAS'].sum().reset_index()
                         df_sub = df_sub.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
                         
-                        if not df_sub.empty:
-                            # 3. Aislamos el defecto crítico
-                            defecto_critico = df_sub.iloc[0][col_sub]
-                            horas_criticas = df_sub.iloc[0]['HH_IMPRODUCTIVAS']
-                            
-                            st.error(f"🚨 **Causa Raíz Principal Detectada:** '{defecto_critico}' ({horas_criticas:.1f} HH perdidas en el trimestre)")
-                            
-                            # 4. Motor de Reglas para el Plan de Acción
-                            st.markdown("#### 📋 Plan de Acción Sugerido")
-                            
-                            # Diccionario inteligente de soluciones según la palabra clave del sub-motivo
-                            planes_accion = {
-                                "goteo": "1. Verificar viscosidad de la mezcla de pintura en laboratorio.\n2. Calibrar presión de boquillas de aplicación.\n3. Auditar velocidad de avance de la línea.",
-                                "piel de naranja": "1. Revisar temperatura y humedad en cabina de secado.\n2. Controlar la distancia de aplicación de pistola.\n3. Verificar compatibilidad del diluyente usado.",
-                                "adherencia": "1. Auditar etapa previa en túnel de pretratamiento (niveles de fosfatizado).\n2. Comprobar secado y limpieza total de la pieza antes de ingresar a pintura.",
-                                "suciedad": "1. Revisar estado de filtros de inyección de aire.\n2. Verificar hermeticidad de compuertas en la cabina.\n3. Ejecutar limpieza profunda de rejillas.",
-                                "espesor": "1. Recalibrar el caudalímetro de pintura.\n2. Ajustar velocidad de pasada de los operarios/robots."
+                        # Tomamos el TOP 10 para no abrumar la tabla
+                        df_top = df_sub.head(10).copy()
+                        
+                        # Agregamos columnas vacías para usar como "Mesa de Trabajo"
+                        df_top["Propuesta_Sub_Motivo_Estandar"] = ""
+                        df_top["Plan_de_Accion_Acordado"] = ""
+                        df_top["Estado"] = "Pendiente"
+                        
+                        st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Usa esta tabla interactiva en tus reuniones para analizar los textos reales, proponer la estandarización y definir acciones. (Puedes hacer doble clic en las celdas vacías para escribir).</i></div>", unsafe_allow_html=True)
+                        
+                        # 3. Desplegamos la tabla interactiva
+                        df_editado = st.data_editor(
+                            df_top.rename(columns={
+                                col_sub: 'Detalle Real Cargado', 
+                                'HH_IMPRODUCTIVAS': 'HH Perdidas'
+                            }),
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "HH Perdidas": st.column_config.NumberColumn(format="%.1f ⏱️"),
+                                "Estado": st.column_config.SelectboxColumn(
+                                    "Estado de la Acción",
+                                    options=["Pendiente", "En Análisis", "Estandarizado / Resuelto"],
+                                    required=True
+                                )
                             }
-                            
-                            plan_mostrar = "Reunir al equipo técnico (Calidad, Mantenimiento y Producción) para realizar un análisis de '5 Porqués' sobre este defecto específico y fijar responsabilidades."
-                            
-                            # Buscamos si el defecto crítico coincide con nuestras reglas
-                            for clave, plan in planes_accion.items():
-                                if clave in str(defecto_critico).lower():
-                                    plan_mostrar = plan
-                                    break
-                                    
-                            st.info(plan_mostrar)
-                        else:
-                            st.info("No hay datos de sub-motivos suficientes para este filtro.")
+                        )
+                        
+                    else:
+                        st.info(f"No hay registros de sub-motivos para '{motivo_seleccionado}' en este trimestre.")
                 else:
-                    st.warning("⚠️ No se encontró la columna de sub-motivos (Columna F) en la base cargada.")
+                    st.warning("⚠️ No se encontró la columna de sub-motivos en la base cargada.")
                 
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
