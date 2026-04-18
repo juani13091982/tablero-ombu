@@ -95,19 +95,41 @@ def clean_match(text):
     return re.sub(r'[^A-Z0-9]', '', t)
 
 def robust_match(val_sel, val_imp):
-    """Motor Fuzzy Blindado: Evita contaminación cruzada de puestos."""
-    if pd.isna(val_imp): return False
-    c1 = clean_match(val_sel)
-    c2 = clean_match(val_imp)
+    """Motor Fuzzy Blindado e Inteligente: Encuentra raíces de palabras sin mezclar puestos."""
+    if pd.isna(val_imp) or pd.isna(val_sel): return False
+    
+    s1 = str(val_sel).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
+    s2 = str(val_imp).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
+    
+    c1 = re.sub(r'[^A-Z0-9]', '', s1)
+    c2 = re.sub(r'[^A-Z0-9]', '', s2)
+    
     if not c1 or not c2: return False
     
+    # 1. Coincidencia exacta de texto continuo (salva cosas como "BOX 1" vs "SECTOR BOX 1")
     if c1 in c2 or c2 in c1: return True
     
-    n1 = set(re.findall(r'\d{3,}', str(val_sel)))
-    n2 = set(re.findall(r'\d{3,}', str(val_imp)))
+    # 2. Coincidencia numérica ESTRICTA (3+ dígitos) para códigos de estación
+    n1 = set(re.findall(r'\d{3,}', s1))
+    n2 = set(re.findall(r'\d{3,}', s2))
     if n1 and n2 and n1.intersection(n2):
         return True
         
+    # 3. Búsqueda inteligente por raíces de palabras (>3 letras)
+    # Esto salva casos como "475-CARROZADO -PUNT./SOLD." vs "SECTOR CARROZADO BATEAS"
+    w1 = set(re.findall(r'[A-Z]{4,}', s1))
+    w2 = set(re.findall(r'[A-Z]{4,}', s2))
+    
+    exclusion_list = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA', 'TOLVAS', 'BATEAS', 'REMOLQUES', 'MAQUINA'}
+    
+    valid_w1 = w1 - exclusion_list
+    valid_w2 = w2 - exclusion_list
+    
+    for word1 in valid_w1:
+        for word2 in valid_w2:
+            if word1 in word2 or word2 in word1:
+                return True
+                
     return False
 
 # ==========================================
@@ -608,7 +630,7 @@ with col_m5:
             st.pyplot(fig5)
             
             # ==========================================
-            # MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
+            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
             # ==========================================
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
@@ -661,144 +683,4 @@ with col_m5:
                             'HH_IMPRODUCTIVAS': [total_hh_foco],
                             '% sobre Selección': [100.0]
                         })
-                        df_resumen = pd.concat([df_resumen, fila_total], ignore_index=True)
-                        
-                        st.markdown(f"<div style='font-size: 15px; font-weight: bold; color: #1E3A8A; margin-top: 15px; margin-bottom: 5px;'>📊 Resumen de Impacto: {motivo_seleccionado}</div>", unsafe_allow_html=True)
-                        
-                        st.dataframe(
-                            df_resumen.rename(columns={
-                                'Propuesta_Sub_Motivo_Estandar': 'Categoría Estandarizada', 
-                                'HH_IMPRODUCTIVAS': 'Subtotal HH'
-                            }),
-                            use_container_width=True,
-                            hide_index=True,
-                            column_config={
-                                "Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"),
-                                "% sobre Selección": st.column_config.NumberColumn(format="%.1f %%")
-                            }
-                        )
-                        st.markdown("<hr style='margin-top:5px; margin-bottom:15px'>", unsafe_allow_html=True)
-                        # ---------------------------------------------
-
-                        df_top["Plan_de_Accion_Acordado"] = ""
-                        df_top["Responsable"] = ""
-                        df_top["Estado"] = "Pendiente"
-                        
-                        st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-bottom:10px;'><i>Auditoría de textos reales. Asigna la estandarización faltante y define los planes de acción.</i></div>", unsafe_allow_html=True)
-                        
-                        df_editado = st.data_editor(
-                            df_top.rename(columns={
-                                col_sub: 'Detalle Real Cargado en Planta', 
-                                'HH_IMPRODUCTIVAS': 'HH Perdidas'
-                            }),
-                            use_container_width=True,
-                            hide_index=True,
-                            column_config={
-                                "HH Perdidas": st.column_config.NumberColumn(format="%.1f ⏱️"),
-                                "Estado": st.column_config.SelectboxColumn(
-                                    "Estado de la Acción",
-                                    options=["Pendiente", "En Análisis", "Estandarizado / Resuelto"],
-                                    required=True
-                                )
-                            }
-                        )
-                    else:
-                        st.info(f"No hay registros de sub-motivos para la selección en este trimestre.")
-                else:
-                    st.warning("⚠️ No se encontró la columna de sub-motivos en la base cargada.")
-        else:
-            st.warning("No hay fechas válidas en la base de horas improductivas.")
-    else:
-        st.success("✅ ¡Excelente! No se registraron Horas Improductivas para los filtros aplicados en este período.")
-
-with col_m6:
-    st.header("6. EVOLUCIÓN INCIDENCIA %")
-    st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
-
-    if not df_ef_filtrado.empty:
-        df_ef_filtrado['Fecha_Cruce'] = pd.to_datetime(df_ef_filtrado['Fecha']).dt.strftime('%Y-%m')
-        disp_por_mes = df_ef_filtrado.groupby('Fecha_Cruce', as_index=False)['HH_Disponibles'].sum()
-
-        if not df_imp_filtrado.empty:
-            df_imp_filtrado['Fecha_Cruce'] = pd.to_datetime(df_imp_filtrado['FECHA']).dt.strftime('%Y-%m')
-            pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='Fecha_Cruce', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
-            df_m6 = pd.merge(disp_por_mes, pivot_imp, on='Fecha_Cruce', how='left').fillna(0)
-            columnas_paradas = [c for c in df_m6.columns if c not in ['HH_Disponibles', 'Fecha_Cruce']]
-        else:
-            df_m6 = disp_por_mes.copy()
-            columnas_paradas = []
-            
-        if columnas_paradas:
-            df_m6['Total_Imp'] = df_m6[columnas_paradas].sum(axis=1)
-        else:
-            df_m6['Total_Imp'] = 0
-            
-        df_m6['Incidencia_%'] = (df_m6['Total_Imp'] / df_m6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        df_m6['FECHA_REAL'] = pd.to_datetime(df_m6['Fecha_Cruce'] + '-01')
-        df_m6.set_index('FECHA_REAL', inplace=True)
-        df_m6 = df_m6.sort_index()
-
-        fechas_str = [d.strftime('%b-%y') for d in df_m6.index]
-        x_m6 = np.arange(len(df_m6))
-        
-        fig6, ax1 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92) 
-        fig6.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
-
-        ax2 = ax1.twinx()
-        
-        bottoms = np.zeros(len(df_m6))
-        colors = plt.cm.tab20.colors
-        
-        if columnas_paradas:
-            for idx, col in enumerate(columnas_paradas):
-                values = df_m6[col].values
-                container = ax1.bar(x_m6, values, bottom=bottoms, label=col, color=colors[idx % len(colors)], edgecolor='white', zorder=2)
-                labels_seg = [f'{int(val)}' if tot > 0 and (val/tot) > 0.05 else '' for val, tot in zip(values, df_m6['Total_Imp'])]
-                ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
-                bottoms += values
-        else:
-            # Gráfico vacío pero visualmente correcto para 0 improductivas
-            ax1.bar(x_m6, np.zeros(len(df_m6)), color='white')
-
-        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.2)
-        
-        for i in range(len(x_m6)):
-            imp_val = df_m6['Total_Imp'].iloc[i]
-            disp_val = df_m6['HH_Disponibles'].iloc[i]
-            offset_y_imp = imp_val + (ax1.get_ylim()[1] * 0.05)
-            ax1.annotate(f"Imp: {int(imp_val)}\nDisp: {int(disp_val)}", 
-                         (i, offset_y_imp), ha='center', bbox=bbox_yellow, fontsize=13, fontweight='bold', zorder=10)
-
-        ax2.plot(x_m6, df_m6['Incidencia_%'], color='red', marker='o', markersize=9, linewidth=4, path_effects=outline_white, label='% Incidencia', zorder=5)
-        
-        ax2.axhline(y=15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
-        ax2.text(x_m6[0], 15 + (ax2.get_ylim()[1]*0.01), 'META = 15%', color='white', bbox=bbox_green, fontsize=14, fontweight='bold', ha='center', va='bottom', zorder=10)
-
-        max_incidencia = df_m6['Incidencia_%'].max()
-        ax2.set_ylim(0, max(40, max_incidencia * 1.8))
-        ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
-        
-        if len(x_m6) > 1:
-            z6 = np.polyfit(x_m6, df_m6['Incidencia_%'], 1)
-            p6 = np.poly1d(z6)
-            ax2.plot(x_m6, p6(x_m6), color='darkred', linestyle='--', linewidth=3, zorder=1)
-
-        offset_y2_m6 = ax2.get_ylim()[1] * 0.05
-        for i, val in enumerate(df_m6['Incidencia_%']):
-            ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=15, fontweight='bold', path_effects=outline_white, zorder=10)
-
-        ax1.text(0.98, 0.95, f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
-                 transform=ax1.transAxes, bbox=bbox_gray, color='white', ha='right', va='top', fontsize=16, fontweight='bold', zorder=10)
-
-        ax1.set_xticks(x_m6)
-        ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
-        
-        if columnas_paradas:
-            ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
-        else:
-            ax2.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), frameon=True, fontsize=10)
-        
-        st.pyplot(fig6)
-    else:
-        st.warning("⚠️ No hay datos evaluables de eficiencias para esta selección.")
+                        df_resumen = pd
