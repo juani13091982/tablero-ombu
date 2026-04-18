@@ -81,7 +81,6 @@ caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 # 4. MOTOR INTELIGENTE Y TENDENCIAS (ESCALAS DINÁMICAS AJUSTADAS)
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.4):
-    """Multiplicador reducido a 1.4 para maximizar el uso del espacio en blanco"""
     if vmax > 0: ax.set_ylim(0, vmax * factor)
     else: ax.set_ylim(0, 100)
 
@@ -232,7 +231,7 @@ with col1:
         bar_s = ax1.bar(x_idx - 0.17, ag1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bar_d = ax1.bar(x_idx + 0.17, ag1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
-        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.4) # ESCALA DINÁMICA AJUSTADA
+        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.4) 
         ax1.bar_label(bar_s, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax1.bar_label(bar_d, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax1, len(x_idx))
@@ -247,7 +246,7 @@ with col1:
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax1_line.text(x_idx[0], 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
         
-        ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3)) # ESCALA LÍNEA AJUSTADA
+        ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3)) 
         ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         for i, val in enumerate(ag1['Ef_Real']):
@@ -274,7 +273,7 @@ with col2:
         b_s2 = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         b_p2 = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
-        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.4) # ESCALA BARRAS
+        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.4) 
         ax2.bar_label(b_s2, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(b_p2, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
@@ -285,7 +284,7 @@ with col2:
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax2_line.text(x_idx[0], 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
         
-        ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3)) # ESCALA LÍNEA
+        ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3)) 
         ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         for i, val in enumerate(ag2['Ef_Prod']):
@@ -325,7 +324,7 @@ with col3:
         
         ax3.plot(x_idx, ag3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_b, label='HH DISPONIBLES', zorder=5)
         
-        set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.4) # ESCALA AJUSTADA
+        set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.4) 
         dibujar_meses(ax3, len(x_idx))
 
         for i in range(len(x_idx)):
@@ -354,15 +353,17 @@ with col4:
         bar_imp = ax4.bar(x_idx, ag4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax4.bar_label(bar_imp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4)
         
-        set_escala_y(ax4, ag4['HH_Improductivas'].max(), 1.4) # ESCALA BARRAS
+        set_escala_y(ax4, ag4['HH_Improductivas'].max(), 1.4) 
         ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5)
         add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
         
-        ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)) # ESCALA LÍNEA
+        ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)) 
         ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
 
+        # AGREGADO: HH IMP TOTALES EN EL CARTEL
         tot_pesos = ag4['Costo_Improd._$'].sum()
-        ax4.text(0.5, 0.90, f"COSTO TOTAL ACUMULADO ARS\n${tot_pesos:,.0f}", transform=ax4.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=caja_o, weight='bold', zorder=10)
+        tot_hh_imp = ag4['HH_Improductivas'].sum()
+        ax4.text(0.5, 0.90, f"COSTO TOTAL ACUMULADO ARS\n${tot_pesos:,.0f}\nTOTAL: {tot_hh_imp:,.0f} HH IMP", transform=ax4.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=caja_o, weight='bold', zorder=10)
 
         for i, val in enumerate(ag4['Costo_Improd._$']):
             ax4_line.annotate(f"${val:,.0f}", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
@@ -395,12 +396,12 @@ with col5:
 
         x_idx = np.arange(len(ag5))
         bar_p = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
-        set_escala_y(ax5, ag5['Prom_M'].max(), 1.4) # ESCALA BARRAS
+        set_escala_y(ax5, ag5['Prom_M'].max(), 2.8)
         ax5.bar_label(bar_p, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
         
         ax5_line.plot(x_idx, ag5['Pct_Acu'], color='red', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, zorder=5)
         ax5_line.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1)
-        ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) # CURVA AL 100%
+        ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) 
 
         lbls = [textwrap.fill(str(t), 12) for t in ag5['TIPO_PARADA']]
         ax5.set_xticks(x_idx); ax5.set_xticklabels(lbls, rotation=90, fontsize=12, fontweight='bold')
@@ -444,15 +445,26 @@ with col6:
         fig6.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
 
         x_idx = np.arange(len(df6))
+        
+        # AGREGADO: ETIQUETAS DE DATOS EN BARRAS APILADAS Y LEYENDA PEQUEÑA
         if list_c:
             base_st = np.zeros(len(df6)); paleta = plt.cm.tab20.colors
             for i, c_nom in enumerate(list_c):
                 vals = df6[c_nom].values
-                ax6.bar(x_idx, vals, bottom=base_st, label=c_nom, color=paleta[i % 20], edgecolor='white', zorder=2)
+                bar_stack = ax6.bar(x_idx, vals, bottom=base_st, label=textwrap.fill(c_nom, 15), color=paleta[i % 20], edgecolor='white', zorder=2)
+                
+                # Inyección de etiquetas pequeñas en las barras
+                lbls_stack = [f"{int(v)}" if v > 0 else "" for v in vals]
+                ax6.bar_label(bar_stack, labels=lbls_stack, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
+                
                 base_st += vals
-        else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
+                
+            # Inyección de leyenda pequeña superior
+            ax6.legend(loc='upper left', fontsize=8, ncol=3, framealpha=0.7)
+        else:
+            ax6.bar(x_idx, np.zeros(len(df6)), color='white')
 
-        set_escala_y(ax6, df6['Suma_I'].max(), 1.8) # BARRAS MAS ABAJO PARA NO PISAR LINEA
+        set_escala_y(ax6, df6['Suma_I'].max(), 1.8) 
         
         for i in range(len(x_idx)):
             v_i = df6['Suma_I'].iloc[i]; v_d = df6['HH_Disponibles'].iloc[i]
@@ -469,7 +481,7 @@ with col6:
             ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
 
         ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold')
-        ax6_line.set_ylim(0, max(25, df6['Inc_%'].max() * 1.3)) # LINEA FLOTANDO ARRIBA
-        ax6_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
+        ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5))
+        ax6_line.legend(loc='upper right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig6)
     else: st.warning("⚠️ Sin datos históricos de eficiencia para este sector.")
