@@ -608,7 +608,7 @@ with col_m5:
             st.pyplot(fig5)
             
             # ==========================================
-            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
+            # MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
             # ==========================================
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
@@ -706,33 +706,37 @@ with col_m5:
                         st.info(f"No hay registros de sub-motivos para la selección en este trimestre.")
                 else:
                     st.warning("⚠️ No se encontró la columna de sub-motivos en la base cargada.")
-                
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
     else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
+        st.success("✅ ¡Excelente! No se registraron Horas Improductivas para los filtros aplicados en este período.")
 
 with col_m6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
 
-    if not df_imp_filtrado.empty:
-        # BLINDAJE EXTREMO ANTI-ERRORES DE FECHA
-        df_imp_filtrado['Fecha_Cruce'] = pd.to_datetime(df_imp_filtrado['FECHA']).dt.strftime('%Y-%m')
+    if not df_ef_filtrado.empty:
         df_ef_filtrado['Fecha_Cruce'] = pd.to_datetime(df_ef_filtrado['Fecha']).dt.strftime('%Y-%m')
-
-        pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='Fecha_Cruce', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
         disp_por_mes = df_ef_filtrado.groupby('Fecha_Cruce', as_index=False)['HH_Disponibles'].sum()
-        
-        df_m6 = pd.merge(pivot_imp, disp_por_mes, on='Fecha_Cruce', how='left').fillna(0)
-        
+
+        if not df_imp_filtrado.empty:
+            df_imp_filtrado['Fecha_Cruce'] = pd.to_datetime(df_imp_filtrado['FECHA']).dt.strftime('%Y-%m')
+            pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='Fecha_Cruce', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
+            df_m6 = pd.merge(disp_por_mes, pivot_imp, on='Fecha_Cruce', how='left').fillna(0)
+            columnas_paradas = [c for c in df_m6.columns if c not in ['HH_Disponibles', 'Fecha_Cruce']]
+        else:
+            df_m6 = disp_por_mes.copy()
+            columnas_paradas = []
+            
+        if columnas_paradas:
+            df_m6['Total_Imp'] = df_m6[columnas_paradas].sum(axis=1)
+        else:
+            df_m6['Total_Imp'] = 0
+            
+        df_m6['Incidencia_%'] = (df_m6['Total_Imp'] / df_m6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
         df_m6['FECHA_REAL'] = pd.to_datetime(df_m6['Fecha_Cruce'] + '-01')
         df_m6.set_index('FECHA_REAL', inplace=True)
         df_m6 = df_m6.sort_index()
-
-        columnas_paradas = [c for c in df_m6.columns if c not in ['HH_Disponibles', 'Fecha_Cruce']]
-        df_m6['Total_Imp'] = df_m6[columnas_paradas].sum(axis=1)
-        df_m6['Incidencia_%'] = (df_m6['Total_Imp'] / df_m6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
 
         fechas_str = [d.strftime('%b-%y') for d in df_m6.index]
         x_m6 = np.arange(len(df_m6))
@@ -746,23 +750,25 @@ with col_m6:
         bottoms = np.zeros(len(df_m6))
         colors = plt.cm.tab20.colors
         
-        for idx, col in enumerate(columnas_paradas):
-            values = df_m6[col].values
-            container = ax1.bar(x_m6, values, bottom=bottoms, label=col, color=colors[idx % len(colors)], edgecolor='white', zorder=2)
-            
-            labels_seg = [f'{int(val)}' if tot > 0 and (val/tot) > 0.05 else '' for val, tot in zip(values, df_m6['Total_Imp'])]
-            ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
-            bottoms += values
+        if columnas_paradas:
+            for idx, col in enumerate(columnas_paradas):
+                values = df_m6[col].values
+                container = ax1.bar(x_m6, values, bottom=bottoms, label=col, color=colors[idx % len(colors)], edgecolor='white', zorder=2)
+                labels_seg = [f'{int(val)}' if tot > 0 and (val/tot) > 0.05 else '' for val, tot in zip(values, df_m6['Total_Imp'])]
+                ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
+                bottoms += values
+        else:
+            # Gráfico vacío pero visualmente correcto para 0 improductivas
+            ax1.bar(x_m6, np.zeros(len(df_m6)), color='white')
 
         aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.2)
         
         for i in range(len(x_m6)):
             imp_val = df_m6['Total_Imp'].iloc[i]
             disp_val = df_m6['HH_Disponibles'].iloc[i]
-            if imp_val > 0:
-                offset_y_imp = imp_val + (ax1.get_ylim()[1] * 0.05)
-                ax1.annotate(f"Imp: {int(imp_val)}\nDisp: {int(disp_val)}", 
-                             (i, offset_y_imp), ha='center', bbox=bbox_yellow, fontsize=13, fontweight='bold', zorder=10)
+            offset_y_imp = imp_val + (ax1.get_ylim()[1] * 0.05)
+            ax1.annotate(f"Imp: {int(imp_val)}\nDisp: {int(disp_val)}", 
+                         (i, offset_y_imp), ha='center', bbox=bbox_yellow, fontsize=13, fontweight='bold', zorder=10)
 
         ax2.plot(x_m6, df_m6['Incidencia_%'], color='red', marker='o', markersize=9, linewidth=4, path_effects=outline_white, label='% Incidencia', zorder=5)
         
@@ -788,9 +794,11 @@ with col_m6:
         ax1.set_xticks(x_m6)
         ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
         
-        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
+        if columnas_paradas:
+            ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
+        else:
+            ax2.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), frameon=True, fontsize=10)
         
         st.pyplot(fig6)
-
     else:
-        st.warning("⚠️ No hay datos evaluables.")
+        st.warning("⚠️ No hay datos evaluables de eficiencias para esta selección.")
