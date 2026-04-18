@@ -602,6 +602,7 @@ with col_m5:
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
             
+            # REQUERIMIENTO 1: Se agregó "Todos" como primera opción de la lista
             motivos_disponibles = ["Todos"] + pareto_df['TIPO_PARADA'].tolist()
             motivo_seleccionado = st.selectbox("🎯 Filtrar Motivo Específico:", motivos_disponibles)
             
@@ -623,7 +624,7 @@ with col_m5:
                         # Tomamos el 100% para auditar todo y cuadrar con el Pareto
                         df_top = df_sub.copy()
                         
-                        # Motor de Autocompletado Intuitivo
+                        # REQUERIMIENTO 2: Motor de Autocompletado Intuitivo
                         def clasificar_sub_motivo(texto):
                             texto = str(texto).upper()
                             if any(kw in texto for kw in ['RETOQUE', 'PINTURA', 'GOTEO', 'CHORREADURA', 'ADHERENCIA']):
@@ -680,25 +681,24 @@ with col_m6:
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
 
     if not df_imp_filtrado.empty:
-        # BLINDAJE EXTREMO: Usamos merge en lugar de join para evitar error de índices duplicados (ValueError: cannot reindex)
-        pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='FECHA', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
-        disp_por_mes = df_ef_filtrado.groupby('Fecha', as_index=False)['HH_Disponibles'].sum()
+        # BLINDAJE EXTREMO ANTI-ERRORES: Convertimos las fechas a texto plano para el cruce. 
+        # Esto evita el ValueError provocado por tipos de datos datetime incompatibles.
+        df_imp_filtrado['Fecha_Cruce'] = pd.to_datetime(df_imp_filtrado['FECHA']).dt.strftime('%Y-%m')
+        df_ef_filtrado['Fecha_Cruce'] = pd.to_datetime(df_ef_filtrado['Fecha']).dt.strftime('%Y-%m')
+
+        pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='Fecha_Cruce', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
+        disp_por_mes = df_ef_filtrado.groupby('Fecha_Cruce', as_index=False)['HH_Disponibles'].sum()
         
-        # Renombramos la columna para que el cruce sea exacto
-        disp_por_mes.rename(columns={'Fecha': 'FECHA'}, inplace=True)
+        df_m6 = pd.merge(pivot_imp, disp_por_mes, on='Fecha_Cruce', how='left').fillna(0)
         
-        # Cruzamos las bases de forma segura
-        df_m6 = pd.merge(pivot_imp, disp_por_mes, on='FECHA', how='left').fillna(0)
-        
-        # Volvemos a colocar FECHA como índice para graficar
-        df_m6.set_index('FECHA', inplace=True)
-        
-        # Calculamos totales ignorando la columna de disponibilidad
-        columnas_paradas = [c for c in df_m6.columns if c != 'HH_Disponibles']
-        df_m6['Total_Imp'] = df_m6[columnas_paradas].sum(axis=1)
-        
-        df_m6['Incidencia_%'] = (df_m6['Total_Imp'] / df_m6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        # Devolvemos el formato a fecha para poder graficar correctamente en el eje X
+        df_m6['FECHA_REAL'] = pd.to_datetime(df_m6['Fecha_Cruce'] + '-01')
+        df_m6.set_index('FECHA_REAL', inplace=True)
         df_m6 = df_m6.sort_index()
+
+        columnas_paradas = [c for c in df_m6.columns if c not in ['HH_Disponibles', 'Fecha_Cruce']]
+        df_m6['Total_Imp'] = df_m6[columnas_paradas].sum(axis=1)
+        df_m6['Incidencia_%'] = (df_m6['Total_Imp'] / df_m6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
 
         fechas_str = [d.strftime('%b-%y') for d in df_m6.index]
         x_m6 = np.arange(len(df_m6))
@@ -712,7 +712,6 @@ with col_m6:
         bottoms = np.zeros(len(df_m6))
         colors = plt.cm.tab20.colors
         
-        # Usamos la lista segura de columnas de paradas para graficar
         for idx, col in enumerate(columnas_paradas):
             values = df_m6[col].values
             container = ax1.bar(x_m6, values, bottom=bottoms, label=col, color=colors[idx % len(colors)], edgecolor='white', zorder=2)
