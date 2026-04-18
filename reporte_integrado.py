@@ -607,10 +607,6 @@ with col_m5:
 
             st.pyplot(fig5)
             
-            # Etiqueta de aviso si operó el fallback
-            if fallback_puesto_activo:
-                st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
-            
             # ==========================================
             # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
             # ==========================================
@@ -717,7 +713,7 @@ with col_m5:
         st.warning("⚠️ No hay datos evaluables para la selección actual.")
 
 with col_m6:
-    st.header("6. EVOL সিরিজ INCIDENCIA %")
+    st.header("6. EVOLUCIÓN INCIDENCIA %")
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
 
     if not df_imp_filtrado.empty:
