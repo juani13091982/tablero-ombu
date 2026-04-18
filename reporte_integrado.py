@@ -595,6 +595,7 @@ with col_m5:
                 ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
                              ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
 
+            # CARTELES FIJADOS EN EL LADO IZQUIERDO (Cero solapamiento)
             suma_promedio = pareto_df['Promedio_Mensual'].sum()
             ax1.text(0.02, 0.96, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
                      transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='left', va='top', zorder=10)
@@ -606,8 +607,12 @@ with col_m5:
 
             st.pyplot(fig5)
             
+            # Etiqueta de aviso si operó el fallback
+            if fallback_puesto_activo:
+                st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
+            
             # ==========================================
-            # NUEVO: MESA DE TRABAJO INTERACTIVA (CON TABLA DE RESUMEN)
+            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
             # ==========================================
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
@@ -643,17 +648,15 @@ with col_m5:
                                 return "Retraso Logístico / Abastecimiento"
                             if any(kw in texto for kw in ['ROTURA', 'MANTENIMIENTO', 'ELÉCTRICA', 'MECÁNICA', 'MÁQUINA']):
                                 return "Falla de Equipo / Rotura"
-                            return "" 
+                            return "Otros / Requiere Análisis" # <-- CORRECCIÓN PROFESIONAL AQUÍ
 
                         df_top["Propuesta_Sub_Motivo_Estandar"] = df_top[col_sub].apply(clasificar_sub_motivo)
                         
-                        # --- NUEVO: TABLA DE RESUMEN Y PORCENTAJES ---
+                        # --- TABLA DE RESUMEN Y PORCENTAJES ---
                         total_hh_foco = df_top['HH_IMPRODUCTIVAS'].sum()
                         df_resumen = df_top.groupby('Propuesta_Sub_Motivo_Estandar')['HH_IMPRODUCTIVAS'].sum().reset_index()
                         df_resumen = df_resumen.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
                         df_resumen['% sobre Selección'] = (df_resumen['HH_IMPRODUCTIVAS'] / total_hh_foco) * 100
-                        
-                        df_resumen['Propuesta_Sub_Motivo_Estandar'] = df_resumen['Propuesta_Sub_Motivo_Estandar'].replace("", "⚠️ Sin estandarizar (Texto libre)")
                         
                         st.markdown(f"<div style='font-size: 15px; font-weight: bold; color: #1E3A8A; margin-top: 15px; margin-bottom: 5px;'>📊 Resumen de Impacto: {motivo_seleccionado}</div>", unsafe_allow_html=True)
                         
@@ -782,5 +785,6 @@ with col_m6:
         ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
         
         st.pyplot(fig6)
+
     else:
         st.warning("⚠️ No hay datos evaluables.")
