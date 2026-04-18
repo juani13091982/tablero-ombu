@@ -55,11 +55,18 @@ if not st.session_state['autenticado']:
     st.stop()
 
 # =========================================================================
-# 3. ESTILOS VISUALES Y FILTROS STICKY (CSS)
+# 3. ESTILOS VISUALES Y ESCUDO CSS (ANTI-GITHUB)
 # =========================================================================
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden !important;} header {visibility: hidden !important;} footer {visibility: hidden !important;}
+    /* ESCUDO VISUAL TOTAL: Oculta cabecera, menú, GitHub, Fork y Toolbar de Streamlit Cloud */
+    #MainMenu, header, footer {visibility: hidden !important; display: none !important;} 
+    [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
+    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
+    .viewerBadge_container {visibility: hidden !important; display: none !important;}
+    .stAppToolbar {visibility: hidden !important; display: none !important;}
+    
+    /* Panel de filtros fijo (Sticky) */
     div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
         position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
         background-color: #0E1117 !important; z-index: 99999 !important;
@@ -146,7 +153,6 @@ try:
         cfec = next((c for c in df_im.columns if 'FECHA' in c), None)
         if cfec: df_im.rename(columns={cfec: 'FECHA'}, inplace=True)
 
-    # Identificación automática de la columna DETALLE
     if 'DETALLE' not in df_im.columns:
         cdet = next((c for c in df_im.columns if 'DETALLE' in c or 'OBSERVACION' in c or 'DESCRIPCION' in c), None)
         if cdet: df_im.rename(columns={cdet: 'DETALLE'}, inplace=True)
@@ -520,10 +526,9 @@ if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
             }
         )
         
-        # Botón para descargar solo la tabla de detalles filtrada
         csv_detalles = agrup_detalles.to_csv(index=False).encode('utf-8')
         st.download_button(label="📥 Descargar Detalle Operativo (CSV)", data=csv_detalles, file_name="Detalles_Improductividad.csv", mime="text/csv", use_container_width=True)
     else:
         st.info("No hay registros detallados para el motivo seleccionado en este periodo.")
 else:
-    st.info("La base de datos de Improductivas no posee la columna 'Detalle', o no hay horas improductivas reportadas con la configuración de filtros actual.")
+    st.info("La base de datos de Improductivas no posee la columna 'Detalle', o no hay horas improductivas reportadas con la configuración actual.")
