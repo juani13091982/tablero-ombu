@@ -27,7 +27,6 @@ def mostrar_login():
     with c2:
         st.markdown("<div style='background-color:#1E3A8A; padding:5px; border-radius:10px 10px 0px 0px;'></div>", unsafe_allow_html=True)
         
-        # Logo centrado
         l1, l2, l3 = st.columns([1, 1, 1])
         with l2:
             try: st.image("LOGO OMBÚ.jpg", width=160)
@@ -80,7 +79,7 @@ caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
 caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 4. MOTOR INTELIGENTE DE CRUCE (MOTOR FUZZY)
+# 4. MOTOR INTELIGENTE DE CRUCE (MOTOR FUZZY ESTRICTO)
 # =========================================================================
 def set_escala_y(ax, vmax, factor=2.6):
     if vmax > 0: ax.set_ylim(0, vmax * factor)
@@ -91,6 +90,7 @@ def dibujar_meses(ax, n_meses):
         ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def cruce_robusto(sel, excel):
+    """Motor ajustado con issubset para evitar falsos positivos con siglas compartidas (Ej: CRV)"""
     if pd.isna(excel) or pd.isna(sel): return False
     
     s1 = str(sel).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
@@ -101,14 +101,18 @@ def cruce_robusto(sel, excel):
     if not l1 or not l2: return False
     if l1 in l2 or l2 in l1: return True
     
-    n1, n2 = set(re.findall(r'\d{3,}', s1)), set(re.findall(r'\d{3,}', s2))
-    if n1 and n2 and n1.intersection(n2): return True
-        
-    p1, p2 = set(re.findall(r'[A-Z]{3,}', s1)), set(re.findall(r'[A-Z]{3,}', s2))
+    p1 = set(re.findall(r'[A-Z0-9]{3,}', s1))
+    p2 = set(re.findall(r'[A-Z0-9]{3,}', s2))
     excl = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA', 'AREA', 'ÁREA', 'MAQUINA'}
     
-    for palabra in (p1 - excl):
-        if any(palabra in x for x in (p2 - excl)): return True
+    v1 = p1 - excl
+    v2 = p2 - excl
+    
+    if not v1 or not v2: return False
+    
+    # Lógica Estricta: Si una lista de palabras clave está completamente dentro de la otra, es match.
+    if v1.issubset(v2) or v2.issubset(v1): return True
+    
     return False
 
 # =========================================================================
@@ -122,7 +126,7 @@ with h_l:
 
 with h_t:
     st.title("TABLERO INTEGRADO - REPORTE C.G.P.")
-    st.markdown("<p style='margin-top:-15px; font-weight:bold; color:gray;'>Gerencia de Control de Gestión</p>", unsafe_allow_html=True)
+    st.markdown("<p style='margin-top:-15px; font-weight:bold; color:gray;'>GESTIÓN INDUSTRIAL PRODUCTIVA OMBÚ S.A.</p>", unsafe_allow_html=True)
 
 with h_s:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -223,7 +227,6 @@ with col1:
     st.header("1. EFICIENCIA REAL")
     st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     
-    # Lógica Ajustada: Mostrar todo si hay Línea o Puesto seleccionado. Si no, solo salidas.
     df_plot_1 = df_ef_f.copy() if (s_pu or s_li) else df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
     
     if not df_plot_1.empty:
