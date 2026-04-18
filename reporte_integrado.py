@@ -71,7 +71,7 @@ bbox_green = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
 # FUNCIONES AUXILIARES ESTRICTAS
 # ==========================================
 def aplicar_anti_overlap(ax, max_val, multiplier=2.6):
-    """Fuerza un cielo despejado empujando las barras muy abajo (multiplier alto)."""
+    """Fuerza un cielo despejado empujando las barras muy abajo."""
     if max_val > 0:
         ax.set_ylim(0, max_val * multiplier)
     else:
@@ -95,18 +95,22 @@ def clean_match(text):
     return re.sub(r'[^A-Z0-9]', '', t)
 
 def robust_match(val_sel, val_imp):
-    """Motor Fuzzy: Fuerza la coincidencia por código numérico o subcadena limpia."""
+    """Motor Fuzzy Blindado: Evita contaminación cruzada de puestos."""
     if pd.isna(val_imp): return False
     c1 = clean_match(val_sel)
     c2 = clean_match(val_imp)
     if not c1 or not c2: return False
+    
+    # Coincidencia de texto limpio (si uno está contenido en el otro)
     if c1 in c2 or c2 in c1: return True
     
-    # Búsqueda implacable por número de estación (Ej: "473")
-    n1 = set(re.findall(r'\d+', str(val_sel)))
-    n2 = set(re.findall(r'\d+', str(val_imp)))
+    # Coincidencia numérica ESTRICTA: Solo números de 3 o más dígitos (códigos de puesto). 
+    # Esto evita cruzar "BOX 1" con "SOLDADURA 1" por tener el mismo dígito simple.
+    n1 = set(re.findall(r'\d{3,}', str(val_sel)))
+    n2 = set(re.findall(r'\d{3,}', str(val_imp)))
     if n1 and n2 and n1.intersection(n2):
         return True
+        
     return False
 
 # ==========================================
@@ -212,7 +216,7 @@ txt_filtro_puesto = formatear_seleccion(puesto_sel, "Todos")
 texto_filtros_header = f"PLANTA: {txt_filtro_planta} > LÍNEA: {txt_filtro_linea} > PUESTO DE TRABAJO: {txt_filtro_puesto}"
 
 # ==========================================
-# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS Y FALLBACK
+# APLICACIÓN DE FILTROS MATEMÁTICOS ROBUSTOS (CASCADA ESTRICTA)
 # ==========================================
 df_ef_filtrado = df_ef.copy()
 df_imp_filtrado = df_imp.copy()
@@ -240,17 +244,10 @@ if linea_sel and col_linea_imp:
     mask = df_imp_filtrado[col_linea_imp].apply(lambda x: any(robust_match(s, x) for s in linea_sel))
     df_imp_filtrado = df_imp_filtrado[mask]
 
-# === EL BLINDANTE PARA M5 y M6 ===
-fallback_puesto_activo = False
+# FILTRO ESTRICTO DE PUESTO (Eliminado el fallback que causaba contaminación de datos)
 if puesto_sel and col_puesto_imp: 
     mask = df_imp_filtrado[col_puesto_imp].apply(lambda x: any(robust_match(s, x) for s in puesto_sel))
-    temp_df = df_imp_filtrado[mask]
-    
-    # Si al filtrar el puesto la base de Improductivas se vacía (ej: Bateas), rescatamos los datos de la Línea
-    if temp_df.empty and not df_imp_filtrado.empty:
-        fallback_puesto_activo = True
-    else:
-        df_imp_filtrado = temp_df
+    df_imp_filtrado = df_imp_filtrado[mask]
     
 if mes_sel and 'Mes_Filtro' in df_imp_filtrado.columns: 
     df_imp_filtrado = df_imp_filtrado[df_imp_filtrado['Mes_Filtro'].isin(mes_sel)]
@@ -488,278 +485,4 @@ with col_m4:
             'HH_Improductivas': 'sum',
             'Costo_Improd._$': 'sum'
         }).reset_index()
-        agrup_m4['Fecha_str'] = agrup_m4['Fecha'].dt.strftime('%b-%y')
-
-        fig4, ax1 = plt.subplots(figsize=(14, 10))
-        fig4.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
-        fig4.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
-
-        ax2 = ax1.twinx()
-        x_indexes_m4 = np.arange(len(agrup_m4))
-        
-        bars_imp = ax1.bar(x_indexes_m4, agrup_m4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
-        ax1.bar_label(bars_imp, padding=4, color='black', fontweight='bold', fontsize=14, path_effects=outline_white, zorder=4)
-        
-        aplicar_anti_overlap(ax1, agrup_m4['HH_Improductivas'].max(), multiplier=2.6)
-        
-        ax2.plot(x_indexes_m4, agrup_m4['Costo_Improd._$'], color='maroon', marker='s', markersize=10, linewidth=5, path_effects=outline_white, label='COSTO ARS', zorder=5)
-        
-        max_costo = agrup_m4['Costo_Improd._$'].max()
-        ax2.set_ylim(0, max(1000, max_costo * 1.8))
-        
-        ticks_y = ax2.get_yticks()
-        ax2.set_yticklabels([f'${int(x/1000000)}M' for x in ticks_y], fontweight='bold')
-
-        costo_total = agrup_m4['Costo_Improd._$'].sum()
-        hh_imp_total = agrup_m4['HH_Improductivas'].sum()
-        texto_cartel_m4 = f"COSTO TOTAL ACUMULADO ARS\n${costo_total:,.0f}\n(Total: {hh_imp_total:,.0f} HH Imp.)"
-        
-        ax1.text(0.5, 0.90, texto_cartel_m4, 
-                 transform=ax1.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=bbox_yellow, weight='bold', zorder=10)
-
-        offset_y2_m4 = ax2.get_ylim()[1] * 0.05
-        for i, val in enumerate(agrup_m4['Costo_Improd._$']):
-            ax2.annotate(f"${val:,.0f}", (x_indexes_m4[i], val + offset_y2_m4), color='white', bbox=bbox_gray, ha='center', fontsize=14, fontweight='bold', zorder=10)
-
-        ax1.set_xticks(x_indexes_m4)
-        ax1.set_xticklabels(agrup_m4['Fecha_str'], fontsize=14, fontweight='bold')
-        
-        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
-        ax2.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
-        st.pyplot(fig4)
-    else:
-        st.warning("⚠️ No hay datos evaluables para los filtros seleccionados.")
-
-st.markdown("---")
-
-# =========================================================================
-# FILA 3: MÉTRICAS 5 Y 6
-# =========================================================================
-col_m5, col_m6 = st.columns(2)
-
-with col_m5:
-    st.header("5. PARETO DE CAUSAS")
-    st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Distribución 80/20 de los motivos de Improductividad (Último trimestre)</i></div>", unsafe_allow_html=True)
-
-    if not df_imp_filtrado.empty:
-        max_date = df_imp_filtrado['FECHA'].max()
-        if pd.notnull(max_date):
-            trimestre = df_imp_filtrado[df_imp_filtrado['FECHA'] >= (max_date - pd.DateOffset(months=3))]
-            
-            pareto_df = trimestre.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
-            meses_unicos = trimestre['FECHA'].nunique()
-            divisor_promedio = meses_unicos if meses_unicos > 0 else 1
-            
-            pareto_df['Promedio_Mensual'] = pareto_df['HH_IMPRODUCTIVAS'] / divisor_promedio
-            pareto_df = pareto_df.sort_values(by='Promedio_Mensual', ascending=False)
-            pareto_df['%_Acumulado'] = (pareto_df['Promedio_Mensual'].cumsum() / pareto_df['Promedio_Mensual'].sum()) * 100
-
-            fig5, ax1 = plt.subplots(figsize=(14, 10))
-            fig5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92)
-            fig5.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
-
-            ax2 = ax1.twinx()
-            x_pos = np.arange(len(pareto_df))
-            bars_pareto = ax1.bar(x_pos, pareto_df['Promedio_Mensual'], color='maroon', edgecolor='white', zorder=2)
-            
-            aplicar_anti_overlap(ax1, pareto_df['Promedio_Mensual'].max(), multiplier=2.8)
-            ax1.bar_label(bars_pareto, padding=4, color='black', fontweight='bold', fontsize=13, fmt='%.1f', zorder=4)
-            
-            ax2.plot(x_pos, pareto_df['%_Acumulado'], color='red', marker='D', markersize=8, linewidth=4, path_effects=outline_white, zorder=5)
-            ax2.axhline(y=80, color='gray', linestyle='--', linewidth=2, zorder=1)
-            
-            ax2.set_ylim(0, 200)
-            ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
-
-            labels_wrapped = [textwrap.fill(str(l), 12) for l in pareto_df['TIPO_PARADA']]
-            ax1.set_xticks(x_pos)
-            ax1.set_xticklabels(labels_wrapped, rotation=90, fontsize=12, fontweight='bold')
-            
-            offset_y2_m5 = ax2.get_ylim()[1] * 0.02
-            for i, val in enumerate(pareto_df['%_Acumulado']):
-                ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
-                             ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
-
-            # CARTELES FIJADOS EN EL LADO IZQUIERDO (Cero solapamiento)
-            suma_promedio = pareto_df['Promedio_Mensual'].sum()
-            ax1.text(0.02, 0.96, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
-                     transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='left', va='top', zorder=10)
-            
-            top5 = pareto_df.head(5)['TIPO_PARADA'].tolist()
-            top5_str = "TOP 5 Causas:\n" + "\n".join([f"- {c}" for c in top5])
-            ax1.text(0.02, 0.82, top5_str, 
-                     transform=ax1.transAxes, bbox=bbox_yellow, color='black', fontsize=13, fontweight='bold', ha='left', va='top', zorder=10)
-
-            st.pyplot(fig5)
-            
-            # Etiqueta de aviso si operó el fallback
-            if fallback_puesto_activo:
-                st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
-            
-            # ==========================================
-            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
-            # ==========================================
-            st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
-            st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
-            
-            # REQUERIMIENTO 1: Se agregó "Todos" como primera opción de la lista
-            motivos_disponibles = ["Todos"] + pareto_df['TIPO_PARADA'].tolist()
-            motivo_seleccionado = st.selectbox("🎯 Filtrar Motivo Específico:", motivos_disponibles)
-            
-            if motivo_seleccionado:
-                # Buscamos de forma flexible la columna de detalle en tu CSV
-                col_sub = next((c for c in df_imp_filtrado.columns if 'SUB' in str(c).upper() or 'DETALLE' in str(c).upper()), None)
-                
-                if col_sub:
-                    if motivo_seleccionado == "Todos":
-                        df_foco = trimestre.copy()
-                    else:
-                        df_foco = trimestre[trimestre['TIPO_PARADA'] == motivo_seleccionado]
-                    
-                    if not df_foco.empty:
-                        # Generamos el Sub-Pareto
-                        df_sub = df_foco.groupby(col_sub)['HH_IMPRODUCTIVAS'].sum().reset_index()
-                        df_sub = df_sub.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
-                        
-                        # Tomamos el 100% para auditar todo y cuadrar con el Pareto
-                        df_top = df_sub.copy()
-                        
-                        # REQUERIMIENTO 2: Motor de Autocompletado Intuitivo
-                        def clasificar_sub_motivo(texto):
-                            texto = str(texto).upper()
-                            if any(kw in texto for kw in ['RETOQUE', 'PINTURA', 'GOTEO', 'CHORREADURA', 'ADHERENCIA']):
-                                return "Retoque de Pintura"
-                            if any(kw in texto for kw in ['SOLDADURA', 'REPASO', 'PORO', 'FISURA', 'ESCORIA']):
-                                return "Defecto de Soldadura"
-                            if any(kw in texto for kw in ['PLEGADA', 'CONJUNTO', 'DIMENSIÓN', 'MEDIDA', 'AJUSTE', 'FUERA DE ESCUADRA']):
-                                return "Desviación Dimensional / Armado"
-                            if any(kw in texto for kw in ['ESPERANDO', 'FALTA DE MATERIAL', 'ABASTECIMIENTO', 'LOGÍSTICA', 'PUENTE']):
-                                return "Retraso Logístico / Abastecimiento"
-                            if any(kw in texto for kw in ['ROTURA', 'MANTENIMIENTO', 'ELÉCTRICA', 'MECÁNICA', 'MÁQUINA']):
-                                return "Falla de Equipo / Rotura"
-                            return "" 
-
-                        # Aplicamos el motor inteligente a la nueva columna
-                        df_top["Propuesta_Sub_Motivo_Estandar"] = df_top[col_sub].apply(clasificar_sub_motivo)
-                        
-                        # Agregamos las otras columnas vacías
-                        df_top["Plan_de_Accion_Acordado"] = ""
-                        df_top["Responsable"] = ""
-                        df_top["Estado"] = "Pendiente"
-                        
-                        st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-bottom:10px;'><i>Usa esta tabla en tus reuniones para analizar los textos reales, proponer la estandarización y definir acciones. (Doble clic en celdas vacías para escribir).</i></div>", unsafe_allow_html=True)
-                        
-                        # Desplegamos la tabla interactiva
-                        df_editado = st.data_editor(
-                            df_top.rename(columns={
-                                col_sub: 'Detalle Real Cargado en Planta', 
-                                'HH_IMPRODUCTIVAS': 'HH Perdidas'
-                            }),
-                            use_container_width=True,
-                            hide_index=True,
-                            column_config={
-                                "HH Perdidas": st.column_config.NumberColumn(format="%.1f ⏱️"),
-                                "Estado": st.column_config.SelectboxColumn(
-                                    "Estado de la Acción",
-                                    options=["Pendiente", "En Análisis", "Estandarizado / Resuelto"],
-                                    required=True
-                                )
-                            }
-                        )
-                    else:
-                        st.info(f"No hay registros de sub-motivos para la selección en este trimestre.")
-                else:
-                    st.warning("⚠️ No se encontró la columna de sub-motivos en la base cargada.")
-                
-        else:
-            st.warning("No hay fechas válidas en la base de horas improductivas.")
-    else:
-        st.warning("⚠️ No hay datos evaluables para la selección actual.")
-
-with col_m6:
-    st.header("6. EVOLUCIÓN INCIDENCIA %")
-    st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
-
-    if not df_imp_filtrado.empty:
-        # BLINDAJE EXTREMO ANTI-ERRORES: Convertimos las fechas a texto plano para el cruce. 
-        # Esto evita el ValueError provocado por tipos de datos datetime incompatibles.
-        df_imp_filtrado['Fecha_Cruce'] = pd.to_datetime(df_imp_filtrado['FECHA']).dt.strftime('%Y-%m')
-        df_ef_filtrado['Fecha_Cruce'] = pd.to_datetime(df_ef_filtrado['Fecha']).dt.strftime('%Y-%m')
-
-        pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='Fecha_Cruce', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
-        disp_por_mes = df_ef_filtrado.groupby('Fecha_Cruce', as_index=False)['HH_Disponibles'].sum()
-        
-        df_m6 = pd.merge(pivot_imp, disp_por_mes, on='Fecha_Cruce', how='left').fillna(0)
-        
-        # Devolvemos el formato a fecha para poder graficar correctamente en el eje X
-        df_m6['FECHA_REAL'] = pd.to_datetime(df_m6['Fecha_Cruce'] + '-01')
-        df_m6.set_index('FECHA_REAL', inplace=True)
-        df_m6 = df_m6.sort_index()
-
-        columnas_paradas = [c for c in df_m6.columns if c not in ['HH_Disponibles', 'Fecha_Cruce']]
-        df_m6['Total_Imp'] = df_m6[columnas_paradas].sum(axis=1)
-        df_m6['Incidencia_%'] = (df_m6['Total_Imp'] / df_m6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-
-        fechas_str = [d.strftime('%b-%y') for d in df_m6.index]
-        x_m6 = np.arange(len(df_m6))
-        
-        fig6, ax1 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92) 
-        fig6.suptitle(texto_filtros_header, x=0.08, y=0.98, ha='left', fontsize=8, fontweight='bold', color='dimgray')
-
-        ax2 = ax1.twinx()
-        
-        bottoms = np.zeros(len(df_m6))
-        colors = plt.cm.tab20.colors
-        
-        for idx, col in enumerate(columnas_paradas):
-            values = df_m6[col].values
-            container = ax1.bar(x_m6, values, bottom=bottoms, label=col, color=colors[idx % len(colors)], edgecolor='white', zorder=2)
-            
-            labels_seg = [f'{int(val)}' if tot > 0 and (val/tot) > 0.05 else '' for val, tot in zip(values, df_m6['Total_Imp'])]
-            ax1.bar_label(container, labels=labels_seg, label_type='center', color='black', fontweight='bold', path_effects=outline_white, fontsize=14, zorder=4)
-            bottoms += values
-
-        aplicar_anti_overlap(ax1, df_m6['Total_Imp'].max(), multiplier=2.2)
-        
-        for i in range(len(x_m6)):
-            imp_val = df_m6['Total_Imp'].iloc[i]
-            disp_val = df_m6['HH_Disponibles'].iloc[i]
-            if imp_val > 0:
-                offset_y_imp = imp_val + (ax1.get_ylim()[1] * 0.05)
-                ax1.annotate(f"Imp: {int(imp_val)}\nDisp: {int(disp_val)}", 
-                             (i, offset_y_imp), ha='center', bbox=bbox_yellow, fontsize=13, fontweight='bold', zorder=10)
-
-        ax2.plot(x_m6, df_m6['Incidencia_%'], color='red', marker='o', markersize=9, linewidth=4, path_effects=outline_white, label='% Incidencia', zorder=5)
-        
-        ax2.axhline(y=15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
-        ax2.text(x_m6[0], 15 + (ax2.get_ylim()[1]*0.01), 'META = 15%', color='white', bbox=bbox_green, fontsize=14, fontweight='bold', ha='center', va='bottom', zorder=10)
-
-        max_incidencia = df_m6['Incidencia_%'].max()
-        ax2.set_ylim(0, max(40, max_incidencia * 1.8))
-        ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
-        
-        if len(x_m6) > 1:
-            z6 = np.polyfit(x_m6, df_m6['Incidencia_%'], 1)
-            p6 = np.poly1d(z6)
-            ax2.plot(x_m6, p6(x_m6), color='darkred', linestyle='--', linewidth=3, zorder=1)
-
-        offset_y2_m6 = ax2.get_ylim()[1] * 0.05
-        for i, val in enumerate(df_m6['Incidencia_%']):
-            ax2.annotate(f"{val:.1f}%", (x_m6[i], val + offset_y2_m6), color='red', ha='center', fontsize=15, fontweight='bold', path_effects=outline_white, zorder=10)
-
-        ax1.text(0.98, 0.95, f"PROMEDIO INCIDENCIA: {df_m6['Incidencia_%'].mean():.1f}%\nTotal HH Imp: {df_m6['Total_Imp'].sum():.0f}", 
-                 transform=ax1.transAxes, bbox=bbox_gray, color='white', ha='right', va='top', fontsize=16, fontweight='bold', zorder=10)
-
-        ax1.set_xticks(x_m6)
-        ax1.set_xticklabels(fechas_str, fontsize=14, fontweight='bold')
-        
-        ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
-        
-        st.pyplot(fig6)
-        
-        if fallback_puesto_activo:
-            st.caption("📌 Nota: Mostrando Evolución a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
-
-    else:
-        st.warning("⚠️ No hay datos evaluables.")
+        agrup_m4['Fecha_str'] = agrup_m4['Fecha'].
