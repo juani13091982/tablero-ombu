@@ -10,7 +10,7 @@ import os
 import re
 
 # =========================================================================
-# 1. CONFIGURACIÓN DE PÁGINA Y MARCO CORPORATIVO
+# 1. CONFIGURACIÓN DE LA ESTRUCTURA DE LA PÁGINA
 # =========================================================================
 st.set_page_config(
     page_title="C.G.P. Reporte Integrado - Ombú", 
@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 # =========================================================================
-# 2. SISTEMA DE SEGURIDAD (ACCESO RESTRINGIDO)
+# 2. SISTEMA DE SEGURIDAD CORPORATIVA (LLAVE MAESTRA)
 # =========================================================================
 USUARIOS_PERMITIDOS = {
     "acceso.ombu": "Gestion2026"
@@ -28,22 +28,30 @@ USUARIOS_PERMITIDOS = {
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
-def mostrar_login():
-    """Dibuja la pantalla de acceso con logo pequeño y nombre oficial solicitado."""
+def mostrar_pantalla_login():
+    """
+    Despliega la interfaz inicial de seguridad para proteger los datos de la compañía.
+    """
     st.markdown("<br><br>", unsafe_allow_html=True)
-    col_v1, col_login, col_v2 = st.columns([1, 1.8, 1])
     
-    with col_login:
-        st.markdown("<div style='background-color:#1E3A8A; padding:5px; border-radius:10px 10px 0px 0px;'></div>", unsafe_allow_html=True)
+    columna_vacia_izq, columna_login, columna_vacia_der = st.columns([1, 1.8, 1])
+    
+    with columna_login:
+        # Franja decorativa institucional
+        st.markdown("""
+            <div style='background-color:#1E3A8A; color:white; padding:5px; border-radius:10px 10px 0px 0px; text-align:center;'>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Logo institucional pequeño centrado
-        l_c1, l_c2, l_c3 = st.columns([1, 1, 1])
-        with l_c2:
+        # Logotipo centrado
+        sub_col1, sub_col2, sub_col3 = st.columns([1, 1, 1])
+        with sub_col2:
             try:
                 st.image("LOGO OMBÚ.jpg", width=160)
             except Exception:
                 st.markdown("<h2 style='text-align:center;'>OMBÚ</h2>", unsafe_allow_html=True)
         
+        # Textos oficiales
         st.markdown("""
             <div style='text-align:center; margin-top:-10px; margin-bottom:20px;'>
                 <h2 style='margin:0; color:#1E3A8A; font-weight:bold; letter-spacing: 1px;'>GESTIÓN INDUSTRIAL OMBÚ S.A.</h2>
@@ -51,46 +59,53 @@ def mostrar_login():
             </div>
         """, unsafe_allow_html=True)
         
-        with st.form("form_login_seguro"):
+        # Formulario de credenciales
+        with st.form("formulario_de_acceso"):
             st.markdown("<h4 style='text-align: center; color: #333;'>🔒 Iniciar Sesión</h4>", unsafe_allow_html=True)
-            u_digitado = st.text_input("Usuario Corporativo")
-            p_digitado = st.text_input("Contraseña", type="password")
             
-            if st.form_submit_button("Ingresar al Sistema", use_container_width=True):
-                if u_digitado in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_digitado] == p_digitado:
+            input_usuario = st.text_input("Usuario Corporativo")
+            input_clave = st.text_input("Contraseña", type="password")
+            
+            boton_ingresar = st.form_submit_button("Ingresar al Sistema", use_container_width=True)
+
+            if boton_ingresar:
+                if input_usuario in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[input_usuario] == input_clave:
                     st.session_state['autenticado'] = True
                     st.rerun()
                 else:
-                    st.error("❌ Credenciales incorrectas. Verifique los datos.")
+                    st.error("❌ Credenciales incorrectas. Por favor, verifique los datos.")
 
+# Validación de estado
 if not st.session_state['autenticado']:
-    mostrar_login()
+    mostrar_pantalla_login()
     st.stop()
 
 # =========================================================================
-# 3. ESTILOS VISUALES Y FILTROS STICKY (CSS)
+# 3. ESTILOS VISUALES (CSS) Y CONFIGURACIÓN DE GRÁFICOS
 # =========================================================================
-st.markdown("""
+codigo_css = """
 <style>
-    /* Ocultar elementos estándar para profesionalismo */
+    /* Ocultar menú nativo de Streamlit */
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
 
-    /* PANEL DE FILTROS STICKY (FIJO ARRIBA) */
+    /* FIJACIÓN DEL PANEL DE FILTROS EN LA PARTE SUPERIOR */
     div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
         position: -webkit-sticky !important;
         position: sticky !important;
         top: 0px !important;
         background-color: #0E1117 !important; 
         z-index: 99999 !important;
-        padding: 15px;
+        padding-top: 15px !important;
+        padding-bottom: 15px !important;
         border-bottom: 3px solid #1E3A8A !important; 
     }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(codigo_css, unsafe_allow_html=True)
 
-# Configuración Maestra de Matplotlib (Fuentes Grandes y Negrita)
+# Parámetros estrictos de Matplotlib para legibilidad gerencial
 plt.rcParams.update({
     'font.size': 14, 
     'font.weight': 'bold', 
@@ -101,418 +116,592 @@ plt.rcParams.update({
     'legend.fontsize': 12
 })
 
-# Efectos de legibilidad (Contornos)
-c_blanco = [path_effects.withStroke(linewidth=3, foreground='white')]
-c_negro = [path_effects.withStroke(linewidth=3, foreground='black')]
+# Contornos para evitar superposición visual de textos
+efecto_contorno_blanco = [path_effects.withStroke(linewidth=3, foreground='white')]
+efecto_contorno_negro = [path_effects.withStroke(linewidth=3, foreground='black')]
 
-# Estilos de cajas de anotación
-bbox_verde = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
-bbox_gris = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-bbox_oro = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
-bbox_blanco = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+# Estilos de cajas de texto
+caja_gris = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_amarilla = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
+caja_verde = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
+caja_blanca = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 4. MOTOR INTELIGENTE DE CRUCE DE DATOS (MOTOR FUZZY)
+# 4. FUNCIONES AUXILIARES (MOTOR INTELIGENTE)
 # =========================================================================
-def set_margen_superior(ax_plot, v_max, multiplicador=2.6):
-    """Asegura que el gráfico tenga 'techo' para que las etiquetas no se pisen."""
-    if v_max > 0: 
-        ax_plot.set_ylim(0, v_max * multiplicador)
+def aplicar_margen_superior_grafico(eje_matplotlib, valor_maximo, multiplicador=2.6):
+    """Evita que las barras altas oculten el título o las etiquetas superiores."""
+    if valor_maximo > 0: 
+        eje_matplotlib.set_ylim(0, valor_maximo * multiplicador)
     else: 
-        ax_plot.set_ylim(0, 100)
+        eje_matplotlib.set_ylim(0, 100)
 
-def dibujar_guias_meses(ax_plot, n_fechas):
-    """Dibuja las líneas verticales grises para separar visualmente los meses."""
-    for i in range(n_fechas):
-        ax_plot.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
+def trazar_lineas_divisorias_meses(eje_matplotlib, cantidad_periodos):
+    """Dibuja guías verticales para separar los meses en el eje X."""
+    for indice in range(cantidad_periodos):
+        eje_matplotlib.axvline(x=indice, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
-def motor_robusto_cruce(sel_usuario, val_excel_impro):
+def formatear_texto_filtros(lista_seleccion, texto_por_defecto):
+    """Resume los filtros para los títulos de los gráficos."""
+    if not lista_seleccion: 
+        return texto_por_defecto
+    if len(lista_seleccion) > 2: 
+        return f"Varios ({len(lista_seleccion)})"
+    return " + ".join(lista_seleccion)
+
+def motor_analisis_robusto(texto_seleccionado, texto_excel_improductivas):
     """
-    MOTOR DE CRUCE INDUSTRIAL:
-    Busca coincidencias entre Eficiencias e Improductivas aunque los textos varíen.
-    Indispensable para recuperar las 54 HH perdidas en el filtrado.
+    Función crítica: Cruza estaciones de Eficiencia con Improductivas 
+    buscando raíces de palabras y números, ignorando diferencias de tipeo.
     """
-    if pd.isna(val_excel_impro) or pd.isna(sel_usuario): 
+    if pd.isna(texto_excel_improductivas) or pd.isna(texto_seleccionado): 
         return False
     
-    # 1. Normalización profunda
-    s1 = str(sel_usuario).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
-    s2 = str(val_excel_impro).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
+    # Normalización de caracteres
+    str_1 = str(texto_seleccionado).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
+    str_2 = str(texto_excel_improductivas).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
     
-    # 2. Solo alfanuméricos
-    l1 = re.sub(r'[^A-Z0-9]', '', s1)
-    l2 = re.sub(r'[^A-Z0-9]', '', s2)
+    # Limpieza total dejando solo letras y números
+    alfa_1 = re.sub(r'[^A-Z0-9]', '', str_1)
+    alfa_2 = re.sub(r'[^A-Z0-9]', '', str_2)
     
-    if not l1 or not l2: 
+    if not alfa_1 or not alfa_2: 
         return False
         
-    # 3. Coincidencia directa
-    if l1 in l2 or l2 in l1: 
+    # Nivel 1: Inclusión directa
+    if alfa_1 in alfa_2 or alfa_2 in alfa_1: 
         return True
     
-    # 4. Coincidencia por código de estación (3+ dígitos)
-    n1 = set(re.findall(r'\d{3,}', s1))
-    n2 = set(re.findall(r'\d{3,}', s2))
-    if n1 and n2 and n1.intersection(n2): 
+    # Nivel 2: Extracción de códigos de estación (ej. '475')
+    numeros_1 = set(re.findall(r'\d{3,}', str_1))
+    numeros_2 = set(re.findall(r'\d{3,}', str_2))
+    if numeros_1 and numeros_2 and numeros_1.intersection(numeros_2): 
         return True
         
-    # 5. Coincidencia por raíces de palabras
-    w1 = set(re.findall(r'[A-Z]{4,}', s1))
-    w2 = set(re.findall(r'[A-Z]{4,}', s2))
+    # Nivel 3: Palabras clave mayores a 4 letras
+    palabras_1 = set(re.findall(r'[A-Z]{4,}', str_1))
+    palabras_2 = set(re.findall(r'[A-Z]{4,}', str_2))
     
-    excluir = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA', 'TOLVAS', 'BATEAS', 'REMOLQUES', 'MAQUINA'}
-    v1_limpio = w1 - excluir
-    v2_limpio = w2 - excluir
+    palabras_ignoradas = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA', 'TOLVAS', 'BATEAS', 'REMOLQUES', 'MAQUINA'}
+    conjunto_1 = palabras_1 - palabras_ignoradas
+    conjunto_2 = palabras_2 - palabras_ignoradas
     
-    for palabra in v1_limpio:
-        if any(palabra in x for x in v2_limpio): 
+    for palabra in conjunto_1:
+        if any(palabra in x for x in conjunto_2): 
             return True
                 
     return False
 
 # =========================================================================
-# 5. CABECERA Y BOTÓN DE SALIDA
+# 5. ENCABEZADO DEL TABLERO
 # =========================================================================
-h_l, h_t, h_s = st.columns([1, 3, 1])
+columna_logo, columna_titulo, columna_salida = st.columns([1, 3, 1])
 
-with h_l:
-    try: st.image("LOGO OMBÚ.jpg", width=120)
-    except: st.markdown("### OMBÚ")
+with columna_logo:
+    try: 
+        st.image("LOGO OMBÚ.jpg", width=120)
+    except: 
+        st.markdown("### OMBÚ")
 
-with h_t:
+with columna_titulo:
     st.title("TABLERO INTEGRADO - REPORTE C.G.P.")
     st.markdown("<p style='margin-top:-15px; font-weight:bold; color:gray;'>Gerencia de Control de Gestión</p>", unsafe_allow_html=True)
 
-with h_s:
+with columna_salida:
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🚪 Salir del Tablero", use_container_width=True):
         st.session_state['autenticado'] = False
         st.rerun()
 
 # =========================================================================
-# 6. CARGA DE DATOS (EXCEL)
+# 6. CARGA Y DEPURACIÓN DE DATOS (EXCEL)
 # =========================================================================
 try:
-    # Carga de archivos maestros
-    df_ef_base = pd.read_excel("eficiencias.xlsx")
-    df_im_base = pd.read_excel("improductivas.xlsx")
+    df_eficiencias_raw = pd.read_excel("eficiencias.xlsx")
+    df_improductivas_raw = pd.read_excel("improductivas.xlsx")
     
-    # Limpieza inicial
-    df_ef_base.columns = df_ef_base.columns.str.strip()
-    df_im_base.columns = [str(c).strip().upper() for c in df_im_base.columns]
+    df_eficiencias_raw.columns = df_eficiencias_raw.columns.str.strip()
+    df_improductivas_raw.columns = [str(c).strip().upper() for c in df_improductivas_raw.columns]
     
-    # Auto-mapeo para improductivas
-    if 'TIPO_PARADA' not in df_im_base.columns:
-        c_motivo = next((c for c in df_im_base.columns if 'TIPO' in c or 'MOTIVO' in c or 'CAUSA' in c), None)
-        if c_motivo: df_im_base.rename(columns={c_motivo: 'TIPO_PARADA'}, inplace=True)
+    # Auto-identificador de columnas de Improductivas
+    if 'TIPO_PARADA' not in df_improductivas_raw.columns:
+        col_tipo = next((c for c in df_improductivas_raw.columns if 'TIPO' in c or 'MOTIVO' in c or 'CAUSA' in c), None)
+        if col_tipo: df_improductivas_raw.rename(columns={col_tipo: 'TIPO_PARADA'}, inplace=True)
             
-    if 'HH_IMPRODUCTIVAS' not in df_im_base.columns:
-        c_hs = next((c for c in df_im_base.columns if 'HH' in c and 'IMP' in c), None)
-        if c_hs: df_im_base.rename(columns={c_hs: 'HH_IMPRODUCTIVAS'}, inplace=True)
+    if 'HH_IMPRODUCTIVAS' not in df_improductivas_raw.columns:
+        col_hs_imp = next((c for c in df_improductivas_raw.columns if 'HH' in c and 'IMP' in c), None)
+        if col_hs_imp: df_improductivas_raw.rename(columns={col_hs_imp: 'HH_IMPRODUCTIVAS'}, inplace=True)
             
-    if 'FECHA' not in df_im_base.columns:
-        c_fec = next((c for c in df_im_base.columns if 'FECHA' in c), None)
-        if c_fec: df_im_base.rename(columns={c_fec: 'FECHA'}, inplace=True)
+    if 'FECHA' not in df_improductivas_raw.columns:
+        col_fecha_imp = next((c for c in df_improductivas_raw.columns if 'FECHA' in c), None)
+        if col_fecha_imp: df_improductivas_raw.rename(columns={col_fecha_imp: 'FECHA'}, inplace=True)
     
-    # Estandarización temporal
-    df_ef_base['Fecha'] = pd.to_datetime(df_ef_base['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
-    df_im_base['FECHA'] = pd.to_datetime(df_im_base['FECHA'], errors='coerce').dt.to_period('M').dt.to_timestamp()
+    # Procesamiento de fechas
+    df_eficiencias_raw['Fecha'] = pd.to_datetime(df_eficiencias_raw['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
+    df_improductivas_raw['FECHA'] = pd.to_datetime(df_improductivas_raw['FECHA'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     
-    # Atributos adicionales
-    df_ef_base['Es_Ultimo_Puesto'] = df_ef_base['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
-    df_ef_base['Filtro_Mes'] = df_ef_base['Fecha'].dt.strftime('%b-%Y')
-    df_im_base['Filtro_Mes'] = df_im_base['FECHA'].dt.strftime('%b-%Y')
+    df_eficiencias_raw['Es_Ultimo_Puesto'] = df_eficiencias_raw['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
+    df_eficiencias_raw['Mes_String'] = df_eficiencias_raw['Fecha'].dt.strftime('%b-%Y')
+    df_improductivas_raw['Mes_String'] = df_improductivas_raw['FECHA'].dt.strftime('%b-%Y')
     
-except Exception as e_carga:
-    st.error(f"Error cargando los archivos Excel: {e_carga}")
+except Exception as error_lectura:
+    st.error(f"Error crítico al leer los archivos: {error_lectura}")
     st.stop()
 
 # =========================================================================
-# 7. PANEL DE FILTROS SUPERIORES (CASCADA DINÁMICA)
+# 7. BARRA DE FILTROS (CASCADA)
 # =========================================================================
 with st.container():
     st.markdown('<div id="filtro-ribbon"></div>', unsafe_allow_html=True)
     st.markdown("### 🔍 Configuración del Escenario")
     
-    fl1, fl2, fl3, fl4 = st.columns(4)
+    filtro_col1, filtro_col2, filtro_col3, filtro_col4 = st.columns(4)
     
-    with fl1: 
-        p_list = list(df_ef_base['Planta'].dropna().unique())
-        sel_planta = st.multiselect("🏭 Planta", p_list, placeholder="Todas")
+    with filtro_col1: 
+        lista_plantas = list(df_eficiencias_raw['Planta'].dropna().unique())
+        seleccion_planta = st.multiselect("🏭 Planta", lista_plantas, placeholder="Todas")
         
-    df_t_lineas = df_ef_base[df_ef_base['Planta'].isin(sel_planta)] if sel_planta else df_ef_base
+    df_transitorio_lineas = df_eficiencias_raw[df_eficiencias_raw['Planta'].isin(seleccion_planta)] if seleccion_planta else df_eficiencias_raw
     
-    with fl2: 
-        l_list = list(df_t_lineas['Linea'].dropna().unique())
-        sel_linea = st.multiselect("⚙️ Línea", l_list, placeholder="Todas")
+    with filtro_col2: 
+        lista_lineas = list(df_transitorio_lineas['Linea'].dropna().unique())
+        seleccion_linea = st.multiselect("⚙️ Línea", lista_lineas, placeholder="Todas")
         
-    df_t_puestos = df_t_lineas[df_t_lineas['Linea'].isin(sel_linea)] if sel_linea else df_t_lineas
+    df_transitorio_puestos = df_transitorio_lineas[df_transitorio_lineas['Linea'].isin(seleccion_linea)] if seleccion_linea else df_transitorio_lineas
     
-    with fl3: 
-        ps_list = list(df_t_puestos['Puesto_Trabajo'].dropna().unique())
-        sel_puesto = st.multiselect("🛠️ Puesto de Trabajo", ps_list, placeholder="Todos")
+    with filtro_col3: 
+        lista_puestos = list(df_transitorio_puestos['Puesto_Trabajo'].dropna().unique())
+        seleccion_puesto = st.multiselect("🛠️ Puesto de Trabajo", lista_puestos, placeholder="Todos")
         
-    with fl4: 
-        m_list = ["🎯 Acumulado YTD"] + list(df_ef_base['Filtro_Mes'].unique())
-        sel_mes = st.multiselect("📅 Mes", m_list, placeholder="Todos")
+    with filtro_col4: 
+        lista_meses = ["🎯 Acumulado YTD"] + list(df_eficiencias_raw['Mes_String'].unique())
+        seleccion_mes = st.multiselect("📅 Mes", lista_meses, placeholder="Todos")
 
 # =========================================================================
-# 8. LÓGICA DE FILTRADO FINAL (RECUPERACIÓN DE VARIABLES)
+# 8. FILTRADO FINAL DE DATAFRAMES
 # =========================================================================
-df_ef_f = df_ef_base.copy()
-df_im_f = df_im_base.copy()
+df_eficiencias_filtrado = df_eficiencias_raw.copy()
+df_improductivas_filtrado = df_improductivas_raw.copy()
 
-# Filtrar Eficiencias
-if sel_planta: 
-    df_ef_f = df_ef_f[df_ef_f['Planta'].isin(sel_planta)]
-if sel_linea: 
-    df_ef_f = df_ef_f[df_ef_f['Linea'].isin(sel_linea)]
-if sel_puesto: 
-    df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(sel_puesto)]
-if sel_mes and "🎯 Acumulado YTD" not in sel_mes:
-    df_ef_f = df_ef_f[df_ef_f['Filtro_Mes'].isin(sel_mes)]
+# Aplicar filtros a Eficiencias
+if seleccion_planta: 
+    df_eficiencias_filtrado = df_eficiencias_filtrado[df_eficiencias_filtrado['Planta'].isin(seleccion_planta)]
+if seleccion_linea: 
+    df_eficiencias_filtrado = df_eficiencias_filtrado[df_eficiencias_filtrado['Linea'].isin(seleccion_linea)]
+if seleccion_puesto: 
+    df_eficiencias_filtrado = df_eficiencias_filtrado[df_eficiencias_filtrado['Puesto_Trabajo'].isin(seleccion_puesto)]
+if seleccion_mes and "🎯 Acumulado YTD" not in seleccion_mes:
+    df_eficiencias_filtrado = df_eficiencias_filtrado[df_eficiencias_filtrado['Mes_String'].isin(seleccion_mes)]
 
-# Filtrar Improductivas (Motor Fuzzy)
-if sel_planta:
-    m_pl = df_im_f.iloc[:,0].apply(lambda x: any(motor_robusto_cruce(p, x) for p in sel_planta))
-    df_im_f = df_im_f[m_pl]
+# Aplicar filtros a Improductivas (Cruce Robusto)
+if seleccion_planta:
+    mascara_planta = df_improductivas_filtrado.iloc[:,0].apply(lambda valor: any(motor_analisis_robusto(p, valor) for p in seleccion_planta))
+    df_improductivas_filtrado = df_improductivas_filtrado[mascara_planta]
 
-if sel_linea:
-    c_l_idx = next((c for c in df_im_f.columns if 'LINEA' in c), df_im_f.columns[1])
-    m_li = df_im_f[c_l_idx].apply(lambda x: any(motor_robusto_cruce(l, x) for l in sel_linea))
-    df_im_f = df_im_f[m_li]
+if seleccion_linea:
+    nombre_col_linea = next((col for col in df_improductivas_filtrado.columns if 'LINEA' in col), df_improductivas_filtrado.columns[1])
+    mascara_linea = df_improductivas_filtrado[nombre_col_linea].apply(lambda valor: any(motor_analisis_robusto(l, valor) for l in seleccion_linea))
+    df_improductivas_filtrado = df_improductivas_filtrado[mascara_linea]
 
-if sel_puesto:
-    c_p_idx = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2])
-    m_ps = df_im_f[c_p_idx].apply(lambda x: any(motor_robusto_cruce(ps, x) for ps in sel_puesto))
-    df_im_f = df_im_f[m_ps]
+if seleccion_puesto:
+    nombre_col_puesto = next((col for col in df_improductivas_filtrado.columns if 'PUESTO' in col), df_improductivas_filtrado.columns[2])
+    mascara_puesto = df_improductivas_filtrado[nombre_col_puesto].apply(lambda valor: any(motor_analisis_robusto(ps, valor) for ps in seleccion_puesto))
+    df_improductivas_filtrado = df_improductivas_filtrado[mascara_puesto]
 
-if sel_mes and "🎯 Acumulado YTD" not in sel_mes:
-    df_im_f = df_im_f[df_im_f['Filtro_Mes'].isin(sel_mes)]
+if seleccion_mes and "🎯 Acumulado YTD" not in seleccion_mes:
+    df_improductivas_filtrado = df_improductivas_filtrado[df_improductivas_filtrado['Mes_String'].isin(seleccion_mes)]
 
-txt_header_graficos = f"Filtros: {sel_planta if sel_planta else 'Todas'} | {sel_linea if sel_linea else 'Todas'} | {sel_puesto if sel_puesto else 'Todos'}"
+# Texto dinámico para títulos
+texto_parametros_activos = f"Filtros >> Planta: {formatear_texto_filtros(seleccion_planta, 'Todas')} | Línea: {formatear_texto_filtros(seleccion_linea, 'Todas')} | Puesto: {formatear_texto_filtros(seleccion_puesto, 'Todos')}"
 
 st.markdown("---")
 
 # =========================================================================
-# 9. FILA 1: MÉTRICAS 1 Y 2 (PRODUCTIVIDAD)
+# 9. FILA 1: MÉTRICAS 1 Y 2
 # =========================================================================
-c1, c2 = st.columns(2)
+columna_metrica_1, columna_metrica_2 = st.columns(2)
 
-with c1:
+with columna_metrica_1:
     st.header("1. EFICIENCIA REAL")
     st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     
-    df_m1_build = df_ef_f.copy() if sel_puesto else df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
+    # Lógica de terminal: si no hay puesto filtrado, tomar solo 'SI'
+    df_base_grafico_1 = df_eficiencias_filtrado.copy() if seleccion_puesto else df_eficiencias_filtrado[df_eficiencias_filtrado['Es_Ultimo_Puesto'] == 'SI']
     
-    if not df_m1_build.empty:
-        agrup_1 = df_m1_build.groupby('Fecha').agg({
-            'HH_STD_TOTAL': 'sum', 'HH_Disponibles': 'sum', 'Cant._Prod._A1': 'sum'
+    if not df_base_grafico_1.empty:
+        agrupacion_1 = df_base_grafico_1.groupby('Fecha').agg({
+            'HH_STD_TOTAL': 'sum', 
+            'HH_Disponibles': 'sum', 
+            'Cant._Prod._A1': 'sum'
         }).reset_index()
         
-        agrup_1['Efic_Real'] = (agrup_1['HH_STD_TOTAL'] / agrup_1['HH_Disponibles']).replace([np.inf, -np.inf], 0).fillna(0) * 100
+        # Cálculo seguro de KPI
+        calculo_kpi_1 = (agrupacion_1['HH_STD_TOTAL'] / agrupacion_1['HH_Disponibles'])
+        agrupacion_1['Efic_Real_Porcentaje'] = calculo_kpi_1.replace([np.inf, -np.inf], 0).fillna(0) * 100
         
-        fig1, ax1_b = plt.subplots(figsize=(14, 10))
-        ax1_l = ax1_b.twinx()
-        fig1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
-        fig1.suptitle(txt_header_graficos, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        figura_1, eje_1_barras = plt.subplots(figsize=(14, 10))
+        eje_1_linea = eje_1_barras.twinx()
         
-        x_indices_1 = np.arange(len(agrup_1))
+        figura_1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+        figura_1.suptitle(texto_parametros_activos, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
-        b1 = ax1_b.bar(x_indices_1 - 0.17, agrup_1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
-        b2 = ax1_b.bar(x_indices_1 + 0.17, agrup_1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
+        posiciones_x_1 = np.arange(len(agrupacion_1))
+        ancho_barra = 0.35
         
-        set_margen_superior(ax1_b, agrup_1['HH_Disponibles'].max(), 2.6)
-        ax1_b.bar_label(b1, padding=4, color='black', fontweight='bold', path_effects=c_blanco, fmt='%.0f', zorder=3)
-        ax1_b.bar_label(b2, padding=4, color='black', fontweight='bold', path_effects=c_blanco, fmt='%.0f', zorder=3)
+        # Barras
+        barra_std_1 = eje_1_barras.bar(posiciones_x_1 - ancho_barra/2, agrupacion_1['HH_STD_TOTAL'], ancho_barra, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
+        barra_dis_1 = eje_1_barras.bar(posiciones_x_1 + ancho_barra/2, agrupacion_1['HH_Disponibles'], ancho_barra, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
-        dibujar_guias_meses(ax1_b, len(x_indices_1))
+        aplicar_margen_superior_grafico(eje_1_barras, agrupacion_1['HH_Disponibles'].max(), 2.6)
+        
+        # Etiquetas
+        eje_1_barras.bar_label(barra_std_1, padding=4, color='black', fontweight='bold', path_effects=efecto_contorno_blanco, fmt='%.0f', zorder=3)
+        eje_1_barras.bar_label(barra_dis_1, padding=4, color='black', fontweight='bold', path_effects=efecto_contorno_blanco, fmt='%.0f', zorder=3)
+        
+        trazar_lineas_divisorias_meses(eje_1_barras, len(posiciones_x_1))
 
-        for i, bar in enumerate(b1):
-            val_u = int(agrup_1['Cant._Prod._A1'].iloc[i])
-            if val_u > 0: 
-                ax1_b.text(bar.get_x() + bar.get_width()/2, bar.get_height()*0.05, f"{val_u} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=c_negro, zorder=4)
+        # Texto vertical interno
+        for indice, barra_obj in enumerate(barra_std_1):
+            unidades = int(agrupacion_1['Cant._Prod._A1'].iloc[indice])
+            if unidades > 0: 
+                eje_1_barras.text(barra_obj.get_x() + barra_obj.get_width()/2, barra_obj.get_height()*0.05, f"{unidades} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=efecto_contorno_negro, zorder=4)
 
-        ax1_l.plot(x_indices_1, agrup_1['Efic_Real'], color='dimgray', marker='o', markersize=12, linewidth=4, path_effects=c_blanco, label='% Eficiencia Real', zorder=5)
-        ax1_l.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
-        ax1_l.text(x_indices_1[0], 86, 'META = 85%', color='white', bbox=bbox_verde, fontsize=14, fontweight='bold', zorder=10)
+        # Línea de Porcentaje
+        eje_1_linea.plot(posiciones_x_1, agrupacion_1['Efic_Real_Porcentaje'], color='dimgray', marker='o', markersize=12, linewidth=4, path_effects=efecto_contorno_blanco, label='% Efic. Real', zorder=5)
+        eje_1_linea.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
+        eje_1_linea.text(posiciones_x_1[0], 86, 'META = 85%', color='white', bbox=caja_verde, fontsize=14, fontweight='bold', zorder=10)
         
-        ax1_l.set_ylim(0, max(120, agrup_1['Efic_Real'].max()*1.8))
-        ax1_l.yaxis.set_major_formatter(mtick.PercentFormatter())
+        eje_1_linea.set_ylim(0, max(120, agrupacion_1['Efic_Real_Porcentaje'].max()*1.8))
+        eje_1_linea.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-        for i, val in enumerate(agrup_1['Efic_Real']):
-            ax1_l.annotate(f"{val:.1f}%", (x_indices_1[i], val + 5), color='white', bbox=bbox_gris, ha='center', fontweight='bold', zorder=10)
+        for idx, valor_pct in enumerate(agrupacion_1['Efic_Real_Porcentaje']):
+            eje_1_linea.annotate(f"{valor_pct:.1f}%", (posiciones_x_1[idx], valor_pct + 5), color='white', bbox=caja_gris, ha='center', fontweight='bold', zorder=10)
 
-        ax1_b.set_xticks(x_indices_1); ax1_b.set_xticklabels(agrup_1['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax1_b.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
-        ax1_l.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
-        st.pyplot(fig1)
-    else: st.warning("⚠️ Sin registros para Eficiencia Real.")
+        eje_1_barras.set_xticks(posiciones_x_1)
+        eje_1_barras.set_xticklabels(agrupacion_1['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
+        
+        eje_1_barras.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        eje_1_linea.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
+        
+        st.pyplot(figura_1)
+    else: 
+        st.warning("⚠️ No hay datos suficientes para graficar Eficiencia Real.")
 
-with col2:
+with columna_metrica_2:
     st.header("2. EFICIENCIA PRODUCTIVA")
     st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
-    if not df_m1_build.empty:
-        agrup_2 = df_m1_build.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Productivas_C/GAP': 'sum'}).reset_index()
-        agrup_2['Ef_Prod'] = (agrup_2['HH_STD_TOTAL'] / agrup_2['HH_Productivas_C/GAP']).replace([np.inf, -np.inf], 0).fillna(0) * 100
+    
+    if not df_base_grafico_1.empty:
+        agrupacion_2 = df_base_grafico_1.groupby('Fecha').agg({
+            'HH_STD_TOTAL': 'sum', 
+            'HH_Productivas_C/GAP': 'sum'
+        }).reset_index()
         
-        fig2, ax2_b = plt.subplots(figsize=(14, 10))
-        ax2_l = ax2_b.twinx()
-        fig2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+        calculo_kpi_2 = (agrupacion_2['HH_STD_TOTAL'] / agrupacion_2['HH_Productivas_C/GAP'])
+        agrupacion_2['Efic_Prod_Porcentaje'] = calculo_kpi_2.replace([np.inf, -np.inf], 0).fillna(0) * 100
         
-        x_indices_2 = np.arange(len(agrup_2))
-        b_s_2 = ax2_b.bar(x_indices_2 - 0.17, agrup_2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
-        b_p_2 = ax2_b.bar(x_indices_2 + 0.17, agrup_2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        figura_2, eje_2_barras = plt.subplots(figsize=(14, 10))
+        eje_2_linea = eje_2_barras.twinx()
         
-        set_margen_superior(ax2_b, max(agrup_2['HH_STD_TOTAL'].max(), agrup_2['HH_Productivas_C/GAP'].max()), 2.6)
-        ax2_b.bar_label(b_s_2, padding=4, color='black', fontweight='bold', path_effects=c_blanco, fmt='%.0f', zorder=3)
-        ax2_b.bar_label(b_p_2, padding=4, color='black', fontweight='bold', path_effects=c_blanco, fmt='%.0f', zorder=3)
+        figura_2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+        figura_2.suptitle(texto_parametros_activos, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
-        ax2_l.plot(x_indices_2, agrup_2['Ef_Prod'], color='dimgray', marker='s', markersize=12, linewidth=4, path_effects=c_blanco, label='% Efic. Prod.', zorder=5)
-        ax2_l.axhline(100, color='darkgreen', linestyle='--', linewidth=3)
-        ax2_l.text(x_indices_2[0], 101, 'META = 100%', color='white', bbox=bbox_verde, fontsize=14, fontweight='bold', zorder=10)
-        ax2_l.set_ylim(0, max(150, agrup_2['Ef_Prod'].max()*1.8))
-        ax2_l.yaxis.set_major_formatter(mtick.PercentFormatter())
+        posiciones_x_2 = np.arange(len(agrupacion_2))
+        
+        # Barras
+        barra_std_2 = eje_2_barras.bar(posiciones_x_2 - ancho_barra/2, agrupacion_2['HH_STD_TOTAL'], ancho_barra, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
+        barra_pro_2 = eje_2_barras.bar(posiciones_x_2 + ancho_barra/2, agrupacion_2['HH_Productivas_C/GAP'], ancho_barra, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        
+        aplicar_margen_superior_grafico(eje_2_barras, max(agrupacion_2['HH_STD_TOTAL'].max(), agrupacion_2['HH_Productivas_C/GAP'].max()), 2.6)
+        
+        eje_2_barras.bar_label(barra_std_2, padding=4, color='black', fontweight='bold', path_effects=efecto_contorno_blanco, fmt='%.0f', zorder=3)
+        eje_2_barras.bar_label(barra_pro_2, padding=4, color='black', fontweight='bold', path_effects=efecto_contorno_blanco, fmt='%.0f', zorder=3)
+        
+        trazar_lineas_divisorias_meses(eje_2_barras, len(posiciones_x_2))
 
-        for i, val in enumerate(agrup_2['Ef_Prod']):
-            ax2_l.annotate(f"{val:.1f}%", (x_indices_2[i], val + 5), color='white', bbox=bbox_gris, ha='center', fontweight='bold', zorder=10)
+        # Línea %
+        eje_2_linea.plot(posiciones_x_2, agrupacion_2['Efic_Prod_Porcentaje'], color='dimgray', marker='s', markersize=12, linewidth=4, path_effects=efecto_contorno_blanco, label='% Efic. Prod.', zorder=5)
+        eje_2_linea.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
+        eje_2_linea.text(posiciones_x_2[0], 101, 'META = 100%', color='white', bbox=caja_verde, fontsize=14, fontweight='bold', zorder=10)
+        
+        eje_2_linea.set_ylim(0, max(150, agrupacion_2['Efic_Prod_Porcentaje'].max()*1.8))
+        eje_2_linea.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-        ax2_b.set_xticks(x_indices_2); ax2_b.set_xticklabels(agrup_2['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax2_b.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
-        st.pyplot(fig2)
-    else: st.warning("⚠️ Sin datos.")
+        for idx, valor_pct in enumerate(agrupacion_2['Efic_Prod_Porcentaje']):
+            eje_2_linea.annotate(f"{valor_pct:.1f}%", (posiciones_x_2[idx], valor_pct + 5), color='white', bbox=caja_gris, ha='center', fontweight='bold', zorder=10)
+
+        eje_2_barras.set_xticks(posiciones_x_2)
+        eje_2_barras.set_xticklabels(agrupacion_2['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
+        eje_2_barras.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        
+        st.pyplot(figura_2)
+    else: 
+        st.warning("⚠️ No hay datos para Eficiencia Productiva.")
 
 st.markdown("---")
 
 # =========================================================================
-# 10. FILA 2: MÉTRICAS 3 Y 4 (ANÁLISIS DE BRECHA Y COSTOS)
+# 10. FILA 2: MÉTRICAS 3 Y 4 (GAP Y COSTOS)
 # =========================================================================
-col3, col4 = st.columns(2)
+columna_metrica_3, columna_metrica_4 = st.columns(2)
 
-with col3:
+with columna_metrica_3:
     st.header("3. GAP HH GLOBAL")
-    st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
-    if not df_ef_f.empty:
-        c_prod_maestra = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH Productivas'
-        agrup_3 = df_ef_f.groupby('Fecha').agg({c_prod_maestra: 'sum', 'HH_Improductivas': 'sum', 'HH_Disponibles': 'sum'}).reset_index()
-        agrup_3['Suma_Declaradas'] = agrup_3[c_prod_maestra] + agrup_3['HH_Improductivas']
+    st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Desvío entre Horas Disponibles y Horas Declaradas Totales</i></div>", unsafe_allow_html=True)
+    
+    if not df_eficiencias_filtrado.empty:
+        nombre_columna_productiva = 'HH_Productivas' if 'HH_Productivas' in df_eficiencias_filtrado.columns else 'HH Productivas'
         
-        fig3, ax3 = plt.subplots(figsize=(14, 10))
-        fig3.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
-        x_v3 = np.arange(len(agrup_3))
+        agrupacion_3 = df_eficiencias_filtrado.groupby('Fecha').agg({
+            nombre_columna_productiva: 'sum', 
+            'HH_Improductivas': 'sum', 
+            'HH_Disponibles': 'sum'
+        }).reset_index()
         
-        ax3.bar(x_v3, agrup_3[c_prod_maestra], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
-        ax3.bar(x_v3, agrup_3['HH_Improductivas'], bottom=agrup_3[c_prod_maestra], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
-        ax3.plot(x_v3, agrup_3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=c_blanco, label='HH DISPONIBLES', zorder=5)
+        agrupacion_3['Sumatoria_Declarada'] = agrupacion_3[nombre_columna_productiva] + agrupacion_3['HH_Improductivas']
         
-        set_margen_superior(ax3, agrup_3['HH_Disponibles'].max(), 2.6)
-        for i in range(len(x_v3)):
-            h_dis, h_dec = agrup_3['HH_Disponibles'].iloc[i], agrup_3['Suma_Declaradas'].iloc[i]
-            v_gap = h_dis - h_dec
-            ax3.plot([i, i], [h_dec, h_dis], color='dimgray', linewidth=5, alpha=0.6, zorder=3)
-            ax3.annotate(f"GAP:\n{int(v_gap)}", (i, h_dec + 5), color='firebrick', bbox=bbox_blanco, ha='center', va='bottom', fontweight='bold', zorder=10)
-            ax3.annotate(f"{int(h_dis)}", (i, h_dis + (ax3.get_ylim()[1]*0.08)), color='black', bbox=bbox_blanco, ha='center', fontweight='bold', zorder=10)
+        figura_3, eje_3_barras = plt.subplots(figsize=(14, 10))
+        figura_3.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+        figura_3.suptitle(texto_parametros_activos, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        
+        posiciones_x_3 = np.arange(len(agrupacion_3))
+        
+        # Barras Apiladas
+        eje_3_barras.bar(posiciones_x_3, agrupacion_3[nombre_columna_productiva], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        eje_3_barras.bar(posiciones_x_3, agrupacion_3['HH_Improductivas'], bottom=agrupacion_3[nombre_columna_productiva], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+        
+        # Línea Diamante de Disponibilidad
+        eje_3_barras.plot(posiciones_x_3, agrupacion_3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_contorno_blanco, label='HH DISPONIBLES', zorder=5)
+        
+        aplicar_margen_superior_grafico(eje_3_barras, agrupacion_3['HH_Disponibles'].max(), 2.6)
+        trazar_lineas_divisorias_meses(eje_3_barras, len(posiciones_x_3))
 
-        ax3.set_xticks(x_v3); ax3.set_xticklabels(agrup_3['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax3.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True)
-        st.pyplot(fig3)
-    else: st.warning("⚠️ Sin datos para análisis de GAP.")
+        # Visualización de GAP
+        for indice_x in range(len(posiciones_x_3)):
+            valor_disponible = agrupacion_3['HH_Disponibles'].iloc[indice_x]
+            valor_declarado = agrupacion_3['Sumatoria_Declarada'].iloc[indice_x]
+            valor_del_gap = valor_disponible - valor_declarado
+            
+            # Flecha/Línea vertical del GAP
+            eje_3_barras.plot([indice_x, indice_x], [valor_declarado, valor_disponible], color='dimgray', linewidth=5, alpha=0.6, zorder=3)
+            
+            # Anotación GAP
+            eje_3_barras.annotate(f"GAP:\n{int(valor_del_gap)}", (indice_x, valor_declarado + 5), color='firebrick', bbox=caja_blanca, ha='center', va='bottom', fontweight='bold', zorder=10)
+            
+            # Anotación Disponibilidad
+            eje_3_barras.annotate(f"{int(valor_disponible)}", (indice_x, valor_disponible + (eje_3_barras.get_ylim()[1]*0.08)), color='black', bbox=caja_blanca, ha='center', fontweight='bold', zorder=10)
 
-with col4:
+        eje_3_barras.set_xticks(posiciones_x_3)
+        eje_3_barras.set_xticklabels(agrupacion_3['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
+        eje_3_barras.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True)
+        
+        st.pyplot(figura_3)
+    else: 
+        st.warning("⚠️ Sin datos para el cálculo de GAP.")
+
+with columna_metrica_4:
     st.header("4. COSTOS IMPRODUCTIVOS")
-    st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Valorización del impacto económico de las improductividades</i></div>", unsafe_allow_html=True)
-    if not df_ef_f.empty:
-        agrup_4 = df_ef_f.groupby('Fecha').agg({'HH_Improductivas': 'sum', 'Costo_Improd._$': 'sum'}).reset_index()
-        fig4, ax4_i = plt.subplots(figsize=(14, 10)); ax4_d = ax4_i.twinx()
-        fig4.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+    st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Valorización económica de la ineficiencia productiva</i></div>", unsafe_allow_html=True)
+    
+    if not df_eficiencias_filtrado.empty:
+        agrupacion_4 = df_eficiencias_filtrado.groupby('Fecha').agg({
+            'HH_Improductivas': 'sum', 
+            'Costo_Improd._$': 'sum'
+        }).reset_index()
+        
+        figura_4, eje_4_barras = plt.subplots(figsize=(14, 10))
+        eje_4_linea = eje_4_barras.twinx()
+        
+        figura_4.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
+        figura_4.suptitle(texto_parametros_activos, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
 
-        x_v4 = np.arange(len(agrup_4))
-        bar_imp4 = ax4_i.bar(x_v4, agrup_4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
-        ax4_i.bar_label(bar_imp4, padding=4, color='black', fontweight='bold', path_effects=c_blanco, zorder=4)
+        posiciones_x_4 = np.arange(len(agrupacion_4))
         
-        set_margen_superior(ax4_i, agrup_4['HH_Improductivas'].max(), 2.6)
-        ax4_d.plot(x_v4, agrup_4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=c_blanco, label='COSTO ARS', zorder=5)
-        ax4_d.set_ylim(0, max(1000, agrup_4['Costo_Improd._$'].max() * 1.8))
-        ax4_d.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_d.get_yticks()], fontweight='bold')
+        # Barras de volumen
+        barra_perdida_4 = eje_4_barras.bar(posiciones_x_4, agrupacion_4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+        eje_4_barras.bar_label(barra_perdida_4, padding=4, color='black', fontweight='bold', path_effects=efecto_contorno_blanco, zorder=4)
         
-        total_p = agrup_4['Costo_Improd._$'].sum()
-        ax4_i.text(0.5, 0.90, f"COSTO TOTAL ACUMULADO ARS\n${total_p:,.0f}", transform=ax4_i.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=bbox_oro, weight='bold', zorder=10)
-        for i, v in enumerate(agrup_4['Costo_Improd._$']): ax4_d.annotate(f"${v:,.0f}", (x_v4[i], v + 5), color='white', bbox=bbox_gris, ha='center', fontweight='bold', zorder=10)
-        ax4_i.set_xticks(x_v4); ax4_i.set_xticklabels(agrup_4['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax4_i.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
-        st.pyplot(fig4)
-    else: st.warning("⚠️ Sin datos de costos.")
+        aplicar_margen_superior_grafico(eje_4_barras, agrupacion_4['HH_Improductivas'].max(), 2.6)
+        
+        # Línea de Pesos (Eje Secundario)
+        eje_4_linea.plot(posiciones_x_4, agrupacion_4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_contorno_blanco, label='COSTO ARS', zorder=5)
+        
+        eje_4_linea.set_ylim(0, max(1000, agrupacion_4['Costo_Improd._$'].max() * 1.8))
+        eje_4_linea.set_yticklabels([f'${int(val/1000000)}M' for val in eje_4_linea.get_yticks()], fontweight='bold')
+
+        # Cartel de Costo Total
+        gran_total_pesos = agrupacion_4['Costo_Improd._$'].sum()
+        eje_4_barras.text(0.5, 0.90, f"COSTO TOTAL ACUMULADO ARS\n${gran_total_pesos:,.0f}", transform=eje_4_barras.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=caja_amarilla, weight='bold', zorder=10)
+
+        for indice_v, valor_ars in enumerate(agrupacion_4['Costo_Improd._$']):
+            eje_4_linea.annotate(f"${valor_ars:,.0f}", (posiciones_x_4[indice_v], valor_ars + 5), color='white', bbox=caja_gris, ha='center', fontweight='bold', zorder=10)
+
+        eje_4_barras.set_xticks(posiciones_x_4)
+        eje_4_barras.set_xticklabels(agrupacion_4['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
+        eje_4_barras.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        
+        st.pyplot(figura_4)
+    else: 
+        st.warning("⚠️ Sin información económica disponible.")
 
 st.markdown("---")
 
 # =========================================================================
-# 11. FILA 3: MÉTRICAS 5 Y 6 (PARETO E INCIDENCIA)
+# 11. FILA 3: MÉTRICAS 5 Y 6 (ANÁLISIS CAUSA RAÍZ)
 # =========================================================================
-col5, col6 = st.columns(2)
+columna_metrica_5, columna_metrica_6 = st.columns(2)
 
-with col5:
+with columna_metrica_5:
     st.header("5. PARETO DE CAUSAS")
-    if not df_im_f.empty:
-        agrup_5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
-        n_m = df_im_f['FECHA'].nunique()
-        div_m = n_m if n_m > 0 else 1
-        agrup_5['Prom_M'] = agrup_5['HH_IMPRODUCTIVAS'] / div_m
-        agrup_5 = agrup_5.sort_values(by='Prom_M', ascending=False)
-        agrup_5['%_Acu'] = (agrup_5['Prom_M'].cumsum() / agrup_5['Prom_M'].sum()) * 100
-        fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5b = ax5.twinx()
-        fig5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92)
-        pos_x = np.arange(len(agrup_5))
-        b_p5 = ax5.bar(pos_x, agrup_5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
-        set_margen_superior(ax5, agrup_5['Prom_M'].max(), 2.8)
-        ax5.bar_label(b_p5, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
-        ax5b.plot(pos_x, agrup_5['%_Acu'], color='red', marker='D', markersize=10, linewidth=4, path_effects=c_blanco, zorder=5)
-        ax5b.axhline(80, color='gray', linestyle='--'); ax5b.set_ylim(0, 200); ax5b.yaxis.set_major_formatter(mtick.PercentFormatter())
-        ax5.set_xticks(pos_x); ax5.set_xticklabels([textwrap.fill(str(t), 12) for t in agrup_5['TIPO_PARADA']], rotation=90, fontsize=12, fontweight='bold')
-        for i, val in enumerate(agrup_5['%_Acu']): ax5b.annotate(f"{val:.1f}%", (pos_x[i], val + 4), color='white', bbox=bbox_gris, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
-        ax5.text(0.02, 0.96, f"SUMA PROMEDIO MENSUAL: {agrup_5['Prom_M'].sum():.1f} HH", transform=ax5.transAxes, bbox=bbox_gris, color='white', fontsize=15, ha='left', va='top', zorder=10)
-        st.pyplot(fig5)
-        st.markdown("### 🛠️ Mesa de Trabajo")
-        df_tbl = agrup_5.copy(); t_hs = df_tbl['HH_IMPRODUCTIVAS'].sum()
-        df_tbl['% sobre Selección'] = (df_tbl['HH_IMPRODUCTIVAS'] / t_hs) * 100
-        f_tot = pd.DataFrame({'TIPO_PARADA': ['✅ TOTAL'], 'HH_IMPRODUCTIVAS': [t_hs], 'Prom_M': [df_tbl['Prom_M'].sum()], '%_Acu': [100.0], '% sobre Selección': [100.0]})
-        df_tbl = pd.concat([df_tbl, f_tot], ignore_index=True)
-        st.dataframe(df_tbl.rename(columns={'HH_IMPRODUCTIVAS':'Subtotal HH'}), use_container_width=True, hide_index=True)
-        st.download_button(label="📥 Descargar Plan (CSV)", data=df_tbl.to_csv(index=False).encode('utf-8'), file_name="Plan_Ombu.csv", mime="text/csv", use_container_width=True, type="primary")
-    else: st.success("✅ Sin registros.")
+    st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
 
-with col6:
+    if not df_improductivas_filtrado.empty:
+        # Agrupación por causas
+        agrupacion_5 = df_improductivas_filtrado.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
+        
+        # Divisor mensual
+        meses_unicos_filtro = df_improductivas_filtrado['FECHA'].nunique()
+        divisor_promedio = meses_unicos_filtro if meses_unicos_filtro > 0 else 1
+        
+        agrupacion_5['Promedio_Mensual_HH'] = agrupacion_5['HH_IMPRODUCTIVAS'] / divisor_promedio
+        agrupacion_5 = agrupacion_5.sort_values(by='Promedio_Mensual_HH', ascending=False)
+        agrupacion_5['Porcentaje_Acumulado_Par'] = (agrupacion_5['Promedio_Mensual_HH'].cumsum() / agrupacion_5['Promedio_Mensual_HH'].sum()) * 100
+
+        figura_5, eje_5_barras = plt.subplots(figsize=(14, 10))
+        eje_5_linea = eje_5_barras.twinx()
+        
+        figura_5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92)
+        figura_5.suptitle(texto_parametros_activos, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+
+        posiciones_x_5 = np.arange(len(agrupacion_5))
+        
+        # Barras de Pareto
+        barra_pareto_5 = eje_5_barras.bar(posiciones_x_5, agrupacion_5['Promedio_Mensual_HH'], color='maroon', edgecolor='white', zorder=2)
+        aplicar_margen_superior_grafico(eje_5_barras, agrupacion_5['Promedio_Mensual_HH'].max(), 2.8)
+        eje_5_barras.bar_label(barra_pareto_5, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
+        
+        # Curva de Lorenz (Acumulado)
+        eje_5_linea.plot(posiciones_x_5, agrupacion_5['Porcentaje_Acumulado_Par'], color='red', marker='D', markersize=10, linewidth=4, path_effects=efecto_contorno_blanco, zorder=5)
+        eje_5_linea.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1)
+        
+        eje_5_linea.set_ylim(0, 200)
+        eje_5_linea.yaxis.set_major_formatter(mtick.PercentFormatter())
+
+        # Ajuste de texto para eje X
+        etiquetas_x_envueltas = [textwrap.fill(str(texto_parada), 12) for texto_parada in agrupacion_5['TIPO_PARADA']]
+        eje_5_barras.set_xticks(posiciones_x_5)
+        eje_5_barras.set_xticklabels(etiquetas_x_envueltas, rotation=90, fontsize=12, fontweight='bold')
+        
+        for idx_p, valor_acum in enumerate(agrupacion_5['Porcentaje_Acumulado_Par']):
+            eje_5_linea.annotate(f"{valor_acum:.1f}%", (posiciones_x_5[idx_p], valor_acum + 4), color='white', bbox=caja_gris, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
+
+        # Cuadro de suma promedio
+        gran_suma_promedio = agrupacion_5['Promedio_Mensual_HH'].sum()
+        eje_5_barras.text(0.02, 0.96, f"SUMA PROMEDIO MENSUAL\n{gran_suma_promedio:.1f} HH", transform=eje_5_barras.transAxes, bbox=caja_gris, color='white', fontsize=15, ha='left', va='top', zorder=10)
+        
+        st.pyplot(figura_5)
+        
+        # ==========================================
+        # TABLA DE MESA DE TRABAJO
+        # ==========================================
+        st.markdown("### 🛠️ Mesa de Trabajo e Impacto")
+        df_tabla_final_5 = agrupacion_5.copy()
+        horas_improductivas_totales = df_tabla_final_5['HH_IMPRODUCTIVAS'].sum()
+        df_tabla_final_5['% sobre Selección'] = (df_tabla_final_5['HH_IMPRODUCTIVAS'] / horas_improductivas_totales) * 100
+        
+        # INYECCIÓN EXPRESA DE FILA DE TOTAL
+        fila_totalizador = pd.DataFrame({
+            'TIPO_PARADA': ['✅ TOTAL'], 
+            'HH_IMPRODUCTIVAS': [horas_improductivas_totales], 
+            'Promedio_Mensual_HH': [df_tabla_final_5['Promedio_Mensual_HH'].sum()],
+            'Porcentaje_Acumulado_Par': [100.0],
+            '% sobre Selección': [100.0]
+        })
+        df_tabla_final_5 = pd.concat([df_tabla_final_5, fila_totalizador], ignore_index=True)
+        
+        st.dataframe(
+            df_tabla_final_5.rename(columns={'HH_IMPRODUCTIVAS':'Subtotal HH', 'TIPO_PARADA': 'Causa Detectada'}), 
+            use_container_width=True, 
+            hide_index=True,
+            column_config={
+                "Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"),
+                "% sobre Selección": st.column_config.NumberColumn(format="%.1f %%")
+            }
+        )
+        
+        # Generación de CSV
+        data_csv_salida = df_tabla_final_5.to_csv(index=False).encode('utf-8')
+        st.download_button(label="📥 Descargar Plan de Acción (CSV)", data=data_csv_salida, file_name="Plan_Gestion_Ombu.csv", mime="text/csv", use_container_width=True, type="primary")
+    else:
+        st.success("✅ ¡Objetivo Cumplido! No se detectaron horas improductivas en los filtros seleccionados.")
+
+with columna_metrica_6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
-    if not df_ef_f.empty:
-        df_ef_f['K_Cru'] = df_ef_f['Fecha'].dt.strftime('%Y-%m')
-        ag_d6 = df_ef_f.groupby('K_Cru', as_index=False)['HH_Disponibles'].sum()
-        if not df_im_f.empty:
-            df_im_f['K_Cru'] = df_im_f['FECHA'].dt.strftime('%Y-%m')
-            piv6 = pd.pivot_table(df_im_f, values='HH_IMPRODUCTIVAS', index='K_Cru', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
-            df6_f = pd.merge(ag_d6, piv6, on='K_Cru', how='left').fillna(0)
-            list_6 = [c for c in df6_f.columns if c not in ['HH_Disponibles', 'K_Cru']]
-        else: df6_f = ag_d6.copy(); list_6 = []
-        df6_f['Suma_I'] = df6_f[list_6].sum(axis=1) if list_6 else 0
-        df6_f['Inc_Pct'] = (df6_f['Suma_I'] / df6_f['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        df6_f['Sort'] = pd.to_datetime(df6_f['K_Cru'] + '-01')
-        df6_f = df6_f.sort_values(by='Sort')
-        fig6, ax6 = plt.subplots(figsize=(14, 10)); fig6.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92) 
-        pos_6 = np.arange(len(df6_f))
-        if list_6:
-            piso = np.zeros(len(df6_f)); pal = plt.cm.tab20.colors
-            for i, nom in enumerate(list_6):
-                val_c = df6_f[nom].values
-                ax6.bar(pos_6, val_c, bottom=piso, label=nom, color=pal[i % 20], edgecolor='white', zorder=2)
-                piso += val_c
-        else: ax6.bar(pos_6, np.zeros(len(df6_f)), color='white')
-        set_margen_superior(ax6, df6_f['Suma_I'].max(), 2.2)
-        for i in range(len(pos_6)):
-            iv, dv = df6_f['Suma_I'].iloc[i], df6_f['HH_Disponibles'].iloc[i]
-            if iv > 0: ax6.annotate(f"Imp: {int(iv)}\nDisp: {int(dv)}", (i, iv + (ax6.get_ylim()[1]*0.05)), ha='center', bbox=bbox_oro, fontweight='bold', zorder=10)
-        ax6t = ax6.twinx()
-        ax6t.plot(pos_6, df6_f['Inc_Pct'], color='red', marker='o', markersize=12, linewidth=6, path_effects=contorno_blanco, label='% Incidencia', zorder=5)
-        ax6t.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
-        ax6t.text(pos_6[0], 16, 'META = 15%', color='white', bbox=bbox_verde, fontsize=14, fontweight='bold', zorder=10)
-        for i, val in enumerate(df6_f['Inc_Pct']): ax6t.annotate(f"{val:.1f}%", (pos_6[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=contorno_blanco, zorder=10)
-        ax6.set_xticks(pos_6); ax6.set_xticklabels(df6_f['K_Cru'], fontsize=14, fontweight='bold')
-        ax6t.set_ylim(0, max(30, df6_f['Inc_Pct'].max() * 1.8))
-        st.pyplot(fig6)
+    st.markdown("<div style='min-height: 25px; font-size: 14px; color: #aaa;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
+
+    if not df_eficiencias_filtrado.empty:
+        # Cruce de fechas
+        df_eficiencias_filtrado['Llave_Mes'] = df_eficiencias_filtrado['Fecha'].dt.strftime('%Y-%m')
+        agrupacion_disp_6 = df_eficiencias_filtrado.groupby('Llave_Mes', as_index=False)['HH_Disponibles'].sum()
+
+        if not df_improductivas_filtrado.empty:
+            df_improductivas_filtrado['Llave_Mes'] = df_improductivas_filtrado['FECHA'].dt.strftime('%Y-%m')
+            pivot_causas_6 = pd.pivot_table(df_improductivas_filtrado, values='HH_IMPRODUCTIVAS', index='Llave_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
+            df_grafico_6 = pd.merge(agrupacion_disp_6, pivot_causas_6, on='Llave_Mes', how='left').fillna(0)
+            nombres_causas_6 = [c_nombre for c_nombre in df_grafico_6.columns if c_nombre not in ['HH_Disponibles', 'Llave_Mes']]
+        else:
+            df_grafico_6 = agrupacion_disp_6.copy()
+            nombres_causas_6 = []
+            
+        # Cálculos de incidencia general
+        df_grafico_6['Suma_Horas_Perdidas'] = df_grafico_6[nombres_causas_6].sum(axis=1) if nombres_causas_6 else 0
+        df_grafico_6['Incidencia_Porcentual'] = (df_grafico_6['Suma_Horas_Perdidas'] / df_grafico_6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        
+        # Control estricto de orden cronológico
+        df_grafico_6['Fecha_para_Orden'] = pd.to_datetime(df_grafico_6['Llave_Mes'] + '-01')
+        df_grafico_6 = df_grafico_6.sort_values(by='Fecha_para_Orden')
+
+        figura_6, eje_6_barras = plt.subplots(figsize=(14, 10))
+        figura_6.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92) 
+        figura_6.suptitle(texto_parametros_activos, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+
+        posiciones_x_6 = np.arange(len(df_grafico_6))
+        
+        # Construcción de barras Stacked
+        if nombres_causas_6:
+            base_apilamiento = np.zeros(len(df_grafico_6))
+            paleta_colores_6 = plt.cm.tab20.colors
+            for idx_color, causa_nombre in enumerate(nombres_causas_6):
+                valores_causa = df_grafico_6[causa_nombre].values
+                eje_6_barras.bar(posiciones_x_6, valores_causa, bottom=base_apilamiento, label=causa_nombre, color=paleta_colores_6[idx_color % 20], edgecolor='white', zorder=2)
+                base_apilamiento += valores_causa
+        else:
+            eje_6_barras.bar(posiciones_x_6, np.zeros(len(df_grafico_6)), color='white')
+
+        aplicar_margen_superior_grafico(eje_6_barras, df_grafico_6['Suma_Horas_Perdidas'].max(), 2.2)
+        
+        # Etiquetado de barras
+        for idx_anot en range(len(posiciones_x_6)):
+            val_imp = df_grafico_6['Suma_Horas_Perdidas'].iloc[idx_anot]
+            val_dis = df_grafico_6['HH_Disponibles'].iloc[idx_anot]
+            if val_imp > 0: 
+                eje_6_barras.annotate(f"Imp: {int(val_imp)}\nDisp: {int(val_dis)}", (idx_anot, val_imp + (eje_6_barras.get_ylim()[1]*0.05)), ha='center', bbox=caja_amarilla, fontweight='bold', zorder=10)
+
+        # Línea de Porcentaje Total
+        eje_6_linea = eje_6_barras.twinx()
+        eje_6_linea.plot(posiciones_x_6, df_grafico_6['Incidencia_Porcentual'], color='red', marker='o', markersize=12, linewidth=6, path_effects=efecto_contorno_blanco, label='% Incidencia', zorder=5)
+        
+        # Línea de Meta (15%)
+        eje_6_linea.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
+        eje_6_linea.text(posiciones_x_6[0], 16, 'META = 15%', color='white', bbox=caja_verde, fontsize=14, fontweight='bold', zorder=10)
+        
+        for idx_pt, valor_pt in enumerate(df_grafico_6['Incidencia_Porcentual']):
+            eje_6_linea.annotate(f"{valor_pt:.1f}%", (posiciones_x_6[idx_pt], valor_pt + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_contorno_blanco, zorder=10)
+
+        eje_6_barras.set_xticks(posiciones_x_6)
+        eje_6_barras.set_xticklabels(df_grafico_6['Llave_Mes'], fontsize=14, fontweight='bold')
+        eje_6_linea.set_ylim(0, max(30, df_grafico_6['Incidencia_Porcentual'].max() * 1.8))
+        
+        st.pyplot(figura_6)
+    else:
+        st.warning("⚠️ Carecemos de datos históricos para generar la métrica evolutiva.")
