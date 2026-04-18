@@ -592,6 +592,7 @@ with col_m5:
 
             st.pyplot(fig5)
             
+            # Etiqueta de aviso si operó el fallback
             if fallback_puesto_activo:
                 st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
             
@@ -599,12 +600,13 @@ with col_m5:
             # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN)
             # ==========================================
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
+            st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
             
             motivos_disponibles = pareto_df['TIPO_PARADA'].tolist()
-            motivo_seleccionado = st.selectbox("🎯 Selecciona Motivo para auditar detalles:", motivos_disponibles)
+            motivo_seleccionado = st.selectbox("🎯 Filtrar Motivo Específico:", motivos_disponibles)
             
             if motivo_seleccionado:
-                # Buscamos de forma flexible la columna de detalle en tu CSV
+                # Buscamos de forma flexible la columna de detalle en tu CSV (Ej. 'Sub_Motivo_Detalle')
                 col_sub = next((c for c in df_imp_filtrado.columns if 'SUB' in str(c).upper() or 'DETALLE' in str(c).upper()), None)
                 
                 if col_sub:
@@ -616,20 +618,21 @@ with col_m5:
                         df_sub = df_foco.groupby(col_sub)['HH_IMPRODUCTIVAS'].sum().reset_index()
                         df_sub = df_sub.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
                         
-                        # Tomamos el TOP 10 para no abrumar la tabla
-                        df_top = df_sub.head(10).copy()
+                        # 3. Tomamos el 100% para auditar todo y cuadrar con el Pareto (Eliminado el .head(10))
+                        df_top = df_sub.copy()
                         
                         # Agregamos columnas vacías para usar como "Mesa de Trabajo"
                         df_top["Propuesta_Sub_Motivo_Estandar"] = ""
                         df_top["Plan_de_Accion_Acordado"] = ""
+                        df_top["Responsable"] = ""
                         df_top["Estado"] = "Pendiente"
                         
-                        st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Usa esta tabla interactiva en tus reuniones para analizar los textos reales, proponer la estandarización y definir acciones. (Puedes hacer doble clic en las celdas vacías para escribir).</i></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-bottom:10px;'><i>Usa esta tabla en tus reuniones para analizar los textos reales, proponer la estandarización y definir acciones. (Doble clic en celdas vacías para escribir).</i></div>", unsafe_allow_html=True)
                         
-                        # 3. Desplegamos la tabla interactiva
+                        # 4. Desplegamos la tabla interactiva
                         df_editado = st.data_editor(
                             df_top.rename(columns={
-                                col_sub: 'Detalle Real Cargado', 
+                                col_sub: 'Detalle Real Cargado en Planta', 
                                 'HH_IMPRODUCTIVAS': 'HH Perdidas'
                             }),
                             use_container_width=True,
@@ -643,12 +646,11 @@ with col_m5:
                                 )
                             }
                         )
-                        
                     else:
                         st.info(f"No hay registros de sub-motivos para '{motivo_seleccionado}' en este trimestre.")
                 else:
                     st.warning("⚠️ No se encontró la columna de sub-motivos en la base cargada.")
-                
+                    
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
     else:
