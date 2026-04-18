@@ -13,7 +13,44 @@ import re
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide", initial_sidebar_state="collapsed")
 
 # =========================================================================
-# 2. SEGURIDAD (ACCESO RESTRINGIDO)
+# 2. ESTILOS VISUALES Y ESCUDO CSS (MUEVO EL ESCUDO ARRIBA DE TODO)
+# =========================================================================
+st.markdown("""
+<style>
+    /* ESCUDO VISUAL TOTAL: Oculta cabecera, menú, GitHub, Fork y Toolbar desde el inicio */
+    header {visibility: hidden !important; display: none !important;}
+    [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
+    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
+    [data-testid="manage-app-button"] {visibility: hidden !important; display: none !important;}
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    footer {visibility: hidden !important; display: none !important;}
+    .stAppDeployButton {display: none !important; visibility: hidden !important;}
+    .viewerBadge_container {display: none !important; visibility: hidden !important;}
+    
+    /* Evitar el espacio en blanco que deja la cabecera al desaparecer */
+    .block-container {padding-top: 1rem !important;}
+
+    /* Panel de filtros fijo (Sticky) */
+    div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
+        position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
+        background-color: #0E1117 !important; z-index: 99999 !important;
+        padding-top: 15px !important; padding-bottom: 15px !important; border-bottom: 3px solid #1E3A8A !important; 
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Configuración Maestra de Matplotlib
+plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
+efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
+efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
+
+caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
+caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
+caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+
+# =========================================================================
+# 3. SEGURIDAD (ACCESO RESTRINGIDO)
 # =========================================================================
 USUARIOS_PERMITIDOS = {"acceso.ombu": "Gestion2026"}
 
@@ -53,38 +90,6 @@ def mostrar_login():
 if not st.session_state['autenticado']:
     mostrar_login()
     st.stop()
-
-# =========================================================================
-# 3. ESTILOS VISUALES Y ESCUDO CSS (ANTI-STREAMLIT CLOUD)
-# =========================================================================
-st.markdown("""
-<style>
-    /* ELIMINACIÓN EXTREMA DE LA CABECERA Y BARRA DE STREAMLIT CLOUD */
-    header[data-testid="stHeader"] {display: none !important; visibility: hidden !important; height: 0px !important; opacity: 0 !important;}
-    [data-testid="stDecoration"] {display: none !important; visibility: hidden !important;}
-    [data-testid="stToolbar"] {display: none !important; visibility: hidden !important;}
-    .stAppDeployButton {display: none !important; visibility: hidden !important;}
-    .viewerBadge_container {display: none !important; visibility: hidden !important;}
-    #MainMenu {display: none !important; visibility: hidden !important;}
-    footer {display: none !important; visibility: hidden !important;}
-    
-    /* Panel de filtros fijo (Sticky) */
-    div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
-        position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
-        background-color: #0E1117 !important; z-index: 99999 !important;
-        padding-top: 15px !important; padding-bottom: 15px !important; border-bottom: 3px solid #1E3A8A !important; 
-    }
-</style>
-""", unsafe_allow_html=True)
-
-plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
-efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
-efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
-
-caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
-caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
-caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
 # 4. MOTOR INTELIGENTE Y TENDENCIAS
