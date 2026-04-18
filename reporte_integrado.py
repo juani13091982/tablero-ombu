@@ -606,7 +606,7 @@ with col_m5:
             motivo_seleccionado = st.selectbox("🎯 Filtrar Motivo Específico:", motivos_disponibles)
             
             if motivo_seleccionado:
-                # Buscamos de forma flexible la columna de detalle en tu CSV (Ej. 'Sub_Motivo_Detalle')
+                # Buscamos de forma flexible la columna de detalle en tu CSV
                 col_sub = next((c for c in df_imp_filtrado.columns if 'SUB' in str(c).upper() or 'DETALLE' in str(c).upper()), None)
                 
                 if col_sub:
@@ -618,7 +618,7 @@ with col_m5:
                         df_sub = df_foco.groupby(col_sub)['HH_IMPRODUCTIVAS'].sum().reset_index()
                         df_sub = df_sub.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
                         
-                        # 3. Tomamos el 100% para auditar todo y cuadrar con el Pareto (Eliminado el .head(10))
+                        # 3. Tomamos el 100% para auditar todo y cuadrar con el Pareto
                         df_top = df_sub.copy()
                         
                         # Agregamos columnas vacías para usar como "Mesa de Trabajo"
@@ -650,7 +650,7 @@ with col_m5:
                         st.info(f"No hay registros de sub-motivos para '{motivo_seleccionado}' en este trimestre.")
                 else:
                     st.warning("⚠️ No se encontró la columna de sub-motivos en la base cargada.")
-                    
+                
         else:
             st.warning("No hay fechas válidas en la base de horas improductivas.")
     else:
