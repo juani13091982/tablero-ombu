@@ -80,7 +80,7 @@ caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
 caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 4. MOTOR INTELIGENTE DE CRUCE (MOTOR FUZZY CORREGIDO)
+# 4. MOTOR INTELIGENTE DE CRUCE (MOTOR FUZZY)
 # =========================================================================
 def set_escala_y(ax, vmax, factor=2.6):
     if vmax > 0: ax.set_ylim(0, vmax * factor)
@@ -104,7 +104,6 @@ def cruce_robusto(sel, excel):
     n1, n2 = set(re.findall(r'\d{3,}', s1)), set(re.findall(r'\d{3,}', s2))
     if n1 and n2 and n1.intersection(n2): return True
         
-    # CORRECCIÓN CRÍTICA: Busca palabras desde 3 letras en adelante para atrapar siglas como "CRV"
     p1, p2 = set(re.findall(r'[A-Z]{3,}', s1)), set(re.findall(r'[A-Z]{3,}', s2))
     excl = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA', 'AREA', 'ÁREA', 'MAQUINA'}
     
@@ -137,7 +136,6 @@ try:
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    # Auto-identificador de columnas Improductivas
     if 'TIPO_PARADA' not in df_im.columns:
         cmot = next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c or 'CAUSA' in c), None)
         if cmot: df_im.rename(columns={cmot: 'TIPO_PARADA'}, inplace=True)
@@ -225,7 +223,8 @@ with col1:
     st.header("1. EFICIENCIA REAL")
     st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     
-    df_plot_1 = df_ef_f.copy() if s_pu else df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
+    # Lógica Ajustada: Mostrar todo si hay Línea o Puesto seleccionado. Si no, solo salidas.
+    df_plot_1 = df_ef_f.copy() if (s_pu or s_li) else df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
     
     if not df_plot_1.empty:
         ag1 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Disponibles': 'sum', 'Cant._Prod._A1': 'sum'}).reset_index()
