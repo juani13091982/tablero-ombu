@@ -26,7 +26,6 @@ def mostrar_login():
     
     with c2:
         st.markdown("<div style='background-color:#1E3A8A; padding:5px; border-radius:10px 10px 0px 0px;'></div>", unsafe_allow_html=True)
-        
         l1, l2, l3 = st.columns([1, 1, 1])
         with l2:
             try: st.image("LOGO OMBÚ.jpg", width=160)
@@ -79,9 +78,10 @@ caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
 caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 4. MOTOR INTELIGENTE Y TENDENCIAS
+# 4. MOTOR INTELIGENTE Y TENDENCIAS (ESCALAS DINÁMICAS AJUSTADAS)
 # =========================================================================
-def set_escala_y(ax, vmax, factor=2.6):
+def set_escala_y(ax, vmax, factor=1.4):
+    """Multiplicador reducido a 1.4 para maximizar el uso del espacio en blanco"""
     if vmax > 0: ax.set_ylim(0, vmax * factor)
     else: ax.set_ylim(0, 100)
 
@@ -90,7 +90,6 @@ def dibujar_meses(ax, n_meses):
         ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def cruce_robusto(sel, excel):
-    """Motor ajustado con issubset para evitar falsos positivos con siglas compartidas"""
     if pd.isna(excel) or pd.isna(sel): return False
     s1 = str(sel).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
     s2 = str(excel).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
@@ -107,7 +106,6 @@ def cruce_robusto(sel, excel):
     return False
 
 def add_tendencia(ax, x, y):
-    """Genera línea de tendencia lineal automática"""
     if len(x) > 1:
         z = np.polyfit(x, y.astype(float), 1); p = np.poly1d(z)
         ax.plot(x, p(x), color='darkgray', linestyle=':', linewidth=4, path_effects=efecto_b, zorder=4, label='Tendencia')
@@ -234,7 +232,7 @@ with col1:
         bar_s = ax1.bar(x_idx - 0.17, ag1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bar_d = ax1.bar(x_idx + 0.17, ag1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
-        set_escala_y(ax1, ag1['HH_Disponibles'].max())
+        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.4) # ESCALA DINÁMICA AJUSTADA
         ax1.bar_label(bar_s, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax1.bar_label(bar_d, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax1, len(x_idx))
@@ -248,7 +246,9 @@ with col1:
         
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax1_line.text(x_idx[0], 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
-        ax1_line.set_ylim(0, max(120, ag1['Ef_Real'].max()*1.8)); ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
+        
+        ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3)) # ESCALA LÍNEA AJUSTADA
+        ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         for i, val in enumerate(ag1['Ef_Real']):
             ax1_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
@@ -256,7 +256,7 @@ with col1:
         ax1.set_xticks(x_idx); ax1.set_xticklabels(ag1['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True); ax1_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig1)
-    else: st.warning("⚠️ Sin datos.")
+    else: st.warning("⚠️ Sin datos para Eficiencia Real.")
 
 with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
@@ -274,7 +274,7 @@ with col2:
         b_s2 = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         b_p2 = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
-        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()))
+        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.4) # ESCALA BARRAS
         ax2.bar_label(b_s2, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(b_p2, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
@@ -284,7 +284,9 @@ with col2:
         
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax2_line.text(x_idx[0], 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
-        ax2_line.set_ylim(0, max(150, ag2['Ef_Prod'].max()*1.8)); ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
+        
+        ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3)) # ESCALA LÍNEA
+        ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         for i, val in enumerate(ag2['Ef_Prod']):
             ax2_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
@@ -316,7 +318,6 @@ with col3:
         
         x_idx = np.arange(len(ag3))
         
-        # Agregadas etiquetas de datos centradas en las barras
         b_p = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         b_i = ax3.bar(x_idx, ag3['HH_Improductivas'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax3.bar_label(b_p, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
@@ -324,20 +325,19 @@ with col3:
         
         ax3.plot(x_idx, ag3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_b, label='HH DISPONIBLES', zorder=5)
         
-        set_escala_y(ax3, ag3['HH_Disponibles'].max())
+        set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.4) # ESCALA AJUSTADA
         dibujar_meses(ax3, len(x_idx))
 
         for i in range(len(x_idx)):
             h_dis = ag3['HH_Disponibles'].iloc[i]; h_dec = ag3['Total_Decl'].iloc[i]; gap = h_dis - h_dec
             ax3.plot([i, i], [h_dec, h_dis], color='dimgray', linewidth=5, alpha=0.6, zorder=3)
-            # GAP ubicado en el centro exacto de la línea vertical para evitar solapamiento
             ax3.annotate(f"GAP:\n{int(gap)}", (i, h_dec + (gap/2)), color='firebrick', bbox=caja_b, ha='center', va='center', fontweight='bold', zorder=10)
             ax3.annotate(f"{int(h_dis)}", (i, h_dis + (ax3.get_ylim()[1]*0.05)), color='black', bbox=caja_b, ha='center', fontweight='bold', zorder=10)
 
         ax3.set_xticks(x_idx); ax3.set_xticklabels(ag3['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
         ax3.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True)
         st.pyplot(fig3)
-    else: st.warning("⚠️ Sin datos.")
+    else: st.warning("⚠️ Sin datos para GAP.")
 
 with col4:
     st.header("4. COSTOS IMPRODUCTIVOS")
@@ -354,11 +354,11 @@ with col4:
         bar_imp = ax4.bar(x_idx, ag4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax4.bar_label(bar_imp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4)
         
-        set_escala_y(ax4, ag4['HH_Improductivas'].max())
+        set_escala_y(ax4, ag4['HH_Improductivas'].max(), 1.4) # ESCALA BARRAS
         ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5)
         add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
         
-        ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.8))
+        ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)) # ESCALA LÍNEA
         ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
 
         tot_pesos = ag4['Costo_Improd._$'].sum()
@@ -395,12 +395,12 @@ with col5:
 
         x_idx = np.arange(len(ag5))
         bar_p = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
-        set_escala_y(ax5, ag5['Prom_M'].max(), 2.8)
+        set_escala_y(ax5, ag5['Prom_M'].max(), 1.4) # ESCALA BARRAS
         ax5.bar_label(bar_p, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
         
         ax5_line.plot(x_idx, ag5['Pct_Acu'], color='red', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, zorder=5)
         ax5_line.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1)
-        ax5_line.set_ylim(0, 200); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter())
+        ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) # CURVA AL 100%
 
         lbls = [textwrap.fill(str(t), 12) for t in ag5['TIPO_PARADA']]
         ax5.set_xticks(x_idx); ax5.set_xticklabels(lbls, rotation=90, fontsize=12, fontweight='bold')
@@ -417,8 +417,8 @@ with col5:
         f_tot = pd.DataFrame({'TIPO_PARADA': ['✅ TOTAL'], 'HH_IMPRODUCTIVAS': [t_hs], 'Prom_M': [df_tbl['Prom_M'].sum()], 'Pct_Acu': [100.0], '% sobre Selección': [100.0]})
         df_tbl = pd.concat([df_tbl, f_tot], ignore_index=True)
         st.dataframe(df_tbl.rename(columns={'HH_IMPRODUCTIVAS':'Subtotal HH', 'TIPO_PARADA': 'Motivo'}), use_container_width=True, hide_index=True, column_config={"Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), "% sobre Selección": st.column_config.NumberColumn(format="%.1f %%")})
-        st.download_button(label="📥 Descargar Plan de Acción (CSV)", data=df_tbl.to_csv(index=False).encode('utf-8'), file_name="Plan_Gestion_Ombu.csv", mime="text/csv", use_container_width=True, type="primary")
-    else: st.success("✅ ¡Felicitaciones! Cero horas improductivas.")
+        st.download_button(label="📥 Descargar Plan (CSV)", data=df_tbl.to_csv(index=False).encode('utf-8'), file_name="Plan_Gestion_Ombu.csv", mime="text/csv", use_container_width=True, type="primary")
+    else: st.success("✅ Cero horas improductivas.")
 
 with col6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
@@ -444,7 +444,6 @@ with col6:
         fig6.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
 
         x_idx = np.arange(len(df6))
-        
         if list_c:
             base_st = np.zeros(len(df6)); paleta = plt.cm.tab20.colors
             for i, c_nom in enumerate(list_c):
@@ -453,8 +452,7 @@ with col6:
                 base_st += vals
         else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
 
-        # Escala ajustada drásticamente para que las barras no pisen la línea
-        set_escala_y(ax6, df6['Suma_I'].max(), 3.5)
+        set_escala_y(ax6, df6['Suma_I'].max(), 1.8) # BARRAS MAS ABAJO PARA NO PISAR LINEA
         
         for i in range(len(x_idx)):
             v_i = df6['Suma_I'].iloc[i]; v_d = df6['HH_Disponibles'].iloc[i]
@@ -467,11 +465,11 @@ with col6:
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax6_line.text(x_idx[0], 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
         
-        for i, val in enumerate(df6['Inc_%']): ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
+        for i, val in enumerate(df6['Inc_%']):
+            ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
 
         ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold')
-        # Escala de línea ajustada para que quede flotando sobre las barras
-        ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5))
+        ax6_line.set_ylim(0, max(25, df6['Inc_%'].max() * 1.3)) # LINEA FLOTANDO ARRIBA
         ax6_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig6)
     else: st.warning("⚠️ Sin datos históricos de eficiencia para este sector.")
