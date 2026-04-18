@@ -110,9 +110,7 @@ def cruce_robusto(sel, excel):
     
     if not v1 or not v2: return False
     
-    # Lógica Estricta: Si una lista de palabras clave está completamente dentro de la otra, es match.
     if v1.issubset(v2) or v2.issubset(v1): return True
-    
     return False
 
 # =========================================================================
@@ -227,7 +225,11 @@ with col1:
     st.header("1. EFICIENCIA REAL")
     st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     
-    df_plot_1 = df_ef_f.copy() if (s_pu or s_li) else df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
+    # LÓGICA INTELIGENTE DE SALIDA DE LÍNEA
+    # 1. Si hay puesto específico, mostrar el puesto.
+    # 2. Si no, filtrar por 'SI' (Salida de Línea) para evitar duplicar HH.
+    # 3. Si la línea no tiene 'SI' (ej: Limpieza), mostrar normal para no quedar en blanco.
+    df_plot_1 = df_ef_f.copy() if s_pu else (df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI'] if not df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI'].empty else df_ef_f.copy())
     
     if not df_plot_1.empty:
         ag1 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Disponibles': 'sum', 'Cant._Prod._A1': 'sum'}).reset_index()
