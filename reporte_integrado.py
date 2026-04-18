@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.subplots as subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as path_effects
@@ -597,12 +598,13 @@ with col_m5:
                 st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
             
             # ==========================================
-            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN)
+            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
             # ==========================================
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
             
-            motivos_disponibles = pareto_df['TIPO_PARADA'].tolist()
+            # REQUERIMIENTO 1: Se agregó "Todos" como primera opción de la lista
+            motivos_disponibles = ["Todos"] + pareto_df['TIPO_PARADA'].tolist()
             motivo_seleccionado = st.selectbox("🎯 Filtrar Motivo Específico:", motivos_disponibles)
             
             if motivo_seleccionado:
@@ -610,26 +612,47 @@ with col_m5:
                 col_sub = next((c for c in df_imp_filtrado.columns if 'SUB' in str(c).upper() or 'DETALLE' in str(c).upper()), None)
                 
                 if col_sub:
-                    # 1. Filtramos los datos exactos del trimestre y motivo
-                    df_foco = trimestre[trimestre['TIPO_PARADA'] == motivo_seleccionado]
+                    # Lógica para manejar si elije "Todos" o un motivo específico
+                    if motivo_seleccionado == "Todos":
+                        df_foco = trimestre.copy()
+                    else:
+                        df_foco = trimestre[trimestre['TIPO_PARADA'] == motivo_seleccionado]
                     
                     if not df_foco.empty:
-                        # 2. Generamos el Sub-Pareto
+                        # Generamos el Sub-Pareto
                         df_sub = df_foco.groupby(col_sub)['HH_IMPRODUCTIVAS'].sum().reset_index()
                         df_sub = df_sub.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
                         
-                        # 3. Tomamos el 100% para auditar todo y cuadrar con el Pareto
+                        # Tomamos el 100% para auditar todo y cuadrar con el Pareto
                         df_top = df_sub.copy()
                         
-                        # Agregamos columnas vacías para usar como "Mesa de Trabajo"
-                        df_top["Propuesta_Sub_Motivo_Estandar"] = ""
+                        # REQUERIMIENTO 2: Motor de Autocompletado Intuitivo
+                        def clasificar_sub_motivo(texto):
+                            texto = str(texto).upper()
+                            # Reglas de palabras clave (puedes editar o agregar más en el futuro)
+                            if any(kw in texto for kw in ['RETOQUE', 'PINTURA', 'GOTEO', 'CHORREADURA', 'ADHERENCIA']):
+                                return "Retoque de Pintura"
+                            if any(kw in texto for kw in ['SOLDADURA', 'REPASO', 'PORO', 'FISURA', 'ESCORIA']):
+                                return "Defecto de Soldadura"
+                            if any(kw in texto for kw in ['PLEGADA', 'CONJUNTO', 'DIMENSIÓN', 'MEDIDA', 'AJUSTE', 'FUERA DE ESCUADRA']):
+                                return "Desviación Dimensional / Armado"
+                            if any(kw in texto for kw in ['ESPERANDO', 'FALTA DE MATERIAL', 'ABASTECIMIENTO', 'LOGÍSTICA', 'PUENTE']):
+                                return "Retraso Logístico / Abastecimiento"
+                            if any(kw in texto for kw in ['ROTURA', 'MANTENIMIENTO', 'ELÉCTRICA', 'MECÁNICA', 'MÁQUINA']):
+                                return "Falla de Equipo / Rotura"
+                            return "" # Si no encuentra nada, lo deja vacío para que lo llenes tú
+
+                        # Aplicamos el motor inteligente a la nueva columna
+                        df_top["Propuesta_Sub_Motivo_Estandar"] = df_top[col_sub].apply(clasificar_sub_motivo)
+                        
+                        # Agregamos las otras columnas vacías para usar como "Mesa de Trabajo"
                         df_top["Plan_de_Accion_Acordado"] = ""
                         df_top["Responsable"] = ""
                         df_top["Estado"] = "Pendiente"
                         
                         st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-bottom:10px;'><i>Usa esta tabla en tus reuniones para analizar los textos reales, proponer la estandarización y definir acciones. (Doble clic en celdas vacías para escribir).</i></div>", unsafe_allow_html=True)
                         
-                        # 4. Desplegamos la tabla interactiva
+                        # Desplegamos la tabla interactiva
                         df_editado = st.data_editor(
                             df_top.rename(columns={
                                 col_sub: 'Detalle Real Cargado en Planta', 
@@ -647,7 +670,7 @@ with col_m5:
                             }
                         )
                     else:
-                        st.info(f"No hay registros de sub-motivos para '{motivo_seleccionado}' en este trimestre.")
+                        st.info(f"No hay registros de sub-motivos para la selección en este trimestre.")
                 else:
                     st.warning("⚠️ No se encontró la columna de sub-motivos en la base cargada.")
                 
