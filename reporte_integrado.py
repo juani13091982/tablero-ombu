@@ -78,7 +78,7 @@ caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
 caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 4. MOTOR INTELIGENTE Y TENDENCIAS (ESCALAS DINÁMICAS AJUSTADAS)
+# 4. MOTOR INTELIGENTE Y TENDENCIAS
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.4):
     if vmax > 0: ax.set_ylim(0, vmax * factor)
@@ -145,6 +145,11 @@ try:
     if 'FECHA' not in df_im.columns:
         cfec = next((c for c in df_im.columns if 'FECHA' in c), None)
         if cfec: df_im.rename(columns={cfec: 'FECHA'}, inplace=True)
+
+    # Identificación automática de la columna DETALLE
+    if 'DETALLE' not in df_im.columns:
+        cdet = next((c for c in df_im.columns if 'DETALLE' in c or 'OBSERVACION' in c or 'DESCRIPCION' in c), None)
+        if cdet: df_im.rename(columns={cdet: 'DETALLE'}, inplace=True)
     
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_im['FECHA'] = pd.to_datetime(df_im['FECHA'], errors='coerce').dt.to_period('M').dt.to_timestamp()
@@ -360,9 +365,7 @@ with col4:
         ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)) 
         ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
 
-        # AGREGADO: HH IMP TOTALES EN EL CARTEL
-        tot_pesos = ag4['Costo_Improd._$'].sum()
-        tot_hh_imp = ag4['HH_Improductivas'].sum()
+        tot_pesos = ag4['Costo_Improd._$'].sum(); tot_hh_imp = ag4['HH_Improductivas'].sum()
         ax4.text(0.5, 0.90, f"COSTO TOTAL ACUMULADO ARS\n${tot_pesos:,.0f}\nTOTAL: {tot_hh_imp:,.0f} HH IMP", transform=ax4.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=caja_o, weight='bold', zorder=10)
 
         for i, val in enumerate(ag4['Costo_Improd._$']):
@@ -418,7 +421,6 @@ with col5:
         f_tot = pd.DataFrame({'TIPO_PARADA': ['✅ TOTAL'], 'HH_IMPRODUCTIVAS': [t_hs], 'Prom_M': [df_tbl['Prom_M'].sum()], 'Pct_Acu': [100.0], '% sobre Selección': [100.0]})
         df_tbl = pd.concat([df_tbl, f_tot], ignore_index=True)
         st.dataframe(df_tbl.rename(columns={'HH_IMPRODUCTIVAS':'Subtotal HH', 'TIPO_PARADA': 'Motivo'}), use_container_width=True, hide_index=True, column_config={"Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), "% sobre Selección": st.column_config.NumberColumn(format="%.1f %%")})
-        st.download_button(label="📥 Descargar Plan (CSV)", data=df_tbl.to_csv(index=False).encode('utf-8'), file_name="Plan_Gestion_Ombu.csv", mime="text/csv", use_container_width=True, type="primary")
     else: st.success("✅ Cero horas improductivas.")
 
 with col6:
@@ -446,20 +448,14 @@ with col6:
 
         x_idx = np.arange(len(df6))
         
-        # AGREGADO: ETIQUETAS DE DATOS EN BARRAS APILADAS Y LEYENDA PEQUEÑA
         if list_c:
             base_st = np.zeros(len(df6)); paleta = plt.cm.tab20.colors
             for i, c_nom in enumerate(list_c):
                 vals = df6[c_nom].values
                 bar_stack = ax6.bar(x_idx, vals, bottom=base_st, label=textwrap.fill(c_nom, 15), color=paleta[i % 20], edgecolor='white', zorder=2)
-                
-                # Inyección de etiquetas pequeñas en las barras
-                lbls_stack = [f"{int(v)}" if v > 0 else "" for v in vals]
-                ax6.bar_label(bar_stack, labels=lbls_stack, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
-                
+                lbls_stk = [f"{int(v)}" if v > 0 else "" for v in vals]
+                ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
                 base_st += vals
-                
-            # Inyección de leyenda pequeña superior
             ax6.legend(loc='upper left', fontsize=8, ncol=3, framealpha=0.7)
         else:
             ax6.bar(x_idx, np.zeros(len(df6)), color='white')
@@ -477,11 +473,57 @@ with col6:
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax6_line.text(x_idx[0], 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
         
-        for i, val in enumerate(df6['Inc_%']):
-            ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
+        for i, val in enumerate(df6['Inc_%']): ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
 
         ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold')
         ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5))
         ax6_line.legend(loc='upper right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig6)
-    else: st.warning("⚠️ Sin datos históricos de eficiencia para este sector.")
+    else: st.warning("⚠️ Sin datos históricos.")
+
+st.markdown("---")
+
+# =========================================================================
+# 12. FILA 4: ANÁLISIS PROFUNDO DE CAUSAS (DETALLES)
+# =========================================================================
+st.header("7. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)")
+st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Apertura de los registros detallados correspondientes a los filtros superiores</i></div>", unsafe_allow_html=True)
+
+if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
+    motivos_disponibles = sorted(df_im_f['TIPO_PARADA'].dropna().unique())
+    
+    col_sel_motivo, col_espacio = st.columns([1, 2])
+    with col_sel_motivo:
+        motivo_seleccionado = st.selectbox("🔍 Seleccionar Motivo a detallar:", ["Todos los motivos"] + list(motivos_disponibles))
+    
+    df_detalles = df_im_f.copy()
+    if motivo_seleccionado != "Todos los motivos":
+        df_detalles = df_detalles[df_detalles['TIPO_PARADA'] == motivo_seleccionado]
+        
+    if not df_detalles.empty:
+        agrup_detalles = df_detalles.groupby('DETALLE').agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index()
+        agrup_detalles = agrup_detalles.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
+        
+        gran_total_detalles = agrup_detalles['HH_IMPRODUCTIVAS'].sum()
+        agrup_detalles['% sobre Motivo'] = (agrup_detalles['HH_IMPRODUCTIVAS'] / gran_total_detalles) * 100
+        
+        fila_tot_detalles = pd.DataFrame({'DETALLE': ['✅ TOTAL SUMATORIA'], 'HH_IMPRODUCTIVAS': [gran_total_detalles], '% sobre Motivo': [100.0]})
+        agrup_detalles = pd.concat([agrup_detalles, fila_tot_detalles], ignore_index=True)
+        
+        st.dataframe(
+            agrup_detalles.rename(columns={'HH_IMPRODUCTIVAS': 'Subtotal HH', 'DETALLE': 'Detalle Registrado'}), 
+            use_container_width=True, 
+            hide_index=True, 
+            column_config={
+                "Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), 
+                "% sobre Motivo": st.column_config.NumberColumn(format="%.1f %%")
+            }
+        )
+        
+        # Botón para descargar solo la tabla de detalles filtrada
+        csv_detalles = agrup_detalles.to_csv(index=False).encode('utf-8')
+        st.download_button(label="📥 Descargar Detalle Operativo (CSV)", data=csv_detalles, file_name="Detalles_Improductividad.csv", mime="text/csv", use_container_width=True)
+    else:
+        st.info("No hay registros detallados para el motivo seleccionado en este periodo.")
+else:
+    st.info("La base de datos de Improductivas no posee la columna 'Detalle', o no hay horas improductivas reportadas con la configuración de filtros actual.")
