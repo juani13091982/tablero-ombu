@@ -34,7 +34,7 @@ def mostrar_login():
         
         st.markdown("""
             <div style='text-align:center; margin-top:-10px; margin-bottom:20px;'>
-                <h2 style='margin:0; color:#1E3A8A; font-weight:bold;'>GESTIÓN INDUSTRIAL OMBÚ S.A.</h2>
+                <h2 style='margin:0; color:#1E3A8A; font-weight:bold;'>GESTIÓN INDUSTRIAL PRODUCTIVA OMBÚ S.A.</h2>
                 <p style='color:#666; font-weight:bold;'>Acceso Restringido - Control de Gestión</p>
             </div>
         """, unsafe_allow_html=True)
@@ -79,7 +79,7 @@ caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
 caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 4. MOTOR INTELIGENTE DE CRUCE (MOTOR FUZZY ESTRICTO)
+# 4. MOTOR INTELIGENTE Y TENDENCIAS
 # =========================================================================
 def set_escala_y(ax, vmax, factor=2.6):
     if vmax > 0: ax.set_ylim(0, vmax * factor)
@@ -90,28 +90,27 @@ def dibujar_meses(ax, n_meses):
         ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def cruce_robusto(sel, excel):
-    """Motor ajustado con issubset para evitar falsos positivos con siglas compartidas (Ej: CRV)"""
+    """Motor ajustado con issubset para evitar falsos positivos con siglas compartidas"""
     if pd.isna(excel) or pd.isna(sel): return False
-    
     s1 = str(sel).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
     s2 = str(excel).upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
-    
-    l1 = re.sub(r'[^A-Z0-9]', '', s1)
-    l2 = re.sub(r'[^A-Z0-9]', '', s2)
+    l1, l2 = re.sub(r'[^A-Z0-9]', '', s1), re.sub(r'[^A-Z0-9]', '', s2)
     if not l1 or not l2: return False
     if l1 in l2 or l2 in l1: return True
     
-    p1 = set(re.findall(r'[A-Z0-9]{3,}', s1))
-    p2 = set(re.findall(r'[A-Z0-9]{3,}', s2))
+    p1, p2 = set(re.findall(r'[A-Z0-9]{3,}', s1)), set(re.findall(r'[A-Z0-9]{3,}', s2))
     excl = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA', 'AREA', 'ÁREA', 'MAQUINA'}
-    
-    v1 = p1 - excl
-    v2 = p2 - excl
+    v1, v2 = p1 - excl, p2 - excl
     
     if not v1 or not v2: return False
-    
     if v1.issubset(v2) or v2.issubset(v1): return True
     return False
+
+def add_tendencia(ax, x, y):
+    """Genera línea de tendencia lineal automática"""
+    if len(x) > 1:
+        z = np.polyfit(x, y.astype(float), 1); p = np.poly1d(z)
+        ax.plot(x, p(x), color='darkgray', linestyle=':', linewidth=4, path_effects=efecto_b, zorder=4, label='Tendencia')
 
 # =========================================================================
 # 5. HEADER Y CARGA DE DATOS
@@ -171,12 +170,10 @@ with st.container():
     
     with f1: 
         s_pl = st.multiselect("🏭 Planta", list(df_ef['Planta'].dropna().unique()), placeholder="Todas")
-        
     df_tl = df_ef[df_ef['Planta'].isin(s_pl)] if s_pl else df_ef
     
     with f2: 
         s_li = st.multiselect("⚙️ Línea", list(df_tl['Linea'].dropna().unique()), placeholder="Todas")
-        
     df_tp = df_tl[df_tl['Linea'].isin(s_li)] if s_li else df_tl
     
     with f3: 
@@ -191,13 +188,11 @@ with st.container():
 df_ef_f = df_ef.copy()
 df_im_f = df_im.copy()
 
-# Filtrar Eficiencias
 if s_pl: df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
 if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
 if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
 if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
 
-# Filtrar Improductivas
 if s_pl and not df_im_f.empty:
     col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0] if len(df_im_f.columns) > 0 else None)
     if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: any(cruce_robusto(p, x) for p in s_pl))]
@@ -225,11 +220,7 @@ with col1:
     st.header("1. EFICIENCIA REAL")
     st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     
-    # LÓGICA INTELIGENTE DE SALIDA DE LÍNEA
-    # 1. Si hay puesto específico, mostrar el puesto.
-    # 2. Si no, filtrar por 'SI' (Salida de Línea) para evitar duplicar HH.
-    # 3. Si la línea no tiene 'SI' (ej: Limpieza), mostrar normal para no quedar en blanco.
-    df_plot_1 = df_ef_f.copy() if s_pu else (df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI'] if not df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI'].empty else df_ef_f.copy())
+    df_plot_1 = df_ef_f.copy() if (s_pu or s_li) else (df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI'] if not df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI'].empty else df_ef_f.copy())
     
     if not df_plot_1.empty:
         ag1 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Disponibles': 'sum', 'Cant._Prod._A1': 'sum'}).reset_index()
@@ -237,12 +228,9 @@ with col1:
         
         fig1, ax1 = plt.subplots(figsize=(14, 10))
         ax1_line = ax1.twinx()
-        
-        fig1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
-        fig1.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig1.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(ag1))
-        
         bar_s = ax1.bar(x_idx - 0.17, ag1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bar_d = ax1.bar(x_idx + 0.17, ag1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
@@ -256,19 +244,19 @@ with col1:
             if val_u > 0: ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height()*0.05, f"{val_u} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=efecto_n, zorder=4)
 
         ax1_line.plot(x_idx, ag1['Ef_Real'], color='dimgray', marker='o', markersize=12, linewidth=4, path_effects=efecto_b, label='% Efic. Real', zorder=5)
+        add_tendencia(ax1_line, x_idx, ag1['Ef_Real'])
+        
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax1_line.text(x_idx[0], 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
-        
-        ax1_line.set_ylim(0, max(120, ag1['Ef_Real'].max()*1.8))
-        ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
+        ax1_line.set_ylim(0, max(120, ag1['Ef_Real'].max()*1.8)); ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         for i, val in enumerate(ag1['Ef_Real']):
             ax1_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
 
         ax1.set_xticks(x_idx); ax1.set_xticklabels(ag1['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True); ax1_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig1)
-    else: st.warning("⚠️ Sin datos para Eficiencia Real.")
+    else: st.warning("⚠️ Sin datos.")
 
 with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
@@ -280,12 +268,9 @@ with col2:
         
         fig2, ax2 = plt.subplots(figsize=(14, 10))
         ax2_line = ax2.twinx()
-        
-        fig2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
-        fig2.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig2.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(ag2))
-        
         b_s2 = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         b_p2 = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
@@ -295,19 +280,19 @@ with col2:
         dibujar_meses(ax2, len(x_idx))
 
         ax2_line.plot(x_idx, ag2['Ef_Prod'], color='dimgray', marker='s', markersize=12, linewidth=4, path_effects=efecto_b, label='% Efic. Prod.', zorder=5)
+        add_tendencia(ax2_line, x_idx, ag2['Ef_Prod'])
+        
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax2_line.text(x_idx[0], 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
-        
-        ax2_line.set_ylim(0, max(150, ag2['Ef_Prod'].max()*1.8))
-        ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
+        ax2_line.set_ylim(0, max(150, ag2['Ef_Prod'].max()*1.8)); ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
 
         for i, val in enumerate(ag2['Ef_Prod']):
             ax2_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
 
         ax2.set_xticks(x_idx); ax2.set_xticklabels(ag2['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax2.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        ax2.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True); ax2_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig2)
-    else: st.warning("⚠️ Sin datos para Eficiencia Productiva.")
+    else: st.warning("⚠️ Sin datos.")
 
 st.markdown("---")
 
@@ -322,7 +307,6 @@ with col3:
     
     if not df_ef_f.empty:
         c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH Productivas'
-        
         ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Improductivas': 'sum', 'HH_Disponibles': 'sum'}).reset_index()
         ag3['Total_Decl'] = ag3[c_prod] + ag3['HH_Improductivas']
         
@@ -332,26 +316,28 @@ with col3:
         
         x_idx = np.arange(len(ag3))
         
-        ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
-        ax3.bar(x_idx, ag3['HH_Improductivas'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+        # Agregadas etiquetas de datos centradas en las barras
+        b_p = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        b_i = ax3.bar(x_idx, ag3['HH_Improductivas'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+        ax3.bar_label(b_p, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
+        ax3.bar_label(b_i, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
+        
         ax3.plot(x_idx, ag3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_b, label='HH DISPONIBLES', zorder=5)
         
         set_escala_y(ax3, ag3['HH_Disponibles'].max())
         dibujar_meses(ax3, len(x_idx))
 
         for i in range(len(x_idx)):
-            h_dis = ag3['HH_Disponibles'].iloc[i]
-            h_dec = ag3['Total_Decl'].iloc[i]
-            gap = h_dis - h_dec
-            
+            h_dis = ag3['HH_Disponibles'].iloc[i]; h_dec = ag3['Total_Decl'].iloc[i]; gap = h_dis - h_dec
             ax3.plot([i, i], [h_dec, h_dis], color='dimgray', linewidth=5, alpha=0.6, zorder=3)
-            ax3.annotate(f"GAP:\n{int(gap)}", (i, h_dec + 5), color='firebrick', bbox=caja_b, ha='center', va='bottom', fontweight='bold', zorder=10)
-            ax3.annotate(f"{int(h_dis)}", (i, h_dis + (ax3.get_ylim()[1]*0.08)), color='black', bbox=caja_b, ha='center', fontweight='bold', zorder=10)
+            # GAP ubicado en el centro exacto de la línea vertical para evitar solapamiento
+            ax3.annotate(f"GAP:\n{int(gap)}", (i, h_dec + (gap/2)), color='firebrick', bbox=caja_b, ha='center', va='center', fontweight='bold', zorder=10)
+            ax3.annotate(f"{int(h_dis)}", (i, h_dis + (ax3.get_ylim()[1]*0.05)), color='black', bbox=caja_b, ha='center', fontweight='bold', zorder=10)
 
         ax3.set_xticks(x_idx); ax3.set_xticklabels(ag3['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
         ax3.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True)
         st.pyplot(fig3)
-    else: st.warning("⚠️ Sin datos para análisis de GAP.")
+    else: st.warning("⚠️ Sin datos.")
 
 with col4:
     st.header("4. COSTOS IMPRODUCTIVOS")
@@ -359,7 +345,6 @@ with col4:
     
     if not df_ef_f.empty:
         ag4 = df_ef_f.groupby('Fecha').agg({'HH_Improductivas': 'sum', 'Costo_Improd._$': 'sum'}).reset_index()
-        
         fig4, ax4 = plt.subplots(figsize=(14, 10)); ax4_line = ax4.twinx()
         fig4.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92)
         fig4.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
@@ -371,6 +356,7 @@ with col4:
         
         set_escala_y(ax4, ag4['HH_Improductivas'].max())
         ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5)
+        add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
         
         ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.8))
         ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
@@ -382,7 +368,7 @@ with col4:
             ax4_line.annotate(f"${val:,.0f}", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
 
         ax4.set_xticks(x_idx); ax4.set_xticklabels(ag4['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax4.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True)
+        ax4.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True); ax4_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig4)
     else: st.warning("⚠️ No hay datos económicos.")
 
@@ -399,18 +385,15 @@ with col5:
 
     if not df_im_f.empty:
         ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
-        n_m = df_im_f['FECHA'].nunique()
-        div = n_m if n_m > 0 else 1
+        n_m = df_im_f['FECHA'].nunique(); div = n_m if n_m > 0 else 1
         ag5['Prom_M'] = ag5['HH_IMPRODUCTIVAS'] / div
         ag5 = ag5.sort_values(by='Prom_M', ascending=False)
         ag5['Pct_Acu'] = (ag5['Prom_M'].cumsum() / ag5['Prom_M'].sum()) * 100
 
         fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5_line = ax5.twinx()
-        fig5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92)
-        fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92); fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
 
         x_idx = np.arange(len(ag5))
-        
         bar_p = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
         set_escala_y(ax5, ag5['Prom_M'].max(), 2.8)
         ax5.bar_label(bar_p, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
@@ -422,27 +405,20 @@ with col5:
         lbls = [textwrap.fill(str(t), 12) for t in ag5['TIPO_PARADA']]
         ax5.set_xticks(x_idx); ax5.set_xticklabels(lbls, rotation=90, fontsize=12, fontweight='bold')
         
-        for i, val in enumerate(ag5['Pct_Acu']):
-            ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 4), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
-
+        for i, val in enumerate(ag5['Pct_Acu']): ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 4), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
         sum_m = ag5['Prom_M'].sum()
         ax5.text(0.02, 0.96, f"SUMA PROMEDIO MENSUAL\n{sum_m:.1f} HH", transform=ax5.transAxes, bbox=caja_g, color='white', fontsize=15, ha='left', va='top', zorder=10)
         st.pyplot(fig5)
         
         st.markdown("### 🛠️ Mesa de Trabajo e Impacto")
-        df_tbl = ag5.copy()
-        t_hs = df_tbl['HH_IMPRODUCTIVAS'].sum()
+        df_tbl = ag5.copy(); t_hs = df_tbl['HH_IMPRODUCTIVAS'].sum()
         df_tbl['% sobre Selección'] = (df_tbl['HH_IMPRODUCTIVAS'] / t_hs) * 100
         
         f_tot = pd.DataFrame({'TIPO_PARADA': ['✅ TOTAL'], 'HH_IMPRODUCTIVAS': [t_hs], 'Prom_M': [df_tbl['Prom_M'].sum()], 'Pct_Acu': [100.0], '% sobre Selección': [100.0]})
         df_tbl = pd.concat([df_tbl, f_tot], ignore_index=True)
-        
         st.dataframe(df_tbl.rename(columns={'HH_IMPRODUCTIVAS':'Subtotal HH', 'TIPO_PARADA': 'Motivo'}), use_container_width=True, hide_index=True, column_config={"Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), "% sobre Selección": st.column_config.NumberColumn(format="%.1f %%")})
-        
-        csv_out = df_tbl.to_csv(index=False).encode('utf-8')
-        st.download_button(label="📥 Descargar Plan de Acción (CSV)", data=csv_out, file_name="Plan_Gestion_Ombu.csv", mime="text/csv", use_container_width=True, type="primary")
-    else:
-        st.success("✅ ¡Felicitaciones! Cero horas improductivas en este periodo.")
+        st.download_button(label="📥 Descargar Plan de Acción (CSV)", data=df_tbl.to_csv(index=False).encode('utf-8'), file_name="Plan_Gestion_Ombu.csv", mime="text/csv", use_container_width=True, type="primary")
+    else: st.success("✅ ¡Felicitaciones! Cero horas improductivas.")
 
 with col6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
@@ -457,14 +433,11 @@ with col6:
             piv = pd.pivot_table(df_im_f, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
             df6 = pd.merge(ag_disp, piv, on='K_Mes', how='left').fillna(0)
             list_c = [c for c in df6.columns if c not in ['HH_Disponibles', 'K_Mes']]
-        else:
-            df6 = ag_disp.copy(); list_c = []
+        else: df6 = ag_disp.copy(); list_c = []
             
         df6['Suma_I'] = df6[list_c].sum(axis=1) if list_c else 0
         df6['Inc_%'] = (df6['Suma_I'] / df6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        
-        df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01')
-        df6 = df6.sort_values(by='Fecha_O')
+        df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
 
         fig6, ax6 = plt.subplots(figsize=(14, 10))
         fig6.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92) 
@@ -473,36 +446,32 @@ with col6:
         x_idx = np.arange(len(df6))
         
         if list_c:
-            base_st = np.zeros(len(df6))
-            paleta = plt.cm.tab20.colors
+            base_st = np.zeros(len(df6)); paleta = plt.cm.tab20.colors
             for i, c_nom in enumerate(list_c):
                 vals = df6[c_nom].values
                 ax6.bar(x_idx, vals, bottom=base_st, label=c_nom, color=paleta[i % 20], edgecolor='white', zorder=2)
                 base_st += vals
-        else:
-            ax6.bar(x_idx, np.zeros(len(df6)), color='white')
+        else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
 
-        set_escala_y(ax6, df6['Suma_I'].max(), 2.2)
+        # Escala ajustada drásticamente para que las barras no pisen la línea
+        set_escala_y(ax6, df6['Suma_I'].max(), 3.5)
         
         for i in range(len(x_idx)):
-            v_i = df6['Suma_I'].iloc[i]
-            v_d = df6['HH_Disponibles'].iloc[i]
-            if v_i > 0: 
-                ax6.annotate(f"Imp: {int(v_i)}\nDisp: {int(v_d)}", (i, v_i + (ax6.get_ylim()[1]*0.05)), ha='center', bbox=caja_o, fontweight='bold', zorder=10)
+            v_i = df6['Suma_I'].iloc[i]; v_d = df6['HH_Disponibles'].iloc[i]
+            if v_i > 0: ax6.annotate(f"Imp: {int(v_i)}\nDisp: {int(v_d)}", (i, v_i + (ax6.get_ylim()[1]*0.02)), ha='center', bbox=caja_o, fontweight='bold', zorder=10)
 
         ax6_line = ax6.twinx()
         ax6_line.plot(x_idx, df6['Inc_%'], color='red', marker='o', markersize=12, linewidth=6, path_effects=efecto_b, label='% Incidencia', zorder=5)
+        add_tendencia(ax6_line, x_idx, df6['Inc_%'])
         
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax6_line.text(x_idx[0], 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
         
-        for i, val in enumerate(df6['Inc_%']):
-            ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
+        for i, val in enumerate(df6['Inc_%']): ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
 
-        ax6.set_xticks(x_idx)
-        ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold')
-        ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.8))
-        
+        ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold')
+        # Escala de línea ajustada para que quede flotando sobre las barras
+        ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5))
+        ax6_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True)
         st.pyplot(fig6)
-    else:
-        st.warning("⚠️ Sin datos históricos de eficiencia para este sector.")
+    else: st.warning("⚠️ Sin datos históricos de eficiencia para este sector.")
