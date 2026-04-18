@@ -607,12 +607,8 @@ with col_m5:
 
             st.pyplot(fig5)
             
-            # Etiqueta de aviso si operó el fallback
-            if fallback_puesto_activo:
-                st.caption("📌 Nota: Mostrando Pareto a nivel general de Línea (No hay registros específicos de improductivas para este Puesto).")
-            
             # ==========================================
-            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
+            # NUEVO: MESA DE TRABAJO INTERACTIVA (CON TABLA DE RESUMEN)
             # ==========================================
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
@@ -648,18 +644,23 @@ with col_m5:
                                 return "Retraso Logístico / Abastecimiento"
                             if any(kw in texto for kw in ['ROTURA', 'MANTENIMIENTO', 'ELÉCTRICA', 'MECÁNICA', 'MÁQUINA']):
                                 return "Falla de Equipo / Rotura"
-                            return "Otros / Requiere Análisis" # <-- CORRECCIÓN PROFESIONAL AQUÍ
+                            return "Otros / Requiere Análisis"
 
                         df_top["Propuesta_Sub_Motivo_Estandar"] = df_top[col_sub].apply(clasificar_sub_motivo)
                         
-                        # --- TABLA DE RESUMEN Y PORCENTAJES ---
+                        # --- CORRECCIÓN DEFINITIVA DE LA TABLA DE RESUMEN ---
                         total_hh_foco = df_top['HH_IMPRODUCTIVAS'].sum()
+                        
+                        # Calculamos el resumen agrupando las horas perdidas por la categoría estandarizada
                         df_resumen = df_top.groupby('Propuesta_Sub_Motivo_Estandar')['HH_IMPRODUCTIVAS'].sum().reset_index()
                         df_resumen = df_resumen.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
+                        
+                        # Calculamos el porcentaje sobre el total de horas de esta selección
                         df_resumen['% sobre Selección'] = (df_resumen['HH_IMPRODUCTIVAS'] / total_hh_foco) * 100
                         
                         st.markdown(f"<div style='font-size: 15px; font-weight: bold; color: #1E3A8A; margin-top: 15px; margin-bottom: 5px;'>📊 Resumen de Impacto: {motivo_seleccionado}</div>", unsafe_allow_html=True)
                         
+                        # Mostramos el cuadro resumen
                         st.dataframe(
                             df_resumen.rename(columns={
                                 'Propuesta_Sub_Motivo_Estandar': 'Categoría Estandarizada', 
@@ -712,6 +713,7 @@ with col_m6:
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
 
     if not df_imp_filtrado.empty:
+        # BLINDAJE EXTREMO ANTI-ERRORES DE FECHA
         df_imp_filtrado['Fecha_Cruce'] = pd.to_datetime(df_imp_filtrado['FECHA']).dt.strftime('%Y-%m')
         df_ef_filtrado['Fecha_Cruce'] = pd.to_datetime(df_ef_filtrado['Fecha']).dt.strftime('%Y-%m')
 
