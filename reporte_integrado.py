@@ -55,16 +55,18 @@ if not st.session_state['autenticado']:
     st.stop()
 
 # =========================================================================
-# 3. ESTILOS VISUALES Y ESCUDO CSS (ANTI-GITHUB)
+# 3. ESTILOS VISUALES Y ESCUDO CSS (ANTI-STREAMLIT CLOUD)
 # =========================================================================
 st.markdown("""
 <style>
-    /* ESCUDO VISUAL TOTAL: Oculta cabecera, menú, GitHub, Fork y Toolbar de Streamlit Cloud */
-    #MainMenu, header, footer {visibility: hidden !important; display: none !important;} 
-    [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
-    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
-    .viewerBadge_container {visibility: hidden !important; display: none !important;}
-    .stAppToolbar {visibility: hidden !important; display: none !important;}
+    /* ELIMINACIÓN EXTREMA DE LA CABECERA Y BARRA DE STREAMLIT CLOUD */
+    header[data-testid="stHeader"] {display: none !important; visibility: hidden !important; height: 0px !important; opacity: 0 !important;}
+    [data-testid="stDecoration"] {display: none !important; visibility: hidden !important;}
+    [data-testid="stToolbar"] {display: none !important; visibility: hidden !important;}
+    .stAppDeployButton {display: none !important; visibility: hidden !important;}
+    .viewerBadge_container {display: none !important; visibility: hidden !important;}
+    #MainMenu {display: none !important; visibility: hidden !important;}
+    footer {display: none !important; visibility: hidden !important;}
     
     /* Panel de filtros fijo (Sticky) */
     div[data-testid="stVerticalBlock"] > div:has(#filtro-ribbon) {
