@@ -29,12 +29,17 @@ def mostrar_login():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("""
-            <div style='background-color:#1E3A8A; color:white; padding:20px; border-radius:10px 10px 0px 0px; text-align:center;'>
-                <h2 style='margin:0; font-weight:bold; letter-spacing: 2px;'>OMBÚ</h2>
-                <h5 style='margin:0; color:#cbd5e1;'>Acceso al Tablero de Gestión</h5>
-            </div>
-        """, unsafe_allow_html=True)
+        # INTENTA CARGAR EL LOGO. SI NO LO ENCUENTRA, PONE EL CUADRO AZUL DE RESPALDO.
+        try:
+            st.image("LOGO OMBÚ.jpg", use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+        except Exception:
+            st.markdown("""
+                <div style='background-color:#1E3A8A; color:white; padding:20px; border-radius:10px 10px 0px 0px; text-align:center;'>
+                    <h2 style='margin:0; font-weight:bold; letter-spacing: 2px;'>OMBÚ</h2>
+                    <h5 style='margin:0; color:#cbd5e1;'>Acceso al Tablero de Gestión</h5>
+                </div>
+            """, unsafe_allow_html=True)
         
         with st.form("login_form"):
             st.markdown("<h4 style='text-align: center; color: #333;'>🔒 Iniciar Sesión</h4>", unsafe_allow_html=True)
@@ -723,11 +728,11 @@ with c6:
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
 
     if not df_ef_f.empty:
-        df_ef_f['Cruce'] = df_ef_f['Fecha'].dt.strftime('%Y-%m')
+        df_ef_f['Cruce'] = pd.to_datetime(df_ef_f['Fecha']).dt.strftime('%Y-%m')
         disp = df_ef_f.groupby('Cruce', as_index=False)['HH_Disponibles'].sum()
 
         if not df_imp_f.empty:
-            df_imp_f['Cruce'] = df_imp_f['FECHA'].dt.strftime('%Y-%m')
+            df_imp_f['Cruce'] = pd.to_datetime(df_imp_f['FECHA']).dt.strftime('%Y-%m')
             piv = pd.pivot_table(df_imp_f, values='HH_IMPRODUCTIVAS', index='Cruce', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
             m6 = pd.merge(disp, piv, on='Cruce', how='left').fillna(0)
             cols_par = [c for c in m6.columns if c not in ['HH_Disponibles', 'Cruce']]
