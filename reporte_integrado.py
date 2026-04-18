@@ -161,14 +161,14 @@ else:
 # LIMPIEZA DE DATOS Y AUTO-CORRECTOR BLINDADO
 # ==========================================
 try:
-    # 1. Elimina espacios invisibles al principio o final de los nombres de las columnas
+    # Elimina espacios invisibles
     df_ef.columns = df_ef.columns.str.strip()
     df_imp.columns = df_imp.columns.str.strip()
     
-    # 2. Obliga a que todas las columnas de improductivas sean MAYÚSCULAS
+    # Obliga a MAYÚSCULAS
     df_imp.columns = [str(c).upper() for c in df_imp.columns]
 
-    # 3. AUTO-CORRECTOR: Si alguien cambió los nombres en el Excel, el código los arregla solo
+    # AUTO-CORRECTOR
     if 'TIPO_PARADA' not in df_imp.columns:
         col_t = next((c for c in df_imp.columns if 'TIPO' in c or 'MOTIVO' in c or 'CAUSA' in c), None)
         if col_t: df_imp.rename(columns={col_t: 'TIPO_PARADA'}, inplace=True)
@@ -181,7 +181,7 @@ try:
         col_f = next((c for c in df_imp.columns if 'FECHA' in c), None)
         if col_f: df_imp.rename(columns={col_f: 'FECHA'}, inplace=True)
 
-    # 4. Formateo de fechas
+    # Formateo
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_imp['FECHA'] = pd.to_datetime(df_imp['FECHA'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
@@ -595,7 +595,6 @@ with col_m5:
                 ax2.annotate(f"{val:.1f}%", (x_pos[i], val + offset_y2_m5), color='white', bbox=bbox_gray, 
                              ha='center', va='bottom', fontsize=11, fontweight='bold', rotation=45, zorder=10)
 
-            # CARTELES FIJADOS EN EL LADO IZQUIERDO (Cero solapamiento)
             suma_promedio = pareto_df['Promedio_Mensual'].sum()
             ax1.text(0.02, 0.96, f"SUMA PROMEDIO MENSUAL\n{suma_promedio:.1f} HH", 
                      transform=ax1.transAxes, bbox=bbox_gray, color='white', fontsize=15, fontweight='bold', ha='left', va='top', zorder=10)
@@ -608,7 +607,7 @@ with col_m5:
             st.pyplot(fig5)
             
             # ==========================================
-            # NUEVO: MESA DE TRABAJO INTERACTIVA (DRILL-DOWN Y MOTOR INTELIGENTE)
+            # NUEVO: MESA DE TRABAJO INTERACTIVA (CON TABLA DE RESUMEN)
             # ==========================================
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
@@ -647,11 +646,37 @@ with col_m5:
                             return "" 
 
                         df_top["Propuesta_Sub_Motivo_Estandar"] = df_top[col_sub].apply(clasificar_sub_motivo)
+                        
+                        # --- NUEVO: TABLA DE RESUMEN Y PORCENTAJES ---
+                        total_hh_foco = df_top['HH_IMPRODUCTIVAS'].sum()
+                        df_resumen = df_top.groupby('Propuesta_Sub_Motivo_Estandar')['HH_IMPRODUCTIVAS'].sum().reset_index()
+                        df_resumen = df_resumen.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
+                        df_resumen['% sobre Selección'] = (df_resumen['HH_IMPRODUCTIVAS'] / total_hh_foco) * 100
+                        
+                        df_resumen['Propuesta_Sub_Motivo_Estandar'] = df_resumen['Propuesta_Sub_Motivo_Estandar'].replace("", "⚠️ Sin estandarizar (Texto libre)")
+                        
+                        st.markdown(f"<div style='font-size: 15px; font-weight: bold; color: #1E3A8A; margin-top: 15px; margin-bottom: 5px;'>📊 Resumen de Impacto: {motivo_seleccionado}</div>", unsafe_allow_html=True)
+                        
+                        st.dataframe(
+                            df_resumen.rename(columns={
+                                'Propuesta_Sub_Motivo_Estandar': 'Categoría Estandarizada', 
+                                'HH_IMPRODUCTIVAS': 'Subtotal HH'
+                            }),
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"),
+                                "% sobre Selección": st.column_config.NumberColumn(format="%.1f %%")
+                            }
+                        )
+                        st.markdown("<hr style='margin-top:5px; margin-bottom:15px'>", unsafe_allow_html=True)
+                        # ---------------------------------------------
+
                         df_top["Plan_de_Accion_Acordado"] = ""
                         df_top["Responsable"] = ""
                         df_top["Estado"] = "Pendiente"
                         
-                        st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-bottom:10px;'><i>Usa esta tabla en tus reuniones para analizar los textos reales, proponer la estandarización y definir acciones. (Doble clic en celdas vacías para escribir).</i></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-bottom:10px;'><i>Auditoría de textos reales. Asigna la estandarización faltante y define los planes de acción.</i></div>", unsafe_allow_html=True)
                         
                         df_editado = st.data_editor(
                             df_top.rename(columns={
@@ -684,7 +709,6 @@ with col_m6:
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
 
     if not df_imp_filtrado.empty:
-        # BLINDAJE EXTREMO ANTI-ERRORES DE FECHA
         df_imp_filtrado['Fecha_Cruce'] = pd.to_datetime(df_imp_filtrado['FECHA']).dt.strftime('%Y-%m')
         df_ef_filtrado['Fecha_Cruce'] = pd.to_datetime(df_ef_filtrado['Fecha']).dt.strftime('%Y-%m')
 
@@ -758,6 +782,5 @@ with col_m6:
         ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, fontsize=10)
         
         st.pyplot(fig6)
-
     else:
         st.warning("⚠️ No hay datos evaluables.")
