@@ -80,7 +80,7 @@ caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
 caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 4. MOTOR INTELIGENTE DE CRUCE (MOTOR FUZZY)
+# 4. MOTOR INTELIGENTE DE CRUCE (MOTOR FUZZY CORREGIDO)
 # =========================================================================
 def set_escala_y(ax, vmax, factor=2.6):
     if vmax > 0: ax.set_ylim(0, vmax * factor)
@@ -104,8 +104,9 @@ def cruce_robusto(sel, excel):
     n1, n2 = set(re.findall(r'\d{3,}', s1)), set(re.findall(r'\d{3,}', s2))
     if n1 and n2 and n1.intersection(n2): return True
         
-    p1, p2 = set(re.findall(r'[A-Z]{4,}', s1)), set(re.findall(r'[A-Z]{4,}', s2))
-    excl = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA'}
+    # CORRECCIÓN CRÍTICA: Busca palabras desde 3 letras en adelante para atrapar siglas como "CRV"
+    p1, p2 = set(re.findall(r'[A-Z]{3,}', s1)), set(re.findall(r'[A-Z]{3,}', s2))
+    excl = {'SECTOR', 'PUESTO', 'TRABAJO', 'LINEA', 'PLANTA', 'AREA', 'ÁREA', 'MAQUINA'}
     
     for palabra in (p1 - excl):
         if any(palabra in x for x in (p2 - excl)): return True
@@ -196,13 +197,13 @@ if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
 if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
 if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
 
-# Filtrar Improductivas (Cruce Robusto contra Index Error)
+# Filtrar Improductivas
 if s_pl and not df_im_f.empty:
     col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0] if len(df_im_f.columns) > 0 else None)
     if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: any(cruce_robusto(p, x) for p in s_pl))]
 
 if s_li and not df_im_f.empty:
-    col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper()), df_im_f.columns[1] if len(df_im_f.columns) > 1 else None)
+    col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im_f.columns[1] if len(df_im_f.columns) > 1 else None)
     if col_li: df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: any(cruce_robusto(l, x) for l in s_li))]
 
 if s_pu and not df_im_f.empty:
