@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.subplots as subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as path_effects
@@ -603,7 +602,6 @@ with col_m5:
             st.markdown("### 🛠️ Mesa de Trabajo: Análisis de Causa Raíz")
             st.markdown("<div style='font-size: 14px; color: #a0a0a0; margin-top:-10px; margin-bottom:10px;'><i>Selecciona el motivo del Pareto para auditar detalles y estandarizar acciones.</i></div>", unsafe_allow_html=True)
             
-            # REQUERIMIENTO 1: Se agregó "Todos" como primera opción de la lista
             motivos_disponibles = ["Todos"] + pareto_df['TIPO_PARADA'].tolist()
             motivo_seleccionado = st.selectbox("🎯 Filtrar Motivo Específico:", motivos_disponibles)
             
@@ -612,7 +610,6 @@ with col_m5:
                 col_sub = next((c for c in df_imp_filtrado.columns if 'SUB' in str(c).upper() or 'DETALLE' in str(c).upper()), None)
                 
                 if col_sub:
-                    # Lógica para manejar si elije "Todos" o un motivo específico
                     if motivo_seleccionado == "Todos":
                         df_foco = trimestre.copy()
                     else:
@@ -626,10 +623,9 @@ with col_m5:
                         # Tomamos el 100% para auditar todo y cuadrar con el Pareto
                         df_top = df_sub.copy()
                         
-                        # REQUERIMIENTO 2: Motor de Autocompletado Intuitivo
+                        # Motor de Autocompletado Intuitivo
                         def clasificar_sub_motivo(texto):
                             texto = str(texto).upper()
-                            # Reglas de palabras clave (puedes editar o agregar más en el futuro)
                             if any(kw in texto for kw in ['RETOQUE', 'PINTURA', 'GOTEO', 'CHORREADURA', 'ADHERENCIA']):
                                 return "Retoque de Pintura"
                             if any(kw in texto for kw in ['SOLDADURA', 'REPASO', 'PORO', 'FISURA', 'ESCORIA']):
@@ -640,12 +636,12 @@ with col_m5:
                                 return "Retraso Logístico / Abastecimiento"
                             if any(kw in texto for kw in ['ROTURA', 'MANTENIMIENTO', 'ELÉCTRICA', 'MECÁNICA', 'MÁQUINA']):
                                 return "Falla de Equipo / Rotura"
-                            return "" # Si no encuentra nada, lo deja vacío para que lo llenes tú
+                            return "" 
 
                         # Aplicamos el motor inteligente a la nueva columna
                         df_top["Propuesta_Sub_Motivo_Estandar"] = df_top[col_sub].apply(clasificar_sub_motivo)
                         
-                        # Agregamos las otras columnas vacías para usar como "Mesa de Trabajo"
+                        # Agregamos las otras columnas vacías
                         df_top["Plan_de_Accion_Acordado"] = ""
                         df_top["Responsable"] = ""
                         df_top["Estado"] = "Pendiente"
@@ -684,11 +680,23 @@ with col_m6:
     st.markdown("<div style='min-height: 25px; font-size: 15px; color: #a0a0a0;'><i>Porcentaje histórico de Horas Improductivas sobre las Horas Disponibles</i></div>", unsafe_allow_html=True)
 
     if not df_imp_filtrado.empty:
-        pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='FECHA', columns='TIPO_PARADA', aggfunc='sum').fillna(0)
-        disp_por_mes = df_ef_filtrado.groupby('Fecha')['HH_Disponibles'].sum()
+        # BLINDAJE EXTREMO: Usamos merge en lugar de join para evitar error de índices duplicados (ValueError: cannot reindex)
+        pivot_imp = pd.pivot_table(df_imp_filtrado, values='HH_IMPRODUCTIVAS', index='FECHA', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
+        disp_por_mes = df_ef_filtrado.groupby('Fecha', as_index=False)['HH_Disponibles'].sum()
         
-        df_m6 = pivot_imp.join(disp_por_mes).fillna(0)
-        df_m6['Total_Imp'] = pivot_imp.sum(axis=1)
+        # Renombramos la columna para que el cruce sea exacto
+        disp_por_mes.rename(columns={'Fecha': 'FECHA'}, inplace=True)
+        
+        # Cruzamos las bases de forma segura
+        df_m6 = pd.merge(pivot_imp, disp_por_mes, on='FECHA', how='left').fillna(0)
+        
+        # Volvemos a colocar FECHA como índice para graficar
+        df_m6.set_index('FECHA', inplace=True)
+        
+        # Calculamos totales ignorando la columna de disponibilidad
+        columnas_paradas = [c for c in df_m6.columns if c != 'HH_Disponibles']
+        df_m6['Total_Imp'] = df_m6[columnas_paradas].sum(axis=1)
+        
         df_m6['Incidencia_%'] = (df_m6['Total_Imp'] / df_m6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
         df_m6 = df_m6.sort_index()
 
@@ -704,7 +712,8 @@ with col_m6:
         bottoms = np.zeros(len(df_m6))
         colors = plt.cm.tab20.colors
         
-        for idx, col in enumerate(pivot_imp.columns):
+        # Usamos la lista segura de columnas de paradas para graficar
+        for idx, col in enumerate(columnas_paradas):
             values = df_m6[col].values
             container = ax1.bar(x_m6, values, bottom=bottoms, label=col, color=colors[idx % len(colors)], edgecolor='white', zorder=2)
             
