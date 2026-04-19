@@ -1,57 +1,36 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
-import matplotlib.patheffects as pe
-import matplotlib.image as mpimg
-import textwrap
-import re
+import streamlit as st, pandas as pd, numpy as np
+import matplotlib.pyplot as plt, matplotlib.ticker as mtick
+import matplotlib.patheffects as pe, matplotlib.image as mpimg
+import textwrap, re
 
 # =========================================================================
-# 1. CONFIGURACIÓN Y ESCUDO VISUAL TOTAL
+# 1. CONFIGURACIÓN Y ESCUDO VISUAL (LÍNEA 1)
 # =========================================================================
 st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide", initial_sidebar_state="collapsed")
-
 st.markdown("""
 <style>
-    /* Ocultar elementos de Streamlit Cloud y Cabecera */
     header, [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="manage-app-button"], 
     #MainMenu, footer, .stAppDeployButton, .viewerBadge_container {display: none !important; visibility: hidden !important;}
-    
-    /* Limpiar márgenes para usar toda la pantalla */
     .block-container {padding-top: 1rem !important; padding-bottom: 1.5rem !important;}
-    
-    /* PANEL STICKY (Pegado al techo al hacer scroll) */
     div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
-        position: -webkit-sticky !important; 
-        position: sticky !important; 
-        top: 0px !important;
-        background-color: rgba(14, 17, 23, 0.98) !important; /* Fondo oscuro casi opaco */
-        z-index: 99999 !important;
-        padding: 5px 10px 15px 10px !important; 
-        border-bottom: 2px solid #1E3A8A !important;
+        position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
+        background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
+        padding: 5px 10px 15px 10px !important; border-bottom: 2px solid #1E3A8A !important;
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
-    
-    /* Juntar más los filtros maestros reduciendo su margen */
-    [data-testid="stMultiSelect"] {
-        margin-bottom: -15px !important;
-    }
+    [data-testid="stMultiSelect"] {margin-bottom: -15px !important;}
 </style>
 """, unsafe_allow_html=True)
 
 plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
-efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
-efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
+efecto_b, efecto_n = [pe.withStroke(linewidth=3, foreground='white')], [pe.withStroke(linewidth=3, foreground='black')]
 caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
 caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
-# 2. SEGURIDAD (ACCESO RESTRINGIDO)
+# 2. SEGURIDAD
 # =========================================================================
 USUARIOS_PERMITIDOS = {"acceso.ombu": "Gestion2026"}
-
 if 'autenticado' not in st.session_state: st.session_state['autenticado'] = False
 
 def mostrar_login():
@@ -72,7 +51,7 @@ def mostrar_login():
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE Y HERRAMIENTAS
+# 3. MOTOR INTELIGENTE
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.4): ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
 def dibujar_meses(ax, n_meses):
@@ -113,7 +92,7 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA Y EXTRACCIÓN DE DATOS
+# 4. CARGA DE DATOS
 # =========================================================================
 try:
     df_ef, df_im = pd.read_excel("eficiencias.xlsx"), pd.read_excel("improductivas.xlsx")
@@ -139,24 +118,19 @@ try:
 except Exception as e: st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. HEADER Y PANEL STICKY (FILTROS + CARTELES)
+# 5. PANEL STICKY Y FILTROS
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
-    
-    # Header minimalista integrado al sticky
     h_l, h_t, h_s = st.columns([0.8, 3.5, 0.7])
     with h_l:
         try: st.image("LOGO OMBÚ.jpg", width=90)
         except: st.markdown("##### OMBÚ")
-    with h_t:
-        st.markdown("<h3 style='margin:0; padding:0;'>TABLERO INTEGRADO C.G.P.</h3>", unsafe_allow_html=True)
+    with h_t: st.markdown("<h3 style='margin:0; padding:0;'>TABLERO INTEGRADO C.G.P.</h3>", unsafe_allow_html=True)
     with h_s:
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
-    # Layout de Panel: KPIs a la izquierda, Filtros a la derecha
     col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
-
     with col_filtros:
         st.markdown("<div style='color:#4B8BBE; font-size:14px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + list(df_ef['Mes_Str'].unique()), label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
@@ -166,7 +140,6 @@ with st.container():
         df_tp = df_tl[df_tl['Linea'].isin(s_li)] if s_li else df_tl
         s_pu = st.multiselect("Puesto", list(df_tp['Puesto_Trabajo'].dropna().unique()), label_visibility="collapsed", placeholder="🛠️ Seleccionar Puesto")
 
-    # PROCESAMIENTO SEGÚN FILTROS
     df_ef_f, df_im_f = df_ef.copy(), df_im.copy()
     if s_pl: df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
     if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
@@ -183,10 +156,8 @@ with st.container():
         if s_pu:
             col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), df_im_f.columns[2])
             df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: any(cruce_robusto(ps, x) for ps in s_pu))]
-        if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-            df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
+        if s_mes and "🎯 Acumulado YTD" not in s_mes: df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
 
-    # Lógica Embudo para M1/M2 (Para los Carteles)
     warn_linea = False
     if s_pu: df_plot_1 = df_ef_f.copy()
     elif s_li:
@@ -195,17 +166,17 @@ with st.container():
         else: df_plot_1 = df_ef_f.copy(); warn_linea = True
     else: df_plot_1 = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
 
-    # CÁLCULOS PARA CARTELES
+    # CÁLCULOS PARA CARTELES (Sumatoria Ponderada Universal)
+    tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
+    tot_hh_imp = df_ef_f['HH_Improductivas'].sum() if not df_ef_f.empty else 0
+    
     tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
     tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
     tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-
+    
     kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
     kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
-    tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
-    tot_hh_imp = df_ef_f['HH_Improductivas'].sum() if not df_ef_f.empty else 0
 
-    # Cartel Top 3 Eficiencia
     top3_m1_html = "<div style='font-size:12px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
         ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
@@ -215,7 +186,6 @@ with st.container():
             filas = [f"<div style='display:flex; justify-content:space-between; margin-top:2px; font-size:11px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
             top3_m1_html = "".join(filas)
 
-    # Cartel Top 3 Improductivas
     top3_imp_html = "<div style='font-size:12px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_im_f.empty:
         c_pu_im = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
@@ -225,7 +195,6 @@ with st.container():
                 filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:2px; font-size:11px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
                 top3_imp_html = "".join(filas_imp)
 
-    # RENDERIZADO DE CARTELES REDUCIDOS
     with col_kpi:
         st.markdown(f"""
         <div style="display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 10px;">
@@ -257,30 +226,23 @@ with st.container():
 t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+'.join(s_li) if s_li else 'Todas'} | Puesto: {'+'.join(s_pu) if s_pu else 'Todos'}"
 
 # =========================================================================
-# 6. FILA 1: GRÁFICOS MÉTRICAS 1 Y 2
+# 6. GRÁFICOS MÉTRICAS 1 Y 2
 # =========================================================================
-st.markdown("<br>", unsafe_allow_html=True)
-col1, col2 = st.columns(2)
-
+st.markdown("<br>", unsafe_allow_html=True); col1, col2 = st.columns(2)
 with col1:
     st.markdown("<div style='font-size:14px; color:#aaa;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     if warn_linea: st.warning("⚠️ Esta Línea NO registra un 'Último Puesto'. Seleccione un Puesto para análisis preciso.")
     if not df_plot_1.empty:
-        ag1 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Disponibles': 'sum', 'Cant._Prod._A1': 'sum'}).reset_index()
-        ag1['Ef_Real'] = (ag1['HH_STD_TOTAL'] / ag1['HH_Disponibles']).replace([np.inf, -np.inf], 0).fillna(0) * 100
-        fig1, ax1 = plt.subplots(figsize=(14, 10)); ax1_line = ax1.twinx()
-        fig1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig1.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        ag1 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Disponibles': 'sum', 'Cant._Prod._A1': 'sum'}).reset_index(); ag1['Ef_Real'] = (ag1['HH_STD_TOTAL'] / ag1['HH_Disponibles']).replace([np.inf, -np.inf], 0).fillna(0) * 100
+        fig1, ax1 = plt.subplots(figsize=(14, 10)); ax1_line = ax1.twinx(); fig1.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig1.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(ag1))
-        bs = ax1.bar(x_idx - 0.17, ag1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
-        bd = ax1.bar(x_idx + 0.17, ag1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
-        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.4); ax1.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3); ax1.bar_label(bd, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
-        dibujar_meses(ax1, len(x_idx))
+        bs = ax1.bar(x_idx - 0.17, ag1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2); bd = ax1.bar(x_idx + 0.17, ag1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
+        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.4); ax1.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3); ax1.bar_label(bd, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3); dibujar_meses(ax1, len(x_idx))
         for i, bar in enumerate(bs):
             vu = int(ag1['Cant._Prod._A1'].iloc[i])
             if vu > 0: ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height()*0.05, f"{vu} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=efecto_n, zorder=4)
         ax1_line.plot(x_idx, ag1['Ef_Real'], color='dimgray', marker='o', markersize=12, linewidth=4, path_effects=efecto_b, label='% Efic. Real', zorder=5); add_tendencia(ax1_line, x_idx, ag1['Ef_Real'])
-        ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1); ax1_line.text(x_idx[0], 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
-        ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3)); ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
+        ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1); ax1_line.text(x_idx[0], 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10); ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3)); ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         for i, val in enumerate(ag1['Ef_Real']): ax1_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
         ax1.set_xticks(x_idx); ax1.set_xticklabels(ag1['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold'); ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True); ax1_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True); agregar_sello_agua(fig1); st.pyplot(fig1)
     else: st.warning("⚠️ Sin datos.")
@@ -288,17 +250,13 @@ with col1:
 with col2:
     st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
     if not df_plot_1.empty:
-        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Productivas_C/GAP': 'sum'}).reset_index()
-        ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2['HH_Productivas_C/GAP']).replace([np.inf, -np.inf], 0).fillna(0) * 100
-        fig2, ax2 = plt.subplots(figsize=(14, 10)); ax2_line = ax2.twinx()
-        fig2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig2.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Productivas_C/GAP': 'sum'}).reset_index(); ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2['HH_Productivas_C/GAP']).replace([np.inf, -np.inf], 0).fillna(0) * 100
+        fig2, ax2 = plt.subplots(figsize=(14, 10)); ax2_line = ax2.twinx(); fig2.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig2.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(ag2))
-        bs = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
-        bp = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        bs = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2); bp = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.4); ax2.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3); ax2.bar_label(bp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3); dibujar_meses(ax2, len(x_idx))
         ax2_line.plot(x_idx, ag2['Ef_Prod'], color='dimgray', marker='s', markersize=12, linewidth=4, path_effects=efecto_b, label='% Efic. Prod.', zorder=5); add_tendencia(ax2_line, x_idx, ag2['Ef_Prod'])
-        ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1); ax2_line.text(x_idx[0], 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
-        ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3)); ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
+        ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1); ax2_line.text(x_idx[0], 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10); ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3)); ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         for i, val in enumerate(ag2['Ef_Prod']): ax2_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
         ax2.set_xticks(x_idx); ax2.set_xticklabels(ag2['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold'); ax2.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True); ax2_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True); agregar_sello_agua(fig2); st.pyplot(fig2)
     else: st.warning("⚠️ Sin datos.")
@@ -306,7 +264,7 @@ with col2:
 st.markdown("---")
 
 # =========================================================================
-# 7. FILA 2: GRÁFICOS MÉTRICAS 3 Y 4
+# 7. GRÁFICOS MÉTRICAS 3 Y 4
 # =========================================================================
 col3, col4 = st.columns(2)
 with col3:
@@ -316,16 +274,14 @@ with col3:
         ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Improductivas': 'sum', 'HH_Disponibles': 'sum'}).reset_index(); ag3['Total_Decl'] = ag3[c_prod] + ag3['HH_Improductivas']
         fig3, ax3 = plt.subplots(figsize=(14, 10)); fig3.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig3.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(ag3))
-        bp = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
-        bi = ax3.bar(x_idx, ag3['HH_Improductivas'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+        bp = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2); bi = ax3.bar(x_idx, ag3['HH_Improductivas'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax3.bar_label(bp, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4); ax3.bar_label(bi, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
         ax3.plot(x_idx, ag3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_b, label='HH DISPONIBLES', zorder=5)
         set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.4); dibujar_meses(ax3, len(x_idx))
         for i in range(len(x_idx)):
             hd, ht = ag3['HH_Disponibles'].iloc[i], ag3['Total_Decl'].iloc[i]; gap = hd - ht
             ax3.plot([i, i], [ht, hd], color='dimgray', linewidth=5, alpha=0.6, zorder=3)
-            ax3.annotate(f"GAP:\n{int(gap)}", (i, ht + (gap/2)), color='firebrick', bbox=caja_b, ha='center', va='center', fontweight='bold', zorder=10)
-            ax3.annotate(f"{int(hd)}", (i, hd + (ax3.get_ylim()[1]*0.05)), color='black', bbox=caja_b, ha='center', fontweight='bold', zorder=10)
+            ax3.annotate(f"GAP:\n{int(gap)}", (i, ht + (gap/2)), color='firebrick', bbox=caja_b, ha='center', va='center', fontweight='bold', zorder=10); ax3.annotate(f"{int(hd)}", (i, hd + (ax3.get_ylim()[1]*0.05)), color='black', bbox=caja_b, ha='center', fontweight='bold', zorder=10)
         ax3.set_xticks(x_idx); ax3.set_xticklabels(ag3['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold'); ax3.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True); agregar_sello_agua(fig3); st.pyplot(fig3)
     else: st.warning("⚠️ Sin datos para GAP.")
 
@@ -346,14 +302,14 @@ with col4:
 st.markdown("---")
 
 # =========================================================================
-# 8. FILA 3: GRÁFICOS MÉTRICAS 5 Y 6
+# 8. GRÁFICOS MÉTRICAS 5 Y 6
 # =========================================================================
 col5, col6 = st.columns(2)
 with col5:
     st.header("5. PARETO DE CAUSAS"); st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
     if not df_im_f.empty:
         ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
-        n_m = df_im_f['FECHA'].nunique(); div = n_m if n_m > 0 else 1
+        nm = df_im_f['FECHA'].nunique(); div = nm if nm > 0 else 1
         ag5['Prom_M'] = ag5['HH_IMPRODUCTIVAS'] / div; ag5 = ag5.sort_values(by='Prom_M', ascending=False); ag5['Pct_Acu'] = (ag5['Prom_M'].cumsum() / ag5['Prom_M'].sum()) * 100
         fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5_line = ax5.twinx(); fig5.subplots_adjust(top=0.86, bottom=0.28, left=0.08, right=0.92); fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(ag5))
@@ -390,14 +346,13 @@ with col6:
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1); ax6_line.text(x_idx[0], 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
         for i, val in enumerate(df6['Inc_%']): 
             if df6['Suma_I'].iloc[i] > 0: ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
-        ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold'); ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5)); ax6_line.legend(loc='upper right', bbox_to_anchor=(1, 1.02), frameon=True)
-        agregar_sello_agua(fig6); st.pyplot(fig6)
-    else: st.warning("⚠️ Sin datos históricos de eficiencia para cruzar.")
+        ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold'); ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5)); ax6_line.legend(loc='upper right', bbox_to_anchor=(1, 1.02), frameon=True); agregar_sello_agua(fig6); st.pyplot(fig6)
+    else: st.warning("⚠️ Sin datos históricos.")
 
 st.markdown("---")
 
 # =========================================================================
-# 9. FILA 4: DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)
+# 9. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)
 # =========================================================================
 st.header("7. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)"); st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Apertura de registros detallados con fecha, operario y motor de sugerencia de acciones</i></div>", unsafe_allow_html=True)
 if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
