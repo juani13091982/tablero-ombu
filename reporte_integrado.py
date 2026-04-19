@@ -109,11 +109,18 @@ try:
     
     if 'TIPO_PARADA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c or 'CAUSA' in c), None): 'TIPO_PARADA'}, inplace=True)
     if 'HH_IMPRODUCTIVAS' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'HH' in c and 'IMP' in c), None): 'HH_IMPRODUCTIVAS'}, inplace=True)
-    if 'FECHA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'FECHA' in c), None): 'FECHA'}, inplace=True)
+    if 'FECHA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'FECHA' in c or 'INICIO' in c), None): 'FECHA'}, inplace=True)
     if 'DETALLE' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'DETALLE' in c or 'OBS' in c or 'DESC' in c), None): 'DETALLE'}, inplace=True)
     
+    c_nom, c_ape = next((c for c in df_im.columns if 'NOMBRE' in c), None), next((c for c in df_im.columns if 'APELLIDO' in c), None)
+    if c_nom and c_ape: df_im['OPERARIO'] = df_im[c_nom].astype(str) + ' ' + df_im[c_ape].astype(str)
+    elif c_nom: df_im['OPERARIO'] = df_im[c_nom].astype(str)
+    else: df_im['OPERARIO'] = "S/D"
+
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
-    df_im['FECHA'] = pd.to_datetime(df_im['FECHA'], errors='coerce').dt.to_period('M').dt.to_timestamp()
+    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im['FECHA'], errors='coerce')
+    df_im['FECHA'] = df_im['FECHA_EXACTA'].dt.to_period('M').dt.to_timestamp()
+    
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
     df_ef['Mes_Str'], df_im['Mes_Str'] = df_ef['Fecha'].dt.strftime('%b-%Y'), df_im['FECHA'].dt.strftime('%b-%Y')
 except Exception as e: st.error(f"Error crítico: {e}"); st.stop()
@@ -306,18 +313,19 @@ with col6:
 st.markdown("---")
 
 # =========================================================================
-# 10. FILA 4: DETALLES (MOTOR DE ACCIONES)
+# 10. FILA 4: DETALLES CON FECHA, OPERARIO Y ACCIONES
 # =========================================================================
-st.header("7. DETALLES DE IMPRODUCTIVIDAD"); st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Apertura de registros con motor de acciones</i></div>", unsafe_allow_html=True)
+st.header("7. DETALLES DE IMPRODUCTIVIDAD"); st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Apertura de registros con motor de acciones y responsables</i></div>", unsafe_allow_html=True)
 if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
     c_sel, _ = st.columns([1, 2]); sel_mot = c_sel.selectbox("🔍 Filtrar Motivo:", ["Todos"] + sorted(df_im_f['TIPO_PARADA'].dropna().unique()))
     df_det = df_im_f[df_im_f['TIPO_PARADA'] == sel_mot] if sel_mot != "Todos" else df_im_f.copy()
     if not df_det.empty:
-        ag_det = df_det.groupby('DETALLE').agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index().sort_values('HH_IMPRODUCTIVAS', ascending=False)
+        ag_det = df_det.groupby(['FECHA_EXACTA', 'OPERARIO', 'DETALLE']).agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index().sort_values('HH_IMPRODUCTIVAS', ascending=False)
+        ag_det['FECHA_EXACTA'] = ag_det['FECHA_EXACTA'].dt.strftime('%d/%m/%Y').fillna('S/D')
         t_det = ag_det['HH_IMPRODUCTIVAS'].sum(); ag_det['%'] = (ag_det['HH_IMPRODUCTIVAS'] / t_det) * 100
         ag_det['Acción Sugerida'] = ag_det['DETALLE'].apply(generar_accion_sugerida)
-        ag_det = pd.concat([ag_det, pd.DataFrame({'DETALLE': ['✅ TOTAL SUMATORIA'], 'HH_IMPRODUCTIVAS': [t_det], '%': [100.0], 'Acción Sugerida': ['🎯 ACCIÓN GLOBAL']})], ignore_index=True)
-        st.dataframe(ag_det.rename(columns={'HH_IMPRODUCTIVAS': 'Subtotal HH', 'DETALLE': 'Detalle'}), use_container_width=True, hide_index=True)
-        st.download_button("📥 Descargar Detalle (CSV)", ag_det.to_csv(index=False).encode('utf-8'), "Detalles_Improductividad.csv", "text/csv", use_container_width=True, type="primary")
+        ag_det = pd.concat([ag_det, pd.DataFrame({'FECHA_EXACTA': ['---'], 'OPERARIO': ['---'], 'DETALLE': ['✅ TOTAL SUMATORIA'], 'HH_IMPRODUCTIVAS': [t_det], '%': [100.0], 'Acción Sugerida': ['🎯 ACCIÓN GLOBAL']})], ignore_index=True)
+        st.dataframe(ag_det.rename(columns={'FECHA_EXACTA': 'Fecha', 'OPERARIO': 'Operario', 'DETALLE': 'Detalle Registrado', 'HH_IMPRODUCTIVAS': 'Subtotal HH'}), use_container_width=True, hide_index=True, column_config={"Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), "%": st.column_config.NumberColumn(format="%.1f %%")})
+        st.download_button("📥 Descargar Detalle (CSV)", ag_det.to_csv(index=False).encode('utf-8'), "Detalles_Operativos.csv", "text/csv", use_container_width=True, type="primary")
     else: st.info("No hay registros para este motivo.")
 else: st.info("No hay horas improductivas reportadas con la configuración actual para analizar detalles.")
