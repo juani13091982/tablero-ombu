@@ -166,16 +166,25 @@ with st.container():
         else: df_plot_1 = df_ef_f.copy(); warn_linea = True
     else: df_plot_1 = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
 
-    # CÁLCULOS PARA CARTELES (Sumatoria Ponderada Universal)
+    # =====================================================================
+    # NÚCLEO DE LA REPARACIÓN: UNIFICACIÓN DE HH IMPRODUCTIVAS (Fuente única: df_im_f)
+    # =====================================================================
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
-    tot_hh_imp = df_ef_f['HH_Improductivas'].sum() if not df_ef_f.empty else 0
+    # AHORA EL CARTEL SE ALIMENTA EXCLUSIVAMENTE DE improductivas.xlsx
+    tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-    
-    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+    if not any([s_pl, s_li, s_pu, s_mes]) and not df_plot_1.empty:
+        ag_global = df_plot_1.groupby(['Planta', 'Linea', 'Puesto_Trabajo']).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', 'HH_Productivas_C/GAP':'sum'})
+        ef_r_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        ef_p_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Productivas_C/GAP'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        kpi_ef_real = ef_r_arr.mean() if not ef_r_arr.empty else 0
+        kpi_ef_prod = ef_p_arr.mean() if not ef_p_arr.empty else 0
+    else:
+        tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+        tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+        tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+        kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+        kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
     top3_m1_html = "<div style='font-size:12px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
@@ -264,38 +273,65 @@ with col2:
 st.markdown("---")
 
 # =========================================================================
-# 7. GRÁFICOS MÉTRICAS 3 Y 4
+# 7. GRÁFICOS MÉTRICAS 3 Y 4 (CON HH UNIFICADAS DESDE IMP)
 # =========================================================================
 col3, col4 = st.columns(2)
 with col3:
     st.header("3. GAP HH GLOBAL"); st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
     if not df_ef_f.empty:
         c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH Productivas'
-        ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Improductivas': 'sum', 'HH_Disponibles': 'sum'}).reset_index(); ag3['Total_Decl'] = ag3[c_prod] + ag3['HH_Improductivas']
+        ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
+        
+        # INYECCIÓN DE LA VERDAD ABSOLUTA PARA M3
+        if not df_im_f.empty:
+            ag_im = df_im_f.groupby('FECHA')['HH_IMPRODUCTIVAS'].sum().reset_index().rename(columns={'FECHA':'Fecha', 'HH_IMPRODUCTIVAS':'HH_Imp'})
+            ag3 = pd.merge(ag3, ag_im, on='Fecha', how='left').fillna(0)
+        else: ag3['HH_Imp'] = 0
+            
+        ag3['Total_Decl'] = ag3[c_prod] + ag3['HH_Imp']
+        
         fig3, ax3 = plt.subplots(figsize=(14, 10)); fig3.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig3.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(ag3))
-        bp = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2); bi = ax3.bar(x_idx, ag3['HH_Improductivas'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+        
+        bp = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        bi = ax3.bar(x_idx, ag3['HH_Imp'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax3.bar_label(bp, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4); ax3.bar_label(bi, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
         ax3.plot(x_idx, ag3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_b, label='HH DISPONIBLES', zorder=5)
         set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.4); dibujar_meses(ax3, len(x_idx))
+
         for i in range(len(x_idx)):
             hd, ht = ag3['HH_Disponibles'].iloc[i], ag3['Total_Decl'].iloc[i]; gap = hd - ht
             ax3.plot([i, i], [ht, hd], color='dimgray', linewidth=5, alpha=0.6, zorder=3)
-            ax3.annotate(f"GAP:\n{int(gap)}", (i, ht + (gap/2)), color='firebrick', bbox=caja_b, ha='center', va='center', fontweight='bold', zorder=10); ax3.annotate(f"{int(hd)}", (i, hd + (ax3.get_ylim()[1]*0.05)), color='black', bbox=caja_b, ha='center', fontweight='bold', zorder=10)
+            ax3.annotate(f"GAP:\n{int(gap)}", (i, ht + (gap/2)), color='firebrick', bbox=caja_b, ha='center', va='center', fontweight='bold', zorder=10)
+            ax3.annotate(f"{int(hd)}", (i, hd + (ax3.get_ylim()[1]*0.05)), color='black', bbox=caja_b, ha='center', fontweight='bold', zorder=10)
+
         ax3.set_xticks(x_idx); ax3.set_xticklabels(ag3['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold'); ax3.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=3, frameon=True); agregar_sello_agua(fig3); st.pyplot(fig3)
     else: st.warning("⚠️ Sin datos para GAP.")
 
 with col4:
     st.header("4. TENDENCIA COSTOS IMPRODUCTIVOS"); st.markdown("<div style='min-height:25px; font-size:14px; color:#aaa;'><i>Evolución de valorización económica de la ineficiencia</i></div>", unsafe_allow_html=True)
     if not df_ef_f.empty:
-        ag4 = df_ef_f.groupby('Fecha').agg({'HH_Improductivas': 'sum', 'Costo_Improd._$': 'sum'}).reset_index()
+        ag4 = df_ef_f.groupby('Fecha').agg({'Costo_Improd._$': 'sum'}).reset_index()
+        
+        # INYECCIÓN DE LA VERDAD ABSOLUTA PARA M4
+        if not df_im_f.empty:
+            ag_im = df_im_f.groupby('FECHA')['HH_IMPRODUCTIVAS'].sum().reset_index().rename(columns={'FECHA':'Fecha', 'HH_IMPRODUCTIVAS':'HH_Imp'})
+            ag4 = pd.merge(ag4, ag_im, on='Fecha', how='left').fillna(0)
+        else: ag4['HH_Imp'] = 0
+
         fig4, ax4 = plt.subplots(figsize=(14, 10)); ax4_line = ax4.twinx(); fig4.subplots_adjust(top=0.86, bottom=0.22, left=0.08, right=0.92); fig4.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(ag4))
-        bi = ax4.bar(x_idx, ag4['HH_Improductivas'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2); ax4.bar_label(bi, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4)
-        set_escala_y(ax4, ag4['HH_Improductivas'].max(), 1.4) 
+        bi = ax4.bar(x_idx, ag4['HH_Imp'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2); ax4.bar_label(bi, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4)
+        set_escala_y(ax4, ag4['HH_Imp'].max(), 1.4) 
+        
         ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5); add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
         ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)); ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
+
+        t_p, t_h = ag4['Costo_Improd._$'].sum(), ag4['HH_Imp'].sum()
+        ax4.text(0.5, 0.90, f"COSTO ACUMULADO ARS\n${t_p:,.0f}\nTOTAL: {t_h:,.0f} HH IMP", transform=ax4.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=caja_o, weight='bold', zorder=10)
+
         for i, val in enumerate(ag4['Costo_Improd._$']): ax4_line.annotate(f"${val:,.0f}", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
+
         ax4.set_xticks(x_idx); ax4.set_xticklabels(ag4['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold'); ax4.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=2, frameon=True); ax4_line.legend(loc='lower right', bbox_to_anchor=(1, 1.02), frameon=True); agregar_sello_agua(fig4); st.pyplot(fig4)
     else: st.warning("⚠️ No hay datos económicos.")
 
@@ -347,7 +383,7 @@ with col6:
         for i, val in enumerate(df6['Inc_%']): 
             if df6['Suma_I'].iloc[i] > 0: ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
         ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold'); ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5)); ax6_line.legend(loc='upper right', bbox_to_anchor=(1, 1.02), frameon=True); agregar_sello_agua(fig6); st.pyplot(fig6)
-    else: st.warning("⚠️ Sin datos históricos.")
+    else: st.warning("⚠️ Sin datos históricos de eficiencia para cruzar.")
 
 st.markdown("---")
 
