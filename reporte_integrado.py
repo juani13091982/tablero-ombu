@@ -54,6 +54,7 @@ if not st.session_state['autenticado']: mostrar_login(); st.stop()
 # 3. MOTOR INTELIGENTE
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.6): 
+    # Factor 1.6 garantiza techo alto para evitar solapamientos
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
     
 def dibujar_meses(ax, n_meses):
@@ -104,9 +105,10 @@ try:
     if 'HH_IMPRODUCTIVAS' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'HH' in c and 'IMP' in c), df_im.columns[0]): 'HH_IMPRODUCTIVAS'}, inplace=True)
     if 'DETALLE' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'DETALLE' in c or 'OBS' in c or 'DESC' in c), df_im.columns[0]): 'DETALLE'}, inplace=True)
     
-    # NUEVO: EXTRAER COLUMNA DE PUESTO PARA LA TABLA DE DETALLES
-    c_puesto = next((c for c in df_im.columns if 'PUESTO' in c), None)
-    if not c_puesto: c_puesto = 'PUESTO' # Failsafe
+    # EXTRAER PUESTO DE IMP
+    c_pu_det = next((c for c in df_im.columns if 'PUESTO' in c), None)
+    if not c_pu_det: c_pu_det = 'PUESTO_X'
+    if c_pu_det not in df_im.columns: df_im[c_pu_det] = "S/D"
     
     c_nom, c_ape = next((c for c in df_im.columns if 'NOMBRE' in c), None), next((c for c in df_im.columns if 'APELLIDO' in c), None)
     if c_nom and c_ape: df_im['OPERARIO'] = df_im[c_nom].astype(str).replace('nan', '') + ' ' + df_im[c_ape].astype(str).replace('nan', '')
@@ -114,6 +116,7 @@ try:
     else: df_im['OPERARIO'] = "S/D"
     df_im['OPERARIO'] = df_im['OPERARIO'].str.strip().replace('', 'S/D')
 
+    # Búsqueda estricta de fecha inicio o A3
     c_fec = None
     for c in df_im.columns:
         if 'A3' in str(c).upper() or 'INICIO' in str(c).upper():
@@ -180,21 +183,16 @@ with st.container():
         else: df_plot_1 = df_ef_f.copy(); warn_linea = True
     else: df_plot_1 = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
 
+    # CÁLCULO M1 Y M2 PONDERADO (REGLA SOLICITADA)
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    if not any([s_pl, s_li, s_pu, s_mes]) and not df_plot_1.empty:
-        ag_global = df_plot_1.groupby(['Planta', 'Linea', 'Puesto_Trabajo']).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', 'HH_Productivas_C/GAP':'sum'})
-        ef_r_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        ef_p_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Productivas_C/GAP'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        kpi_ef_real = ef_r_arr.mean() if not ef_r_arr.empty else 0
-        kpi_ef_prod = ef_p_arr.mean() if not ef_p_arr.empty else 0
-    else:
-        tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-        tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-        tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-        kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-        kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+    
+    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
     top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
@@ -202,7 +200,7 @@ with st.container():
         ag_p['Ef'] = (ag_p['HH_STD_TOTAL'] / ag_p['HH_Disponibles'] * 100).fillna(0)
         top3_val = ag_p['Ef'].nlargest(3)
         if not top3_val.empty:
-            filas = [f"<div style='display:flex; justify-content:space-between; margin-top:3px; font-size:14px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
+            filas = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9; font-size:14px;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
             top3_m1_html = "".join(filas)
 
     top3_imp_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
@@ -211,32 +209,32 @@ with st.container():
         if c_pu_im:
             ag_imp_p = df_im_f.groupby(c_pu_im)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
             if not ag_imp_p.empty:
-                filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:3px; font-size:14px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
+                filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
                 top3_imp_html = "".join(filas_imp)
 
     with col_kpi:
         st.markdown(f"""
         <div style="display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 12px;">
-            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 15px; border-radius: 6px; text-align:center;">
+            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
                 <h4 style="margin:0; color: #1E3A8A; font-size:16px;">EFICIENCIA REAL</h4>
-                <h2 style="margin:5px 0 0 0; color: #111; font-size:36px;">{kpi_ef_real:.1f}%</h2>
+                <h2 style="margin:5px 0 0 0; color: #111; font-size:42px;">{kpi_ef_real:.1f}%</h2>
             </div>
-            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 15px; border-radius: 6px; text-align:center;">
+            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
                 <h4 style="margin:0; color: white; font-size:16px;">EFICIENCIA PROD.</h4>
-                <h2 style="margin:5px 0 0 0; color: white; font-size:36px;">{kpi_ef_prod:.1f}%</h2>
+                <h2 style="margin:5px 0 0 0; color: white; font-size:42px;">{kpi_ef_prod:.1f}%</h2>
             </div>
-            <div style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 15px; border-radius: 8px; grid-row: span 2; display: flex; flex-direction: column; justify-content: center; text-align:center;">
-                <h4 style="margin:0; color: white; font-size:20px;">COSTO HH IMPROD.</h4>
+            <div style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 15px; border-radius: 8px; grid-row: span 2; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
+                <h4 style="margin:0; color: white; font-size:22px;">COSTO HH IMPROD.</h4>
                 <p style="margin:0; color: #FFCDD2; font-size:14px;">(Oportunidad Perdida)</p>
-                <h2 style="margin:10px 0; color: #FFEB3B; font-size:42px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
-                <h4 style="margin:0; color: white; font-size:20px;">{tot_hh_imp:,.0f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
+                <h2 style="margin:10px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
+                <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.0f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
             </div>
-            <div style="background: #0D47A1; color: white; padding: 15px; border-radius: 6px;">
-                <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:3px;">🏆 TOP EF. REAL (PUESTOS)</h4>
+            <div style="background: #0D47A1; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
                 {top3_m1_html}
             </div>
-            <div style="background: #B71C1C; color: white; padding: 15px; border-radius: 6px;">
-                <h4 style="margin:0 0 8px 0; font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:3px;">⚠️ TOP MAYOR HH IMP.</h4>
+            <div style="background: #B71C1C; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0 0 8px 0; font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
                 {top3_imp_html}
             </div>
         </div>
@@ -354,7 +352,7 @@ with col5:
         ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
         nm = df_im_f['FECHA'].nunique(); div = nm if nm > 0 else 1
         ag5['Prom_M'] = ag5['HH_IMPRODUCTIVAS'] / div; ag5 = ag5.sort_values(by='Prom_M', ascending=False); ag5['Pct_Acu'] = (ag5['Prom_M'].cumsum() / ag5['Prom_M'].sum()) * 100
-        fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5_line = ax5.twinx(); fig5.subplots_adjust(top=0.75, bottom=0.28, left=0.08, right=0.92); fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5_line = ax5.twinx(); fig5.subplots_adjust(top=0.80, bottom=0.28, left=0.08, right=0.92); fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(ag5))
         bp = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2); set_escala_y(ax5, ag5['Prom_M'].max(), 2.8); ax5.bar_label(bp, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
         ax5_line.plot(x_idx, ag5['Pct_Acu'], color='red', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, zorder=5); ax5_line.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1); ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) 
@@ -372,66 +370,19 @@ with col6:
             df_im_f['K_Mes'] = df_im_f['FECHA'].dt.strftime('%Y-%m'); piv = pd.pivot_table(df_im_f, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index(); df6 = pd.merge(ag_disp, piv, on='K_Mes', how='left').fillna(0); list_c = [c for c in df6.columns if c not in ['HH_Disponibles', 'K_Mes']]
         else: df6 = ag_disp.copy(); list_c = []
         df6['Suma_I'] = df6[list_c].sum(axis=1) if list_c else 0; df6['Inc_%'] = (df6['Suma_I'] / df6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0); df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
+        
+        # AJUSTE EXTREMO PARA EVITAR SOLAPAMIENTOS EN M6
         fig6, ax6 = plt.subplots(figsize=(14, 10)); fig6.subplots_adjust(top=0.75, bottom=0.22, left=0.08, right=0.92); fig6.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         x_idx = np.arange(len(df6))
+        
         if list_c:
             base_st = np.zeros(len(df6)); paleta = plt.cm.tab20.colors
             for i, c_nom in enumerate(list_c):
                 vals = df6[c_nom].values; bar_stack = ax6.bar(x_idx, vals, bottom=base_st, label=textwrap.fill(c_nom, 15), color=paleta[i % 20], edgecolor='white', zorder=2)
                 lbls_stk = [f"{int(v)}" if v > 0 else "" for v in vals]; ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n); base_st += vals
             
-            # LEYENDA M6: Centrada arriba y en 4 columnas
-            ax6.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=4, framealpha=0.7, fontsize=10)
+            # LEYENDA M6: FLOTANDO ARRIBA EN 4 COLUMNAS
+            ax6.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=4, framealpha=0.9, fontsize=11)
         else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
-        set_escala_y(ax6, df6['Suma_I'].max(), 1.8) 
-        for i in range(len(x_idx)):
-            v_i, v_d = df6['Suma_I'].iloc[i], df6['HH_Disponibles'].iloc[i]
-            if v_i > 0: ax6.annotate(f"Imp: {int(v_i)}\nDisp: {int(v_d)}", (i, v_i + (ax6.get_ylim()[1]*0.02)), ha='center', bbox=caja_o, fontweight='bold', zorder=10)
-        ax6_line = ax6.twinx(); ax6_line.plot(x_idx, df6['Inc_%'], color='red', marker='o', markersize=12, linewidth=6, path_effects=efecto_b, label='% Incidencia', zorder=5); add_tendencia(ax6_line, x_idx, df6['Inc_%'])
-        ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1); ax6_line.text(x_idx[0], 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10)
-        for i, val in enumerate(df6['Inc_%']): 
-            if df6['Suma_I'].iloc[i] > 0: ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
-        ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold'); ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5)); agregar_sello_agua(fig6); st.pyplot(fig6)
-    else: st.warning("⚠️ Sin datos históricos de eficiencia para cruzar.")
-
-st.markdown("---")
-
-# =========================================================================
-# 9. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO Y ESTILOS DE CELDA)
-# =========================================================================
-st.header("7. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)"); st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Apertura de registros detallados con fecha, operario y motor de sugerencia de acciones</i></div>", unsafe_allow_html=True)
-if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
-    motivos_disp = sorted(df_im_f['TIPO_PARADA'].dropna().unique())
-    col_sel_m, _ = st.columns([1, 2]); motivo_sel = col_sel_m.selectbox("🔍 Filtrar Motivo a detallar:", ["Todos los motivos"] + list(motivos_disp))
-    df_detalles = df_im_f[df_im_f['TIPO_PARADA'] == motivo_sel] if motivo_sel != "Todos los motivos" else df_im_f.copy()
-    if not df_detalles.empty:
-        df_detalles['FECHA_STR'] = df_detalles['FECHA_EXACTA'].dt.strftime('%d/%m/%Y').fillna('S/D')
         
-        # OBTENEMOS EL PUESTO DE LA BASE IMP
-        c_pu_det = next((c for c in df_detalles.columns if 'PUESTO' in c), None)
-        if not c_pu_det: c_pu_det = 'PUESTO_X' # Failsafe
-        if c_pu_det not in df_detalles.columns: df_detalles[c_pu_det] = "S/D"
-        
-        df_detalles['OPERARIO'] = df_detalles['OPERARIO'].fillna('S/D'); df_detalles['DETALLE'] = df_detalles['DETALLE'].fillna('S/D'); df_detalles[c_pu_det] = df_detalles[c_pu_det].fillna('S/D')
-        
-        # Agrupamos también por Puesto
-        ag_det = df_detalles.groupby(['FECHA_STR', 'OPERARIO', c_pu_det, 'DETALLE']).agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index(); ag_det = ag_det.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
-        t_det = ag_det['HH_IMPRODUCTIVAS'].sum(); ag_det['%'] = (ag_det['HH_IMPRODUCTIVAS'] / t_det) * 100 if t_det > 0 else 0
-        ag_det['Acción Sugerida'] = ag_det['DETALLE'].apply(generar_accion_sugerida)
-        
-        ag_det = ag_det[['FECHA_STR', 'OPERARIO', c_pu_det, 'DETALLE', 'HH_IMPRODUCTIVAS', '%', 'Acción Sugerida']]
-        ag_det.columns = ['Fecha', 'Operario', 'Puesto', 'Detalle Registrado', 'Subtotal HH', '%', 'Acción Sugerida']
-        
-        fila_tot = pd.DataFrame({'Fecha': ['---'], 'Operario': ['---'], 'Puesto': ['---'], 'Detalle Registrado': ['✅ TOTAL SUMATORIA'], 'Subtotal HH': [t_det], '%': [100.0], 'Acción Sugerida': ['🎯 ACCIÓN GLOBAL']})
-        ag_det = pd.concat([ag_det, fila_tot], ignore_index=True)
-        
-        max_hh_value = ag_det['Subtotal HH'].iloc[:-1].max() 
-        def highlight_max_cell(val):
-            return 'background-color: rgba(211, 47, 47, 0.5); color: white; font-weight: bold;' if val == max_hh_value else ''
-            
-        styled_table = ag_det.style.map(highlight_max_cell, subset=['Subtotal HH'])
-        
-        st.dataframe(styled_table, use_container_width=True, hide_index=True, column_config={"Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), "%": st.column_config.NumberColumn(format="%.1f %%")})
-        st.download_button(label="📥 Descargar Detalle Operativo (CSV)", data=ag_det.to_csv(index=False).encode('utf-8'), file_name="Detalles_Operativos.csv", mime="text/csv", use_container_width=True, type="primary")
-    else: st.info("No hay registros detallados para el motivo seleccionado en este periodo.")
-else: st.info("No hay horas improductivas reportadas con la configuración actual para analizar detalles.")
+        set_escala_y(ax6, df6['Suma_I'].max(), 2
