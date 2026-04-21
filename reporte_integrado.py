@@ -53,7 +53,7 @@ if not st.session_state['autenticado']: mostrar_login(); st.stop()
 # =========================================================================
 # 3. MOTOR INTELIGENTE
 # =========================================================================
-def set_escala_y(ax, vmax, factor=1.6): # Aumentado el factor a 1.6 para evitar solapamientos
+def set_escala_y(ax, vmax, factor=1.6): 
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
     
 def dibujar_meses(ax, n_meses):
@@ -104,13 +104,16 @@ try:
     if 'HH_IMPRODUCTIVAS' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'HH' in c and 'IMP' in c), df_im.columns[0]): 'HH_IMPRODUCTIVAS'}, inplace=True)
     if 'DETALLE' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'DETALLE' in c or 'OBS' in c or 'DESC' in c), df_im.columns[0]): 'DETALLE'}, inplace=True)
     
+    # NUEVO: EXTRAER COLUMNA DE PUESTO PARA LA TABLA DE DETALLES
+    c_puesto = next((c for c in df_im.columns if 'PUESTO' in c), None)
+    if not c_puesto: c_puesto = 'PUESTO' # Failsafe
+    
     c_nom, c_ape = next((c for c in df_im.columns if 'NOMBRE' in c), None), next((c for c in df_im.columns if 'APELLIDO' in c), None)
     if c_nom and c_ape: df_im['OPERARIO'] = df_im[c_nom].astype(str).replace('nan', '') + ' ' + df_im[c_ape].astype(str).replace('nan', '')
     elif c_nom: df_im['OPERARIO'] = df_im[c_nom].astype(str).replace('nan', '')
     else: df_im['OPERARIO'] = "S/D"
     df_im['OPERARIO'] = df_im['OPERARIO'].str.strip().replace('', 'S/D')
 
-    # Búsqueda específica de A3 o INICIO primero
     c_fec = None
     for c in df_im.columns:
         if 'A3' in str(c).upper() or 'INICIO' in str(c).upper():
@@ -282,7 +285,7 @@ with col2:
 st.markdown("---")
 
 # =========================================================================
-# 7. GRÁFICOS MÉTRICAS 3 Y 4 (CON HH UNIFICADAS DESDE IMP)
+# 7. GRÁFICOS MÉTRICAS 3 Y 4
 # =========================================================================
 col3, col4 = st.columns(2)
 with col3:
@@ -333,9 +336,6 @@ with col4:
         
         ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5); add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
         ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)); ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
-
-        t_p, t_h = ag4['Costo_Improd._$'].sum(), ag4['HH_Imp'].sum()
-        ax4.text(0.5, 0.90, f"COSTO ACUMULADO ARS\n${t_p:,.0f}\nTOTAL: {t_h:,.0f} HH IMP", transform=ax4.transAxes, ha='center', va='top', fontsize=18, color='black', bbox=caja_o, weight='bold', zorder=10)
 
         for i, val in enumerate(ag4['Costo_Improd._$']): ax4_line.annotate(f"${val:,.0f}", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
 
@@ -406,17 +406,26 @@ if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
     df_detalles = df_im_f[df_im_f['TIPO_PARADA'] == motivo_sel] if motivo_sel != "Todos los motivos" else df_im_f.copy()
     if not df_detalles.empty:
         df_detalles['FECHA_STR'] = df_detalles['FECHA_EXACTA'].dt.strftime('%d/%m/%Y').fillna('S/D')
-        df_detalles['OPERARIO'] = df_detalles['OPERARIO'].fillna('S/D'); df_detalles['DETALLE'] = df_detalles['DETALLE'].fillna('S/D')
-        ag_det = df_detalles.groupby(['FECHA_STR', 'OPERARIO', 'DETALLE']).agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index(); ag_det = ag_det.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
+        
+        # OBTENEMOS EL PUESTO DE LA BASE IMP
+        c_pu_det = next((c for c in df_detalles.columns if 'PUESTO' in c), None)
+        if not c_pu_det: c_pu_det = 'PUESTO_X' # Failsafe
+        if c_pu_det not in df_detalles.columns: df_detalles[c_pu_det] = "S/D"
+        
+        df_detalles['OPERARIO'] = df_detalles['OPERARIO'].fillna('S/D'); df_detalles['DETALLE'] = df_detalles['DETALLE'].fillna('S/D'); df_detalles[c_pu_det] = df_detalles[c_pu_det].fillna('S/D')
+        
+        # Agrupamos también por Puesto
+        ag_det = df_detalles.groupby(['FECHA_STR', 'OPERARIO', c_pu_det, 'DETALLE']).agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index(); ag_det = ag_det.sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
         t_det = ag_det['HH_IMPRODUCTIVAS'].sum(); ag_det['%'] = (ag_det['HH_IMPRODUCTIVAS'] / t_det) * 100 if t_det > 0 else 0
         ag_det['Acción Sugerida'] = ag_det['DETALLE'].apply(generar_accion_sugerida)
-        ag_det = ag_det[['FECHA_STR', 'OPERARIO', 'DETALLE', 'HH_IMPRODUCTIVAS', '%', 'Acción Sugerida']]; ag_det.columns = ['Fecha', 'Operario', 'Detalle Registrado', 'Subtotal HH', '%', 'Acción Sugerida']
         
-        fila_tot = pd.DataFrame({'Fecha': ['---'], 'Operario': ['---'], 'Detalle Registrado': ['✅ TOTAL SUMATORIA'], 'Subtotal HH': [t_det], '%': [100.0], 'Acción Sugerida': ['🎯 ACCIÓN GLOBAL']})
+        ag_det = ag_det[['FECHA_STR', 'OPERARIO', c_pu_det, 'DETALLE', 'HH_IMPRODUCTIVAS', '%', 'Acción Sugerida']]
+        ag_det.columns = ['Fecha', 'Operario', 'Puesto', 'Detalle Registrado', 'Subtotal HH', '%', 'Acción Sugerida']
+        
+        fila_tot = pd.DataFrame({'Fecha': ['---'], 'Operario': ['---'], 'Puesto': ['---'], 'Detalle Registrado': ['✅ TOTAL SUMATORIA'], 'Subtotal HH': [t_det], '%': [100.0], 'Acción Sugerida': ['🎯 ACCIÓN GLOBAL']})
         ag_det = pd.concat([ag_det, fila_tot], ignore_index=True)
         
-        # Función para pintar de rojo solo la celda con el valor máximo de HH Improductivas
-        max_hh_value = ag_det['Subtotal HH'].iloc[:-1].max() # Ignora la fila de 'Total Sumatoria' para buscar el máximo
+        max_hh_value = ag_det['Subtotal HH'].iloc[:-1].max() 
         def highlight_max_cell(val):
             return 'background-color: rgba(211, 47, 47, 0.5); color: white; font-weight: bold;' if val == max_hh_value else ''
             
