@@ -28,9 +28,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
-efecto_b, efecto_n = [pe.withStroke(linewidth=3, foreground='white')], [pe.withStroke(linewidth=3, foreground='black')]
-caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
+efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
+caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
+caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
+caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
 # 2. SEGURIDAD
@@ -48,7 +51,8 @@ def mostrar_login():
             except: st.markdown("<h2 style='text-align:center;'>OMBÚ</h2>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center;'><h2 style='color:#1E3A8A;'>GESTIÓN INDUSTRIAL PRODUCTIVA OMBÚ S.A.</h2><p>Acceso Restringido - Control de Gestión</p></div>", unsafe_allow_html=True)
         with st.form("form_login"):
-            u_in, p_in = st.text_input("Usuario Corporativo"), st.text_input("Contraseña", type="password")
+            u_in = st.text_input("Usuario Corporativo")
+            p_in = st.text_input("Contraseña", type="password")
             if st.form_submit_button("Ingresar al Sistema", use_container_width=True):
                 if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: st.session_state['autenticado'] = True; st.rerun()
                 else: st.error("❌ Credenciales incorrectas.")
@@ -108,7 +112,7 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA DE DATOS (CORRECCIÓN DE FECHAS)
+# 4. CARGA DE DATOS
 # =========================================================================
 try:
     df_ef = pd.read_excel("eficiencias.xlsx")
@@ -137,18 +141,17 @@ try:
         df_im['OPERARIO'] = "S/D"
     df_im['OPERARIO'] = df_im['OPERARIO'].str.strip().replace('', 'S/D')
 
-    # --- SOLUCIÓN DEL ERROR DE LAS 519 HH ---
-    # Preservamos la columna FECHA maestra original para que los meses no se mezclen
-    c_fec_base = 'FECHA' if 'FECHA' in df_im.columns else df_im.columns[0]
-    
-    c_fec_exacta = None
+    c_fec = None
     for c in df_im.columns:
         if 'A3' in str(c).upper() or 'INICIO' in str(c).upper():
-            c_fec_exacta = c; break
+            c_fec = c; break
+    if not c_fec:
+        for c in df_im.columns:
+            if 'FECHA' in str(c).upper():
+                c_fec = c; break
 
-    # Solo extraemos A3 para la tabla operativa, SIN pisar la columna FECHA maestra
-    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec_exacta], errors='coerce') if c_fec_exacta else pd.NaT
-    df_im['FECHA'] = pd.to_datetime(df_im[c_fec_base], errors='coerce').dt.to_period('M').dt.to_timestamp()
+    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce') if c_fec else pd.NaT
+    df_im['FECHA'] = df_im['FECHA_EXACTA'].dt.to_period('M').dt.to_timestamp()
     
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
@@ -220,21 +223,17 @@ with st.container():
         else: 
             df_plot_1 = df_ef_f.copy()
 
+    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES (Misma matemática estricta que los gráficos)
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    if not any([s_pl, s_li, s_pu, s_mes]) and not df_plot_1.empty:
-        ag_global = df_plot_1.groupby(['Planta', 'Linea', 'Puesto_Trabajo']).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', 'HH_Productivas_C/GAP':'sum'})
-        ef_r_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        ef_p_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Productivas_C/GAP'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        kpi_ef_real = ef_r_arr.mean() if not ef_r_arr.empty else 0
-        kpi_ef_prod = ef_p_arr.mean() if not ef_p_arr.empty else 0
-    else:
-        tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-        tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-        tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-        kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-        kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+    # -> CORRECCIÓN: La suma siempre es directa desde df_plot_1 (como en el gráfico)
+    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+    
+    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
     top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
@@ -322,8 +321,9 @@ with col1:
         add_tendencia(ax1_line, x_idx, ag1['Ef_Real'])
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
+        # CARTEL META A LA DERECHA ABSOLUTA
         last_x1 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax1_line.text(last_x1, 86, 'META = 85%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
+        ax1_line.text(last_x1, 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3))
         ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -361,8 +361,9 @@ with col2:
         add_tendencia(ax2_line, x_idx, ag2['Ef_Prod'])
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
+        # CARTEL META A LA DERECHA ABSOLUTA
         last_x2 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax2_line.text(last_x2, 101, 'META = 100%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
+        ax2_line.text(last_x2, 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3))
         ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -547,7 +548,7 @@ with col6:
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
         last_x6 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax6_line.text(last_x6, 16, 'META = 15%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
+        ax6_line.text(last_x6, 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         for i, val in enumerate(df6['Inc_%']): 
             if df6['Suma_I'].iloc[i] > 0: 
