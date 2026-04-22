@@ -1,12 +1,7 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
-import matplotlib.patheffects as pe
-import matplotlib.image as mpimg
-import textwrap
-import re
+import streamlit as st, pandas as pd, numpy as np
+import matplotlib.pyplot as plt, matplotlib.ticker as mtick
+import matplotlib.patheffects as pe, matplotlib.image as mpimg
+import textwrap, re
 
 # =========================================================================
 # 1. CONFIGURACIÓN Y ESCUDO VISUAL
@@ -58,14 +53,13 @@ if not st.session_state['autenticado']: mostrar_login(); st.stop()
 # =========================================================================
 # 3. MOTOR INTELIGENTE
 # =========================================================================
-def set_escala_y(ax, vmax, factor=1.8): 
+def set_escala_y(ax, vmax, factor=1.6): 
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
     
 def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def cruce_robusto(sel, excel):
-    """VERSIÓN ULTRA-ESTRICTA: Evita que 'REM 1' atrape a 'REM 10'"""
     if pd.isna(excel) or pd.isna(sel): return False
     s1, s2 = str(sel).strip().upper(), str(excel).strip().upper()
     for a,b in zip("ÁÉÍÓÚ", "AEIOU"): s1, s2 = s1.replace(a,b), s2.replace(a,b)
@@ -178,6 +172,7 @@ with st.container():
     if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
     if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
 
+    # FILTRADO EXACTO DE IMPRODUCTIVAS (Para evitar horas duplicadas)
     if not df_im_f.empty:
         if s_pl:
             col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0])
@@ -191,8 +186,8 @@ with st.container():
         if s_mes and "🎯 Acumulado YTD" not in s_mes: 
             df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
 
-    # REGLA DE SALVAVIDAS (FALLBACK) PARA EVITAR GRAFICOS VACIOS
     warn_linea = False
+    
     if s_pu: 
         df_plot_1 = df_ef_f.copy()
     elif s_li:
@@ -204,7 +199,7 @@ with st.container():
         if not df_salida.empty: df_plot_1 = df_salida
         else: df_plot_1 = df_ef_f.copy()
 
-    # CÁLCULOS PARA CARTELES
+    # CÁLCULOS PARA CARTELES (Garantizando sumatoria exacta de la fuente filtrada)
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
@@ -254,7 +249,7 @@ with st.container():
                 <h4 style="margin:0; color: white; font-size:22px;">COSTO HH IMPROD.</h4>
                 <p style="margin:0; color: #FFCDD2; font-size:14px;">(Oportunidad Perdida)</p>
                 <h2 style="margin:10px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
-                <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.0f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
+                <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
             </div>
             <div style="background: #0D47A1; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
                 <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
@@ -272,8 +267,7 @@ t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+
 # =========================================================================
 # 6. GRÁFICOS MÉTRICAS 1 Y 2
 # =========================================================================
-st.markdown("<br>", unsafe_allow_html=True)
-col1, col2 = st.columns(2)
+st.markdown("<br>", unsafe_allow_html=True); col1, col2 = st.columns(2)
 
 with col1:
     st.header("1. EFICIENCIA REAL")
@@ -292,7 +286,7 @@ with col1:
         bs = ax1.bar(x_idx - 0.17, ag1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bd = ax1.bar(x_idx + 0.17, ag1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
-        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.8)
+        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.6)
         ax1.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax1.bar_label(bd, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax1, len(x_idx))
@@ -318,12 +312,11 @@ with col1:
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True)
         ax1_line.legend(loc='lower right', bbox_to_anchor=(1, 1.05), frameon=True)
         agregar_sello_agua(fig1); st.pyplot(fig1)
-    else: st.warning("⚠️ Sin datos.")
+    else: st.warning("⚠️ Sin datos para Eficiencia Real. Pruebe otra combinación de filtros.")
 
 with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
-    
     if not df_plot_1.empty:
         ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Productivas_C/GAP': 'sum'}).reset_index()
         ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2['HH_Productivas_C/GAP']).replace([np.inf, -np.inf], 0).fillna(0) * 100
@@ -336,7 +329,7 @@ with col2:
         bs = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bp = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
-        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.8)
+        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.6)
         ax2.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(bp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
@@ -357,7 +350,7 @@ with col2:
         ax2.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True)
         ax2_line.legend(loc='lower right', bbox_to_anchor=(1, 1.05), frameon=True)
         agregar_sello_agua(fig2); st.pyplot(fig2)
-    else: st.warning("⚠️ Sin datos.")
+    else: st.warning("⚠️ Sin datos para Eficiencia Productiva.")
 
 st.markdown("---")
 
@@ -392,7 +385,7 @@ with col3:
         ax3.bar_label(bi, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
         
         ax3.plot(x_idx, ag3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_b, label='HH DISPONIBLES', zorder=5)
-        set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.8); dibujar_meses(ax3, len(x_idx))
+        set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.6); dibujar_meses(ax3, len(x_idx))
 
         for i in range(len(x_idx)):
             hd, ht = ag3['HH_Disponibles'].iloc[i], ag3['Total_Decl'].iloc[i]; gap = hd - ht
@@ -425,7 +418,7 @@ with col4:
         x_idx = np.arange(len(ag4))
         bi = ax4.bar(x_idx, ag4['HH_Imp'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax4.bar_label(bi, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4)
-        set_escala_y(ax4, ag4['HH_Imp'].max(), 1.8) 
+        set_escala_y(ax4, ag4['HH_Imp'].max(), 1.6) 
         
         ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5)
         add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
@@ -500,7 +493,7 @@ with col6:
         df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
         
         fig6, ax6 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.68, bottom=0.22, left=0.08, right=0.92) # TOP muy bajo para dar lugar libre a la leyenda
+        fig6.subplots_adjust(top=0.68, bottom=0.22, left=0.08, right=0.92)
         fig6.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(df6))
@@ -514,7 +507,6 @@ with col6:
                 ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
                 base_st += vals
             
-            # LEYENDA M6: FLOTANDO LIBRE ARRIBA EN 4 COLUMNAS
             ax6.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=4, framealpha=0.9, fontsize=11)
         else: 
             ax6.bar(x_idx, np.zeros(len(df6)), color='white')
@@ -530,7 +522,6 @@ with col6:
         add_tendencia(ax6_line, x_idx, df6['Inc_%'])
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        # CARTEL META M6 A LA DERECHA ABSOLUTA
         xlims = ax6.get_xlim()
         ax6_line.text(xlims[1], 15, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
