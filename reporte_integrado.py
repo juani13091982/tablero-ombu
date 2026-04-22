@@ -56,25 +56,32 @@ def mostrar_login():
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE (FILTRO ULTRA-ESTRICTO)
+# 3. MOTOR INTELIGENTE (VERSIÓN IGUALDAD ESTRICTA)
 # =========================================================================
-def set_escala_y(ax, vmax, factor=1.8): 
+def set_escala_y(ax, vmax, factor=1.6): 
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
     
 def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def safe_match(s_list, val):
-    """Filtro estricto: Impide solapamiento de nombres. Ej: 'REM 1' jamás sumará 'REM 10'"""
+    """Filtro ESTRICTO DEFINITIVO: Igualdad matemática 1 a 1 (Cero solapamientos fantasmas)"""
     if pd.isna(val): return False
+    
+    # 1. Normalizar el valor de la celda del Excel (Mayúsculas, sin acentos, sin espacios dobles)
     v = str(val).strip().upper()
+    for a, b in zip("ÁÉÍÓÚ", "AEIOU"): v = v.replace(a, b)
+    v = " ".join(v.split()) 
+    
     for s in s_list:
+        # 2. Normalizar el texto seleccionado en el filtro maestro
         s_cl = str(s).strip().upper()
+        for a, b in zip("ÁÉÍÓÚ", "AEIOU"): s_cl = s_cl.replace(a, b)
+        s_cl = " ".join(s_cl.split())
+        
+        # 3. IGUALDAD ABSOLUTA. Si no son gemelos, rechaza el valor.
         if s_cl == v: return True
         
-        # Evalúa si la cadena está contenida pero separada por guiones, pipes o paréntesis
-        parts = [p.strip() for p in re.split(r'[-|()]', v)]
-        if s_cl in parts: return True
     return False
 
 def add_tendencia(ax, x, y):
@@ -192,8 +199,7 @@ with st.container():
             col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), df_im_f.columns[2])
             df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
         if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-            c_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
-            if c_mes: df_im_f = df_im_f[df_im_f[c_mes].isin(s_mes)]
+            df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
 
     warn_linea = False
     
@@ -201,23 +207,32 @@ with st.container():
         df_plot_1 = df_ef_f.copy()
     elif s_li:
         df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: df_plot_1 = df_salida
-        else: df_plot_1 = df_ef_f.copy(); warn_linea = True
+        if not df_salida.empty: 
+            df_plot_1 = df_salida
+        else: 
+            df_plot_1 = df_ef_f.copy(); warn_linea = True
     else: 
         df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: df_plot_1 = df_salida
-        else: df_plot_1 = df_ef_f.copy()
+        if not df_salida.empty: 
+            df_plot_1 = df_salida
+        else: 
+            df_plot_1 = df_ef_f.copy()
 
-    # CÁLCULOS ESTRICTOS PARA CARTELES (Misma matemática universal que los gráficos)
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-    
-    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+    if not any([s_pl, s_li, s_pu, s_mes]) and not df_plot_1.empty:
+        ag_global = df_plot_1.groupby(['Planta', 'Linea', 'Puesto_Trabajo']).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', 'HH_Productivas_C/GAP':'sum'})
+        ef_r_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        ef_p_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Productivas_C/GAP'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        kpi_ef_real = ef_r_arr.mean() if not ef_r_arr.empty else 0
+        kpi_ef_prod = ef_p_arr.mean() if not ef_p_arr.empty else 0
+    else:
+        tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+        tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+        tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+        kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+        kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
     top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
@@ -290,14 +305,14 @@ with col1:
         bs = ax1.bar(x_idx - 0.17, ag1['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bd = ax1.bar(x_idx + 0.17, ag1['HH_Disponibles'], 0.35, color='black', edgecolor='white', label='HH DISPONIBLES', zorder=2)
         
-        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.8)
+        set_escala_y(ax1, ag1['HH_Disponibles'].max(), 1.6)
         ax1.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax1.bar_label(bd, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax1, len(x_idx))
         
         for i, bar in enumerate(bs):
-            vu = ag1['Cant._Prod._A1'].iloc[i]
-            vu = int(vu) if pd.notna(vu) else 0
+            val_prod = ag1['Cant._Prod._A1'].iloc[i]
+            vu = int(float(val_prod)) if pd.notna(val_prod) else 0 
             if vu > 0: 
                 ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height()*0.05, f"{vu} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=efecto_n, zorder=4)
         
@@ -305,14 +320,14 @@ with col1:
         add_tendencia(ax1_line, x_idx, ag1['Ef_Real'])
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        # ANTISOLAPAMIENTO META (DERECHA ABSOLUTA)
-        ax1_line.text(0.99, 85, 'META = 85%', transform=ax1_line.get_yaxis_transform(), color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        last_x1 = x_idx[-1] if len(x_idx) > 0 else 0
+        ax1_line.text(last_x1, 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
-        ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.4))
+        ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3))
         ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         
         for i, val in enumerate(ag1['Ef_Real']): 
-            ax1_line.annotate(f"{val:.1f}%", (x_idx[i], val + (ax1_line.get_ylim()[1]*0.04)), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
+            ax1_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
             
         ax1.set_xticks(x_idx); ax1.set_xticklabels(ag1['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
         ax1.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True)
@@ -335,7 +350,7 @@ with col2:
         bs = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
         bp = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
-        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.8)
+        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.6)
         ax2.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(bp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
@@ -344,14 +359,14 @@ with col2:
         add_tendencia(ax2_line, x_idx, ag2['Ef_Prod'])
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        # ANTISOLAPAMIENTO META (DERECHA ABSOLUTA)
-        ax2_line.text(0.99, 100, 'META = 100%', transform=ax2_line.get_yaxis_transform(), color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        last_x2 = x_idx[-1] if len(x_idx) > 0 else 0
+        ax2_line.text(last_x2, 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
-        ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.4))
+        ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3))
         ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         
         for i, val in enumerate(ag2['Ef_Prod']): 
-            ax2_line.annotate(f"{val:.1f}%", (x_idx[i], val + (ax2_line.get_ylim()[1]*0.04)), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
+            ax2_line.annotate(f"{val:.1f}%", (x_idx[i], val + 5), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
             
         ax2.set_xticks(x_idx); ax2.set_xticklabels(ag2['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
         ax2.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True)
@@ -425,11 +440,11 @@ with col4:
         x_idx = np.arange(len(ag4))
         bi = ax4.bar(x_idx, ag4['HH_Imp'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax4.bar_label(bi, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4)
-        set_escala_y(ax4, ag4['HH_Imp'].max(), 1.8) 
+        set_escala_y(ax4, ag4['HH_Imp'].max(), 1.6) 
         
         ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5)
         add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
-        ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.4))
+        ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3))
         ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
 
         for i, val in enumerate(ag4['Costo_Improd._$']): 
@@ -518,7 +533,7 @@ with col6:
         else: 
             ax6.bar(x_idx, np.zeros(len(df6)), color='white')
             
-        set_escala_y(ax6, df6['Suma_I'].max(), 2.2) 
+        set_escala_y(ax6, df6['Suma_I'].max(), 1.8) 
         
         for i in range(len(x_idx)):
             v_i, v_d = df6['Suma_I'].iloc[i], df6['HH_Disponibles'].iloc[i]
@@ -529,12 +544,12 @@ with col6:
         add_tendencia(ax6_line, x_idx, df6['Inc_%'])
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        # ANTISOLAPAMIENTO META M6 (DERECHA ABSOLUTA)
-        ax6_line.text(0.99, 15, 'META = 15%', transform=ax6_line.get_yaxis_transform(), color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        last_x6 = x_idx[-1] if len(x_idx) > 0 else 0
+        ax6_line.text(last_x6, 15, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         for i, val in enumerate(df6['Inc_%']): 
             if df6['Suma_I'].iloc[i] > 0: 
-                ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + (ax6_line.get_ylim()[1]*0.05)), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
+                ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
                 
         ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold')
         ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5))
