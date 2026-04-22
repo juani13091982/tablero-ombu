@@ -1,8 +1,12 @@
-import streamlit as st, pandas as pd, numpy as np
-import matplotlib.subplots as plt, matplotlib.ticker as mtick
+import streamlit as st
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patheffects as pe, matplotlib.image as mpimg
-import textwrap, re
+import matplotlib.ticker as mtick
+import matplotlib.patheffects as pe
+import matplotlib.image as mpimg
+import textwrap
+import re
 
 # =========================================================================
 # 1. CONFIGURACIÓN Y ESCUDO VISUAL
@@ -24,9 +28,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
-efecto_b, efecto_n = [pe.withStroke(linewidth=3, foreground='white')], [pe.withStroke(linewidth=3, foreground='black')]
-caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
+efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
+caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
+caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
+caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
 # 2. SEGURIDAD
@@ -44,7 +51,8 @@ def mostrar_login():
             except: st.markdown("<h2 style='text-align:center;'>OMBÚ</h2>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center;'><h2 style='color:#1E3A8A;'>GESTIÓN INDUSTRIAL PRODUCTIVA OMBÚ S.A.</h2><p>Acceso Restringido - Control de Gestión</p></div>", unsafe_allow_html=True)
         with st.form("form_login"):
-            u_in, p_in = st.text_input("Usuario Corporativo"), st.text_input("Contraseña", type="password")
+            u_in = st.text_input("Usuario Corporativo")
+            p_in = st.text_input("Contraseña", type="password")
             if st.form_submit_button("Ingresar al Sistema", use_container_width=True):
                 if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: st.session_state['autenticado'] = True; st.rerun()
                 else: st.error("❌ Credenciales incorrectas.")
@@ -67,7 +75,10 @@ def safe_match(s_list, val):
     for s in s_list:
         s_cl = str(s).strip().upper()
         if s_cl == v: return True
-        if f" {s_cl} " in f" {v} ": return True
+        # Usar limites de palabra para no mezclar REM 1 con REM 10
+        escaped_s = re.escape(s_cl)
+        pattern = r'(?:^|[^A-Z0-9])' + escaped_s + r'(?:[^A-Z0-9]|$)'
+        if re.search(pattern, v): return True
     return False
 
 def add_tendencia(ax, x, y):
@@ -112,7 +123,8 @@ try:
     if not c_pu_det: c_pu_det = 'PUESTO_X'
     if c_pu_det not in df_im.columns: df_im[c_pu_det] = "S/D"
     
-    c_nom, c_ape = next((c for c in df_im.columns if 'NOMBRE' in c), None), next((c for c in df_im.columns if 'APELLIDO' in c), None)
+    c_nom = next((c for c in df_im.columns if 'NOMBRE' in c), None)
+    c_ape = next((c for c in df_im.columns if 'APELLIDO' in c), None)
     if c_nom and c_ape: 
         df_im['OPERARIO'] = df_im[c_nom].astype(str).replace('nan', '') + ' ' + df_im[c_ape].astype(str).replace('nan', '')
     elif c_nom: 
@@ -136,7 +148,7 @@ try:
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
     df_ef['Mes_Str'] = df_ef['Fecha'].dt.strftime('%b-%Y')
-    df_im['MES_STR'] = df_im['FECHA'].dt.strftime('%b-%Y') # Mantiene mayúsculas para evitar el KeyError
+    df_im['Mes_Str'] = df_im['FECHA'].dt.strftime('%b-%Y') 
 except Exception as e: 
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
@@ -168,41 +180,41 @@ with st.container():
     df_ef_f = df_ef.copy()
     df_im_f = df_im.copy()
     
-    # Aplicación de filtros en Eficiencia
     if s_pl: df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
     if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
     if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
     if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
 
-    # Aplicación de filtros en Improductivas (Corrección de Sumas de más/menos)
     if not df_im_f.empty:
         if s_pl:
-            c_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
-            if c_pl: df_im_f = df_im_f[df_im_f[c_pl].apply(lambda x: safe_match(s_pl, x))]
+            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0])
+            df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
         if s_li:
-            c_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
-            if c_li: df_im_f = df_im_f[df_im_f[c_li].apply(lambda x: safe_match(s_li, x))]
+            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im_f.columns[1])
+            df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
         if s_pu:
-            c_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
-            if c_pu: df_im_f = df_im_f[df_im_f[c_pu].apply(lambda x: safe_match(s_pu, x))]
+            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), df_im_f.columns[2])
+            df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
         if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-            c_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
-            if c_mes: df_im_f = df_im_f[df_im_f[c_mes].isin(s_mes)]
+            df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
 
     warn_linea = False
-    # REGLA DE SALVAVIDAS (FALLBACK) PARA M1/M2 (Previene Gráficos en Blanco)
+    
     if s_pu: 
         df_plot_1 = df_ef_f.copy()
     elif s_li:
         df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: df_plot_1 = df_salida
-        else: df_plot_1 = df_ef_f.copy(); warn_linea = True
+        if not df_salida.empty: 
+            df_plot_1 = df_salida
+        else: 
+            df_plot_1 = df_ef_f.copy(); warn_linea = True
     else: 
         df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: df_plot_1 = df_salida
-        else: df_plot_1 = df_ef_f.copy()
+        if not df_salida.empty: 
+            df_plot_1 = df_salida
+        else: 
+            df_plot_1 = df_ef_f.copy()
 
-    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
@@ -296,7 +308,8 @@ with col1:
         dibujar_meses(ax1, len(x_idx))
         
         for i, bar in enumerate(bs):
-            vu = int(ag1['Cant._Prod._A1'].iloc[i])
+            val_prod = ag1['Cant._Prod._A1'].iloc[i]
+            vu = int(float(val_prod)) if pd.notna(val_prod) else 0 # Blindaje contra NaNs
             if vu > 0: 
                 ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height()*0.05, f"{vu} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=efecto_n, zorder=4)
         
@@ -304,10 +317,7 @@ with col1:
         add_tendencia(ax1_line, x_idx, ag1['Ef_Real'])
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        # CARTEL META A LA DERECHA (ANTI SOLAPAMIENTO)
-        last_x1 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax1_line.text(last_x1, 86, 'META = 85%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
-        
+        ax1_line.text(0.99, 85, 'META = 85%', transform=ax1_line.get_yaxis_transform(), color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3))
         ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         
@@ -344,10 +354,7 @@ with col2:
         add_tendencia(ax2_line, x_idx, ag2['Ef_Prod'])
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        # CARTEL META A LA DERECHA (ANTI SOLAPAMIENTO)
-        last_x2 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax2_line.text(last_x2, 101, 'META = 100%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
-        
+        ax2_line.text(0.99, 100, 'META = 100%', transform=ax2_line.get_yaxis_transform(), color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3))
         ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         
@@ -530,9 +537,7 @@ with col6:
         add_tendencia(ax6_line, x_idx, df6['Inc_%'])
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        # CARTEL META M6 A LA DERECHA (ANTI SOLAPAMIENTO)
-        last_x6 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax6_line.text(last_x6, 16, 'META = 15%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
+        ax6_line.text(0.99, 15, 'META = 15%', transform=ax6_line.get_yaxis_transform(), color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         for i, val in enumerate(df6['Inc_%']): 
             if df6['Suma_I'].iloc[i] > 0: 
