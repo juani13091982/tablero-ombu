@@ -68,20 +68,21 @@ def safe_match(s_list, val):
     """Filtro ESTRICTO DEFINITIVO: Igualdad matemática 1 a 1 (Cero solapamientos fantasmas)"""
     if pd.isna(val): return False
     
-    # 1. Normalizar el valor de la celda del Excel (Mayúsculas, sin acentos, sin espacios dobles)
-    v = str(val).strip().upper()
-    for a, b in zip("ÁÉÍÓÚ", "AEIOU"): v = v.replace(a, b)
-    v = " ".join(v.split()) 
+    # 1. Normalizar el valor de la celda del Excel
+    v_norm = str(val).strip().upper()
+    for a, b in zip("ÁÉÍÓÚ", "AEIOU"): v_norm = v_norm.replace(a, b)
+    v_alphanum = re.sub(r'[^A-Z0-9]', '', v_norm)
     
     for s in s_list:
         # 2. Normalizar el texto seleccionado en el filtro maestro
-        s_cl = str(s).strip().upper()
-        for a, b in zip("ÁÉÍÓÚ", "AEIOU"): s_cl = s_cl.replace(a, b)
-        s_cl = " ".join(s_cl.split())
+        s_norm = str(s).strip().upper()
+        for a, b in zip("ÁÉÍÓÚ", "AEIOU"): s_norm = s_norm.replace(a, b)
+        s_alphanum = re.sub(r'[^A-Z0-9]', '', s_norm)
         
-        # 3. IGUALDAD ABSOLUTA. Si no son gemelos, rechaza el valor.
-        if s_cl == v: return True
-        
+        # 3. IGUALDAD ABSOLUTA. Si no son gemelos idénticos, rechaza el valor.
+        if s_alphanum == v_alphanum and s_alphanum != "": 
+            return True
+            
     return False
 
 def add_tendencia(ax, x, y):
@@ -190,16 +191,17 @@ with st.container():
 
     if not df_im_f.empty:
         if s_pl:
-            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0])
-            df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
+            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
+            if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
         if s_li:
-            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im_f.columns[1])
-            df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
+            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
+            if col_li: df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
         if s_pu:
-            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), df_im_f.columns[2])
-            df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
+            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
+            if col_pu: df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
         if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-            df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
+            col_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
+            if col_mes: df_im_f = df_im_f[df_im_f[col_mes].isin(s_mes)]
 
     warn_linea = False
     
@@ -218,21 +220,16 @@ with st.container():
         else: 
             df_plot_1 = df_ef_f.copy()
 
+    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES (Misma matemática que los gráficos)
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    if not any([s_pl, s_li, s_pu, s_mes]) and not df_plot_1.empty:
-        ag_global = df_plot_1.groupby(['Planta', 'Linea', 'Puesto_Trabajo']).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', 'HH_Productivas_C/GAP':'sum'})
-        ef_r_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        ef_p_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Productivas_C/GAP'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        kpi_ef_real = ef_r_arr.mean() if not ef_r_arr.empty else 0
-        kpi_ef_prod = ef_p_arr.mean() if not ef_p_arr.empty else 0
-    else:
-        tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-        tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-        tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-        kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-        kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+    
+    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
     top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
@@ -321,7 +318,7 @@ with col1:
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
         last_x1 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax1_line.text(last_x1, 86, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        ax1_line.text(last_x1, 86, 'META = 85%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3))
         ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -360,7 +357,7 @@ with col2:
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
         last_x2 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax2_line.text(last_x2, 101, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        ax2_line.text(last_x2, 101, 'META = 100%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3))
         ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
@@ -545,7 +542,7 @@ with col6:
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
         last_x6 = x_idx[-1] if len(x_idx) > 0 else 0
-        ax6_line.text(last_x6, 15, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        ax6_line.text(last_x6, 16, 'META = 15%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         for i, val in enumerate(df6['Inc_%']): 
             if df6['Suma_I'].iloc[i] > 0: 
