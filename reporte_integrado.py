@@ -1,5 +1,6 @@
 import streamlit as st, pandas as pd, numpy as np
-import matplotlib.pyplot as plt, matplotlib.ticker as mtick
+import matplotlib.subplots as plt, matplotlib.ticker as mtick
+import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe, matplotlib.image as mpimg
 import textwrap, re
 
@@ -51,7 +52,7 @@ def mostrar_login():
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE
+# 3. MOTOR INTELIGENTE (VERSIÓN ESTRICTA)
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.6): 
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
@@ -59,13 +60,14 @@ def set_escala_y(ax, vmax, factor=1.6):
 def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
-def cruce_robusto(sel, excel):
-    if pd.isna(excel) or pd.isna(sel): return False
-    s1, s2 = str(sel).strip().upper(), str(excel).strip().upper()
-    for a,b in zip("ÁÉÍÓÚ", "AEIOU"): s1, s2 = s1.replace(a,b), s2.replace(a,b)
-    s1, s2 = " ".join(s1.split()), " ".join(s2.split())
-    if s1 == s2: return True
-    if f" {s1} " in f" {s2} ": return True
+def safe_match(s_list, val):
+    """Filtro estricto que impide solapamiento de nombres parecidos"""
+    if pd.isna(val): return False
+    v = str(val).strip().upper()
+    for s in s_list:
+        s_cl = str(s).strip().upper()
+        if s_cl == v: return True
+        if f" {s_cl} " in f" {v} ": return True
     return False
 
 def add_tendencia(ax, x, y):
@@ -110,8 +112,7 @@ try:
     if not c_pu_det: c_pu_det = 'PUESTO_X'
     if c_pu_det not in df_im.columns: df_im[c_pu_det] = "S/D"
     
-    c_nom = next((c for c in df_im.columns if 'NOMBRE' in c), None)
-    c_ape = next((c for c in df_im.columns if 'APELLIDO' in c), None)
+    c_nom, c_ape = next((c for c in df_im.columns if 'NOMBRE' in c), None), next((c for c in df_im.columns if 'APELLIDO' in c), None)
     if c_nom and c_ape: 
         df_im['OPERARIO'] = df_im[c_nom].astype(str).replace('nan', '') + ' ' + df_im[c_ape].astype(str).replace('nan', '')
     elif c_nom: 
@@ -135,7 +136,7 @@ try:
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
     df_ef['Mes_Str'] = df_ef['Fecha'].dt.strftime('%b-%Y')
-    df_im['Mes_Str'] = df_im['FECHA'].dt.strftime('%b-%Y') # Mantiene nombre original sincronizado
+    df_im['MES_STR'] = df_im['FECHA'].dt.strftime('%b-%Y') # Mantiene mayúsculas para evitar el KeyError
 except Exception as e: 
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
@@ -167,27 +168,29 @@ with st.container():
     df_ef_f = df_ef.copy()
     df_im_f = df_im.copy()
     
+    # Aplicación de filtros en Eficiencia
     if s_pl: df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
     if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
     if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
     if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
 
-    # FILTRADO EXACTO DE IMPRODUCTIVAS (Para evitar horas duplicadas)
+    # Aplicación de filtros en Improductivas (Corrección de Sumas de más/menos)
     if not df_im_f.empty:
         if s_pl:
-            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0])
-            df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: any(cruce_robusto(p, x) for p in s_pl))]
+            c_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
+            if c_pl: df_im_f = df_im_f[df_im_f[c_pl].apply(lambda x: safe_match(s_pl, x))]
         if s_li:
-            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im_f.columns[1])
-            df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: any(cruce_robusto(l, x) for l in s_li))]
+            c_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
+            if c_li: df_im_f = df_im_f[df_im_f[c_li].apply(lambda x: safe_match(s_li, x))]
         if s_pu:
-            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), df_im_f.columns[2])
-            df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: any(cruce_robusto(ps, x) for ps in s_pu))]
+            c_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
+            if c_pu: df_im_f = df_im_f[df_im_f[c_pu].apply(lambda x: safe_match(s_pu, x))]
         if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-            df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
+            c_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
+            if c_mes: df_im_f = df_im_f[df_im_f[c_mes].isin(s_mes)]
 
     warn_linea = False
-    
+    # REGLA DE SALVAVIDAS (FALLBACK) PARA M1/M2 (Previene Gráficos en Blanco)
     if s_pu: 
         df_plot_1 = df_ef_f.copy()
     elif s_li:
@@ -199,7 +202,7 @@ with st.container():
         if not df_salida.empty: df_plot_1 = df_salida
         else: df_plot_1 = df_ef_f.copy()
 
-    # CÁLCULOS PARA CARTELES (Garantizando sumatoria exacta de la fuente filtrada)
+    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
@@ -267,7 +270,8 @@ t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+
 # =========================================================================
 # 6. GRÁFICOS MÉTRICAS 1 Y 2
 # =========================================================================
-st.markdown("<br>", unsafe_allow_html=True); col1, col2 = st.columns(2)
+st.markdown("<br>", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
 
 with col1:
     st.header("1. EFICIENCIA REAL")
@@ -300,8 +304,10 @@ with col1:
         add_tendencia(ax1_line, x_idx, ag1['Ef_Real'])
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        xlims = ax1.get_xlim()
-        ax1_line.text(xlims[1], 85, 'META = 85%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        # CARTEL META A LA DERECHA (ANTI SOLAPAMIENTO)
+        last_x1 = x_idx[-1] if len(x_idx) > 0 else 0
+        ax1_line.text(last_x1, 86, 'META = 85%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
+        
         ax1_line.set_ylim(0, max(100, ag1['Ef_Real'].max()*1.3))
         ax1_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         
@@ -338,8 +344,10 @@ with col2:
         add_tendencia(ax2_line, x_idx, ag2['Ef_Prod'])
         ax2_line.axhline(100, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        xlims = ax2.get_xlim()
-        ax2_line.text(xlims[1], 100, 'META = 100%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        # CARTEL META A LA DERECHA (ANTI SOLAPAMIENTO)
+        last_x2 = x_idx[-1] if len(x_idx) > 0 else 0
+        ax2_line.text(last_x2, 101, 'META = 100%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
+        
         ax2_line.set_ylim(0, max(110, ag2['Ef_Prod'].max()*1.3))
         ax2_line.yaxis.set_major_formatter(mtick.PercentFormatter())
         
@@ -522,8 +530,9 @@ with col6:
         add_tendencia(ax6_line, x_idx, df6['Inc_%'])
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
-        xlims = ax6.get_xlim()
-        ax6_line.text(xlims[1], 15, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        # CARTEL META M6 A LA DERECHA (ANTI SOLAPAMIENTO)
+        last_x6 = x_idx[-1] if len(x_idx) > 0 else 0
+        ax6_line.text(last_x6, 16, 'META = 15%', color='white', bbox=caja_v, fontsize=12, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         for i, val in enumerate(df6['Inc_%']): 
             if df6['Suma_I'].iloc[i] > 0: 
