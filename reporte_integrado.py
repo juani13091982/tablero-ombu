@@ -108,7 +108,7 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA DE DATOS
+# 4. CARGA DE DATOS (CORRECCIÓN DE FECHAS)
 # =========================================================================
 try:
     df_ef = pd.read_excel("eficiencias.xlsx")
@@ -137,17 +137,18 @@ try:
         df_im['OPERARIO'] = "S/D"
     df_im['OPERARIO'] = df_im['OPERARIO'].str.strip().replace('', 'S/D')
 
-    c_fec = None
+    # --- SOLUCIÓN DEL ERROR DE LAS 519 HH ---
+    # Preservamos la columna FECHA maestra original para que los meses no se mezclen
+    c_fec_base = 'FECHA' if 'FECHA' in df_im.columns else df_im.columns[0]
+    
+    c_fec_exacta = None
     for c in df_im.columns:
         if 'A3' in str(c).upper() or 'INICIO' in str(c).upper():
-            c_fec = c; break
-    if not c_fec:
-        for c in df_im.columns:
-            if 'FECHA' in str(c).upper():
-                c_fec = c; break
+            c_fec_exacta = c; break
 
-    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce') if c_fec else pd.NaT
-    df_im['FECHA'] = df_im['FECHA_EXACTA'].dt.to_period('M').dt.to_timestamp()
+    # Solo extraemos A3 para la tabla operativa, SIN pisar la columna FECHA maestra
+    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec_exacta], errors='coerce') if c_fec_exacta else pd.NaT
+    df_im['FECHA'] = pd.to_datetime(df_im[c_fec_base], errors='coerce').dt.to_period('M').dt.to_timestamp()
     
     df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
@@ -191,17 +192,16 @@ with st.container():
 
     if not df_im_f.empty:
         if s_pl:
-            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
-            if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
+            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0])
+            df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
         if s_li:
-            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
-            if col_li: df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
+            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im_f.columns[1])
+            df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
         if s_pu:
-            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
-            if col_pu: df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
+            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), df_im_f.columns[2])
+            df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
         if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-            col_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
-            if col_mes: df_im_f = df_im_f[df_im_f[col_mes].isin(s_mes)]
+            df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
 
     warn_linea = False
     
@@ -220,16 +220,21 @@ with st.container():
         else: 
             df_plot_1 = df_ef_f.copy()
 
-    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES (Misma matemática que los gráficos)
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-    
-    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+    if not any([s_pl, s_li, s_pu, s_mes]) and not df_plot_1.empty:
+        ag_global = df_plot_1.groupby(['Planta', 'Linea', 'Puesto_Trabajo']).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', 'HH_Productivas_C/GAP':'sum'})
+        ef_r_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        ef_p_arr = (ag_global['HH_STD_TOTAL'] / ag_global['HH_Productivas_C/GAP'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        kpi_ef_real = ef_r_arr.mean() if not ef_r_arr.empty else 0
+        kpi_ef_prod = ef_p_arr.mean() if not ef_p_arr.empty else 0
+    else:
+        tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+        tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+        tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+        kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+        kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
     top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
