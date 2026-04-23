@@ -65,22 +65,17 @@ def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def safe_match(s_list, val):
-    """Filtro ESTRICTO DEFINITIVO: Igualdad matemática 1 a 1 (Cero solapamientos fantasmas)"""
+    """Filtro ESTRICTO DEFINITIVO: Igualdad matemática 1 a 1"""
     if pd.isna(val): return False
     
-    # 1. Normalizar el valor de la celda del Excel
-    v_norm = str(val).strip().upper()
+    v_norm = " ".join(str(val).strip().upper().split())
     for a, b in zip("ÁÉÍÓÚ", "AEIOU"): v_norm = v_norm.replace(a, b)
-    v_alphanum = re.sub(r'[^A-Z0-9]', '', v_norm)
     
     for s in s_list:
-        # 2. Normalizar el texto seleccionado en el filtro maestro
-        s_norm = str(s).strip().upper()
+        s_norm = " ".join(str(s).strip().upper().split())
         for a, b in zip("ÁÉÍÓÚ", "AEIOU"): s_norm = s_norm.replace(a, b)
-        s_alphanum = re.sub(r'[^A-Z0-9]', '', s_norm)
         
-        # 3. IGUALDAD ABSOLUTA. Si no son gemelos idénticos, rechaza el valor.
-        if s_alphanum == v_alphanum and s_alphanum != "": 
+        if s_norm == v_norm: 
             return True
             
     return False
@@ -137,9 +132,9 @@ try:
         df_im['OPERARIO'] = "S/D"
     df_im['OPERARIO'] = df_im['OPERARIO'].str.strip().replace('', 'S/D')
 
-    # CORRECCIÓN DE LA LECTURA DE FECHAS (Evita que las horas cambien de mes)
+    # CORRECCIÓN DE LA LECTURA DE FECHAS (Preserva la FECHA original)
     c_fec_exacta = next((c for c in df_im.columns if 'A3' in str(c).upper() or 'INICIO' in str(c).upper()), None)
-    c_fec_base = next((c for c in df_im.columns if c == 'FECHA'), df_im.columns[0])
+    c_fec_base = 'FECHA' if 'FECHA' in df_im.columns else df_im.columns[0]
 
     df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec_exacta], errors='coerce') if c_fec_exacta else pd.NaT
     df_im['FECHA'] = pd.to_datetime(df_im[c_fec_base], errors='coerce').dt.to_period('M').dt.to_timestamp()
@@ -152,7 +147,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. PANEL STICKY Y FILTROS
+# 5. PANEL STICKY Y FILTROS EN CASCADA
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -169,10 +164,19 @@ with st.container():
     col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
     with col_filtros:
         st.markdown("<div style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
+        
+        # Filtros en Cascada
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + list(df_ef['Mes_Str'].unique()), label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
-        s_pl = st.multiselect("Planta", list(df_ef['Planta'].dropna().unique()), label_visibility="collapsed", placeholder="🏭 Seleccionar Planta")
-        df_tl = df_ef[df_ef['Planta'].isin(s_pl)] if s_pl else df_ef
+        
+        df_base_f = df_ef.copy()
+        if s_mes and "🎯 Acumulado YTD" not in s_mes:
+            df_base_f = df_base_f[df_base_f['Mes_Str'].isin(s_mes)]
+            
+        s_pl = st.multiselect("Planta", list(df_base_f['Planta'].dropna().unique()), label_visibility="collapsed", placeholder="🏭 Seleccionar Planta")
+        
+        df_tl = df_base_f[df_base_f['Planta'].isin(s_pl)] if s_pl else df_base_f
         s_li = st.multiselect("Línea", list(df_tl['Linea'].dropna().unique()), label_visibility="collapsed", placeholder="⚙️ Seleccionar Línea")
+        
         df_tp = df_tl[df_tl['Linea'].isin(s_li)] if s_li else df_tl
         s_pu = st.multiselect("Puesto", list(df_tp['Puesto_Trabajo'].dropna().unique()), label_visibility="collapsed", placeholder="🛠️ Seleccionar Puesto")
 
@@ -186,14 +190,14 @@ with st.container():
 
     if not df_im_f.empty:
         if s_pl:
-            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), df_im_f.columns[0])
-            df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
+            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
+            if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
         if s_li:
-            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im_f.columns[1])
-            df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
+            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
+            if col_li: df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
         if s_pu:
-            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), df_im_f.columns[2])
-            df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
+            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
+            if col_pu: df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
         if s_mes and "🎯 Acumulado YTD" not in s_mes: 
             df_im_f = df_im_f[df_im_f['Mes_Str'].isin(s_mes)]
 
@@ -214,11 +218,10 @@ with st.container():
         else: 
             df_plot_1 = df_ef_f.copy()
 
-    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES (Misma matemática estricta que los gráficos)
+    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES (Garantizando el 52.1% sin promedios erróneos)
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    # CORRECCIÓN DE LA M1/M2: La suma siempre es directa desde df_plot_1 (como en el gráfico)
     tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
     tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
     tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
