@@ -56,7 +56,7 @@ def mostrar_login():
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE (VERSIÓN IGUALDAD ESTRICTA)
+# 3. MOTOR INTELIGENTE (ALFANUMÉRICO ESTRICTO)
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.6): 
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
@@ -65,22 +65,16 @@ def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def safe_match(s_list, val):
-    """Filtro ESTRICTO DEFINITIVO: Igualdad matemática 1 a 1 (Cero solapamientos fantasmas)"""
+    """Filtro ESTRICTO ALFANUMÉRICO: Une positivos y negativos sin mezclar. 
+       Elimina puntuación para que 'AVANTREN CRV' coincida con 'AVANTREN-CRV'"""
     if pd.isna(val): return False
     
-    # 1. Normalizar el valor de la celda del Excel
-    v_norm = str(val).strip().upper()
-    for a, b in zip("ÁÉÍÓÚ", "AEIOU"): v_norm = v_norm.replace(a, b)
-    v_alphanum = re.sub(r'[^A-Z0-9]', '', v_norm)
+    # Deja solo letras y números
+    v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
     
     for s in s_list:
-        # 2. Normalizar el texto seleccionado en el filtro maestro
-        s_norm = str(s).strip().upper()
-        for a, b in zip("ÁÉÍÓÚ", "AEIOU"): s_norm = s_norm.replace(a, b)
-        s_alphanum = re.sub(r'[^A-Z0-9]', '', s_norm)
-        
-        # 3. IGUALDAD ABSOLUTA. Si no son gemelos idénticos, rechaza el valor.
-        if s_alphanum == v_alphanum and s_alphanum != "": 
+        s_norm = re.sub(r'[^A-Z0-9]', '', str(s).upper())
+        if s_norm == v_norm and s_norm != "": 
             return True
             
     return False
@@ -108,7 +102,7 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA DE DATOS
+# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS
 # =========================================================================
 try:
     df_ef = pd.read_excel("eficiencias.xlsx")
@@ -116,12 +110,18 @@ try:
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
+    for col in ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']:
+        if col in df_ef.columns:
+            df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
+            
     if 'TIPO_PARADA' not in df_im.columns: 
         df_im.rename(columns={next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c or 'CAUSA' in c), df_im.columns[0]): 'TIPO_PARADA'}, inplace=True)
     if 'HH_IMPRODUCTIVAS' not in df_im.columns: 
         df_im.rename(columns={next((c for c in df_im.columns if 'HH' in c and 'IMP' in c), df_im.columns[0]): 'HH_IMPRODUCTIVAS'}, inplace=True)
     if 'DETALLE' not in df_im.columns: 
         df_im.rename(columns={next((c for c in df_im.columns if 'DETALLE' in c or 'OBS' in c or 'DESC' in c), df_im.columns[0]): 'DETALLE'}, inplace=True)
+        
+    df_im['HH_IMPRODUCTIVAS'] = pd.to_numeric(df_im['HH_IMPRODUCTIVAS'], errors='coerce').fillna(0).abs()
     
     c_pu_det = next((c for c in df_im.columns if 'PUESTO' in c), None)
     if not c_pu_det: c_pu_det = 'PUESTO_X'
@@ -146,18 +146,21 @@ try:
             if 'FECHA' in str(c).upper():
                 c_fec = c; break
 
-    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce') if c_fec else pd.NaT
-    df_im['FECHA'] = pd.to_datetime(df_im['FECHA'], errors='coerce').dt.to_period('M').dt.to_timestamp() if 'FECHA' in df_im.columns else df_im['FECHA_EXACTA'].dt.to_period('M').dt.to_timestamp()
+    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce', dayfirst=True) if c_fec else pd.NaT
+    if 'FECHA' in df_im.columns:
+        df_im['FECHA'] = pd.to_datetime(df_im['FECHA'], errors='coerce', dayfirst=True).dt.to_period('M').dt.to_timestamp()
+    else:
+        df_im['FECHA'] = df_im['FECHA_EXACTA'].dt.to_period('M').dt.to_timestamp()
     
-    df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce').dt.to_period('M').dt.to_timestamp()
+    df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce', dayfirst=True).dt.to_period('M').dt.to_timestamp()
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
     df_ef['Mes_Str'] = df_ef['Fecha'].dt.strftime('%b-%Y')
-    df_im['Mes_Str'] = df_im['FECHA'].dt.strftime('%b-%Y') 
+    df_im['MES_STR'] = df_im['FECHA'].dt.strftime('%b-%Y') 
 except Exception as e: 
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. PANEL STICKY Y FILTROS (CASCADA UNIFICADA)
+# 5. PANEL STICKY Y FILTROS EN CASCADA UNIFICADA
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -175,8 +178,7 @@ with st.container():
     with col_filtros:
         st.markdown("<div style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
         
-        # --- 1. Filtro Mes combinado (Busca en AMBAS bases de datos) ---
-        meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['Mes_Str'].dropna().unique())))
+        meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
         
         df_base_ef = df_ef.copy()
@@ -184,9 +186,8 @@ with st.container():
         
         if s_mes and "🎯 Acumulado YTD" not in s_mes:
             df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
-            df_base_im = df_base_im[df_base_im['Mes_Str'].isin(s_mes)]
+            df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
             
-        # --- 2. Filtro Planta combinado ---
         c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
         pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
         pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
@@ -199,7 +200,6 @@ with st.container():
             if c_pl_im and not df_base_im.empty: 
                 df_base_im = df_base_im[df_base_im[c_pl_im].apply(lambda x: safe_match(s_pl, x))]
                 
-        # --- 3. Filtro Línea combinado ---
         c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
         li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
         li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
@@ -212,7 +212,6 @@ with st.container():
             if c_li_im and not df_base_im.empty: 
                 df_base_im = df_base_im[df_base_im[c_li_im].apply(lambda x: safe_match(s_li, x))]
                 
-        # --- 4. Filtro Puesto combinado ---
         c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
         pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
         pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
@@ -259,9 +258,6 @@ with st.container():
         else: 
             df_plot_1 = df_ef_f.copy()
 
-    # =========================================================================
-    # MATEMÁTICA ESTRICTA PARA CARTELES (Mismos valores que los gráficos)
-    # =========================================================================
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
