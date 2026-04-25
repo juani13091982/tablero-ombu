@@ -36,6 +36,15 @@ st.markdown("""
     }
     
     @media (max-width: 768px) {
+        /* FUERZA A LAS COLUMNAS (GRAFICOS Y FILTROS) A APILARSE HACIA ABAJO */
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
+        }
+        [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+        /* APILA LOS CARTELES KPI */
         .kpi-grid {
             grid-template-columns: 1fr !important;
         }
@@ -89,6 +98,7 @@ def safe_match(s_list, val):
     """Filtro ESTRICTO ALFANUMÉRICO: Une positivos y negativos de 'REM 1' y 'REM.1' sin mezclar 1 con 10"""
     if pd.isna(val): return False
     
+    # Normalización extrema: Deja solo letras y números para comparar
     v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
     
     for s in s_list:
