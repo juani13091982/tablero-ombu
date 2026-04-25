@@ -77,7 +77,7 @@ def mostrar_login():
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE (ALFANUMÉRICO ESTRICTO)
+# 3. MOTOR INTELIGENTE (FILTRO DE PALABRAS INTELIGENTE)
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.6): 
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
@@ -86,15 +86,28 @@ def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def safe_match(s_list, val):
-    """Filtro ESTRICTO ALFANUMÉRICO: Une positivos y negativos de 'REM 1' y 'REM.1' sin mezclar 1 con 10"""
+    """Filtro INTELIGENTE DE PALABRAS: Conecta si comparten palabras, pero respeta los números (REM 1 != REM 10)"""
     if pd.isna(val): return False
     
-    # Normalización extrema: Deja solo letras y números para comparar
-    v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
+    # Normaliza y extrae las palabras puras de la celda de Excel
+    v_str = str(val).upper()
+    for a, b in zip("ÁÉÍÓÚ", "AEIOU"): v_str = v_str.replace(a, b)
+    v_tokens = set(re.findall(r'[A-Z0-9]+', v_str))
     
     for s in s_list:
-        s_norm = re.sub(r'[^A-Z0-9]', '', str(s).upper())
-        if s_norm == v_norm and s_norm != "": 
+        # Normaliza y extrae las palabras puras del filtro
+        s_str = str(s).upper()
+        for a, b in zip("ÁÉÍÓÚ", "AEIOU"): s_str = s_str.replace(a, b)
+        s_tokens = set(re.findall(r'[A-Z0-9]+', s_str))
+        
+        if not s_tokens or not v_tokens: continue
+        
+        # 1. Si son exactamente iguales en palabras
+        if s_tokens == v_tokens: return True
+        
+        # 2. Si una está contenida dentro de la otra (Ej: 'AVANTREN' matchea con 'AVANTREN CRV')
+        # PERO como los números son palabras separadas, 'REM 1' NO matchea con 'REM 10'
+        if s_tokens.issubset(v_tokens) or v_tokens.issubset(s_tokens):
             return True
             
     return False
@@ -308,6 +321,7 @@ with st.container():
                 filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
                 top3_imp_html = "".join(filas_imp)
 
+    # REEMPLAZO CLAVE: Usamos class="kpi-grid" y class="kpi-costo" en lugar de styles fijos
     with col_kpi:
         st.markdown(f"""
         <div class="kpi-grid">
