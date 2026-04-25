@@ -41,6 +41,15 @@ st.markdown("""
     @media (max-width: 768px) {
         .mobile-only { display: block !important; }
         
+        /* FUERZA A LAS COLUMNAS (GRAFICOS Y FILTROS) A APILARSE HACIA ABAJO */
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
+        }
+        [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+        /* APILA LOS CARTELES KPI */
         .kpi-grid {
             grid-template-columns: 1fr !important;
         }
@@ -127,11 +136,16 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS
+# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS (CONEXIÓN A GOOGLE DRIVE)
 # =========================================================================
 try:
-    df_ef = pd.read_excel("eficiencias.xlsx")
-    df_im = pd.read_excel("improductivas.xlsx")
+    # --- CONEXIÓN AUTOMÁTICA CON GOOGLE DRIVE ---
+    url_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
+    url_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
+    
+    df_ef = pd.read_excel(url_ef)
+    df_im = pd.read_excel(url_im)
+    
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
@@ -285,52 +299,59 @@ with st.container():
             df_plot_1 = df_ef_f.copy()
 
     # =========================================================================
-    # PRE-CÁLCULOS PARA TABLAS MÓVILES (Tu brillante idea)
+    # PRE-CÁLCULOS EXCLUSIVOS PARA TABLAS MÓVILES (MÉTRICAS 5 Y 6)
     # =========================================================================
-    ag5 = pd.DataFrame()
+    ag5_mobile = pd.DataFrame()
     if not df_im_f.empty:
-        ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
-        nm = df_im_f['FECHA'].nunique(); div = nm if nm > 0 else 1
-        ag5['Prom_M'] = ag5['HH_IMPRODUCTIVAS'] / div; ag5 = ag5.sort_values(by='Prom_M', ascending=False)
-        ag5['Pct_Acu'] = (ag5['Prom_M'].cumsum() / ag5['Prom_M'].sum()) * 100
+        ag5_mobile = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
+        nm_m = df_im_f['FECHA'].nunique()
+        div_m = nm_m if nm_m > 0 else 1
+        ag5_mobile['Prom_M'] = ag5_mobile['HH_IMPRODUCTIVAS'] / div_m
+        ag5_mobile = ag5_mobile.sort_values(by='Prom_M', ascending=False)
+        ag5_mobile['Pct_Acu'] = (ag5_mobile['Prom_M'].cumsum() / ag5_mobile['Prom_M'].sum()) * 100
 
-    df6 = pd.DataFrame()
+    df6_mobile = pd.DataFrame()
     if not df_ef_f.empty:
-        df_ef_f['K_Mes'] = df_ef_f['Fecha'].dt.strftime('%Y-%m')
-        ag_disp = df_ef_f.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
+        df_ef_m = df_ef_f.copy()
+        df_ef_m['K_Mes'] = df_ef_m['Fecha'].dt.strftime('%Y-%m')
+        ag_disp_m = df_ef_m.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
         
         if not df_im_f.empty:
-            df_im_f['K_Mes'] = df_im_f['FECHA'].dt.strftime('%Y-%m')
-            piv = pd.pivot_table(df_im_f, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
-            df6 = pd.merge(ag_disp, piv, on='K_Mes', how='left').fillna(0)
-            list_c = [c for c in df6.columns if c not in ['HH_Disponibles', 'K_Mes']]
+            df_im_m = df_im_f.copy()
+            df_im_m['K_Mes'] = df_im_m['FECHA'].dt.strftime('%Y-%m')
+            piv_m = pd.pivot_table(df_im_m, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
+            df6_mobile = pd.merge(ag_disp_m, piv_m, on='K_Mes', how='left').fillna(0)
+            list_c_m = [c for c in df6_mobile.columns if c not in ['HH_Disponibles', 'K_Mes']]
         else: 
-            df6 = ag_disp.copy(); list_c = []
+            df6_mobile = ag_disp_m.copy()
+            list_c_m = []
             
-        df6['Suma_I'] = df6[list_c].sum(axis=1) if list_c else 0
-        df6['Inc_%'] = (df6['Suma_I'] / df6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
+        df6_mobile['Suma_I'] = df6_mobile[list_c_m].sum(axis=1) if list_c_m else 0
+        df6_mobile['Inc_%'] = (df6_mobile['Suma_I'] / df6_mobile['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        df6_mobile['Fecha_O'] = pd.to_datetime(df6_mobile['K_Mes'] + '-01')
+        df6_mobile = df6_mobile.sort_values(by='Fecha_O')
 
-    # Armado de las Tablas (Solo se ven en Celular)
-    mobile_tables_html = ""
-    if not ag5.empty:
-        mobile_tables_html += "<div class='mobile-only' style='background: #B71C1C; padding: 15px; border-radius: 8px; margin-top: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
-        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#FFCDD2; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📊 PARETO DE CAUSAS</h4>"
+    # ARMADO DE TABLAS HTML PARA CELULAR
+    mobile_tables_html = "<div class='mobile-only' style='margin-top: 15px;'>"
+    if not ag5_mobile.empty:
+        mobile_tables_html += "<div style='background: #B71C1C; padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
+        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#FFCDD2; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📊 5. PARETO DE CAUSAS (MÓVIL)</h4>"
         mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
         mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Motivo</th> <th style='text-align:right; padding:6px;'>HH</th> <th style='text-align:right; padding:6px;'>% Acum</th> </tr>"
-        for _, row in ag5.iterrows():
+        for _, row in ag5_mobile.iterrows():
             motivo = str(row['TIPO_PARADA'])[:20] + (".." if len(str(row['TIPO_PARADA'])) > 20 else "")
             mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{motivo}</td> <td style='text-align:right; padding:6px;'>{row['Prom_M']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold;'>{row['Pct_Acu']:.1f}%</td> </tr>"
         mobile_tables_html += "</table></div>"
 
-    if not df6.empty:
-        mobile_tables_html += "<div class='mobile-only' style='background: #0D47A1; padding: 15px; border-radius: 8px; margin-top: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
-        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#BBDEFB; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📈 EVOLUCIÓN INCIDENCIA</h4>"
+    if not df6_mobile.empty:
+        mobile_tables_html += "<div style='background: #0D47A1; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
+        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#BBDEFB; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📈 6. EVOLUCIÓN INCIDENCIA (MÓVIL)</h4>"
         mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
         mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Mes</th> <th style='text-align:right; padding:6px;'>HH Imp</th> <th style='text-align:right; padding:6px;'>Incid.</th> </tr>"
-        for _, row in df6.iterrows():
+        for _, row in df6_mobile.iterrows():
             mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{row['K_Mes']}</td> <td style='text-align:right; padding:6px;'>{row['Suma_I']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold; color:#FFCDD2;'>{row['Inc_%']:.1f}%</td> </tr>"
         mobile_tables_html += "</table></div>"
+    mobile_tables_html += "</div>"
 
     # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
@@ -576,7 +597,12 @@ with col5:
     st.header("5. PARETO DE CAUSAS")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
     
-    if not ag5.empty:
+    if not df_im_f.empty:
+        ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
+        nm = df_im_f['FECHA'].nunique(); div = nm if nm > 0 else 1
+        ag5['Prom_M'] = ag5['HH_IMPRODUCTIVAS'] / div; ag5 = ag5.sort_values(by='Prom_M', ascending=False)
+        ag5['Pct_Acu'] = (ag5['Prom_M'].cumsum() / ag5['Prom_M'].sum()) * 100
+        
         fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5_line = ax5.twinx()
         fig5.subplots_adjust(top=0.75, bottom=0.28, left=0.08, right=0.92)
         fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
@@ -603,7 +629,22 @@ with col6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
     
-    if not df6.empty:
+    if not df_ef_f.empty:
+        df_ef_f['K_Mes'] = df_ef_f['Fecha'].dt.strftime('%Y-%m')
+        ag_disp = df_ef_f.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
+        
+        if not df_im_f.empty:
+            df_im_f['K_Mes'] = df_im_f['FECHA'].dt.strftime('%Y-%m')
+            piv = pd.pivot_table(df_im_f, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
+            df6 = pd.merge(ag_disp, piv, on='K_Mes', how='left').fillna(0)
+            list_c = [c for c in df6.columns if c not in ['HH_Disponibles', 'K_Mes']]
+        else: 
+            df6 = ag_disp.copy(); list_c = []
+            
+        df6['Suma_I'] = df6[list_c].sum(axis=1) if list_c else 0
+        df6['Inc_%'] = (df6['Suma_I'] / df6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
+        
         fig6, ax6 = plt.subplots(figsize=(14, 10))
         fig6.subplots_adjust(top=0.68, bottom=0.22, left=0.08, right=0.92)
         fig6.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
