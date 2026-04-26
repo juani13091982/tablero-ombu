@@ -7,7 +7,7 @@ import matplotlib.patheffects as pe
 import matplotlib.image as mpimg
 import textwrap
 import re
-import plotly.graph_objects as go  # <--- ÚNICO IMPORT AGREGADO PARA EL VELOCÍMETRO
+import plotly.graph_objects as go
 
 # =========================================================================
 # 1. CONFIGURACIÓN Y ESCUDO VISUAL
@@ -24,7 +24,10 @@ st.markdown("""
         padding: 5px 10px 15px 10px !important; border-bottom: 2px solid #1E3A8A !important;
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
+    
+    /* HACER LOS FILTROS MAESTROS MÁS GRANDES */
     [data-testid="stMultiSelect"] {margin-bottom: -15px !important;}
+    div[data-testid="stMultiSelect"] label p { font-size: 15px !important; color: #90CAF9 !important; }
 
     /* --- REGLAS RESPONSIVAS PARA CELULARES --- */
     .kpi-grid {
@@ -203,7 +206,6 @@ except Exception as e:
 # =========================================================================
 # 5. PANEL STICKY Y FILTROS EN CASCADA UNIFICADA
 # =========================================================================
-# NOTA: Cierro el container del sticky-header acá para que no tape los gráficos.
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
     h_l, h_t, h_s = st.columns([0.8, 3.5, 0.7])
@@ -216,260 +218,254 @@ with st.container():
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
 
-col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
-
-with col_filtros:
-    st.markdown("<div style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
-    
-    meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
-    s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
-    
-    df_base_ef = df_ef.copy()
-    df_base_im = df_im.copy()
-    
-    if s_mes and "🎯 Acumulado YTD" not in s_mes:
-        df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
-        df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
+    col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
+    with col_filtros:
+        st.markdown("<div style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
         
-    c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
-    pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
-    pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
-    plantas_disp = sorted(list(pl_ef | pl_im))
-    
-    s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Seleccionar Planta")
-    
-    if s_pl:
-        df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
-        if c_pl_im and not df_base_im.empty: 
-            df_base_im = df_base_im[df_base_im[c_pl_im].apply(lambda x: safe_match(s_pl, x))]
+        meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
+        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
+        
+        df_base_ef = df_ef.copy()
+        df_base_im = df_im.copy()
+        
+        if s_mes and "🎯 Acumulado YTD" not in s_mes:
+            df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
+            df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
             
-    c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
-    li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
-    li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
-    lineas_disp = sorted(list(li_ef | li_im))
+        c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
+        pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
+        pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
+        plantas_disp = sorted(list(pl_ef | pl_im))
+        
+        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Seleccionar Planta")
+        
+        if s_pl:
+            df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
+            if c_pl_im and not df_base_im.empty: 
+                df_base_im = df_base_im[df_base_im[c_pl_im].apply(lambda x: safe_match(s_pl, x))]
+                
+        c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
+        li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
+        li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
+        lineas_disp = sorted(list(li_ef | li_im))
+        
+        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Seleccionar Línea")
+        
+        if s_li:
+            df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
+            if c_li_im and not df_base_im.empty: 
+                df_base_im = df_base_im[df_base_im[c_li_im].apply(lambda x: safe_match(s_li, x))]
+                
+        c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
+        pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
+        pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
+        puestos_disp = sorted(list(pu_ef | pu_im))
+        
+        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Seleccionar Puesto")
+
+    df_ef_f = df_ef.copy()
+    df_im_f = df_im.copy()
     
-    s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Seleccionar Línea")
-    
-    if s_li:
-        df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
-        if c_li_im and not df_base_im.empty: 
-            df_base_im = df_base_im[df_base_im[c_li_im].apply(lambda x: safe_match(s_li, x))]
-            
-    c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
-    pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
-    pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
-    puestos_disp = sorted(list(pu_ef | pu_im))
-    
-    s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Seleccionar Puesto")
+    if s_pl: df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
+    if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
+    if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
+    if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
 
-df_ef_f = df_ef.copy()
-df_im_f = df_im.copy()
-
-if s_pl: df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
-if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
-if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
-if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
-
-if not df_im_f.empty:
-    if s_pl:
-        col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
-        if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
-    if s_li:
-        col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
-        if col_li: df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
-    if s_pu:
-        col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
-        if col_pu: df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
-    if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-        col_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
-        if col_mes: df_im_f = df_im_f[df_im_f[col_mes].isin(s_mes)]
-
-warn_linea = False
-
-if s_pu: 
-    df_plot_1 = df_ef_f.copy()
-elif s_li:
-    df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-    if not df_salida.empty: 
-        df_plot_1 = df_salida
-    else: 
-        df_plot_1 = df_ef_f.copy(); warn_linea = True
-else: 
-    df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-    if not df_salida.empty: 
-        df_plot_1 = df_salida
-    else: 
-        df_plot_1 = df_ef_f.copy()
-
-# =========================================================================
-# PRE-CÁLCULOS EXCLUSIVOS PARA TABLAS MÓVILES (MÉTRICAS 5 Y 6)
-# =========================================================================
-ag5_mobile = pd.DataFrame()
-if not df_im_f.empty:
-    ag5_mobile = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
-    nm_m = df_im_f['FECHA'].nunique()
-    div_m = nm_m if nm_m > 0 else 1
-    ag5_mobile['Prom_M'] = ag5_mobile['HH_IMPRODUCTIVAS'] / div_m
-    ag5_mobile = ag5_mobile.sort_values(by='Prom_M', ascending=False)
-    ag5_mobile['Pct_Acu'] = (ag5_mobile['Prom_M'].cumsum() / ag5_mobile['Prom_M'].sum()) * 100
-
-df6_mobile = pd.DataFrame()
-if not df_ef_f.empty:
-    df_ef_m = df_ef_f.copy()
-    df_ef_m['K_Mes'] = df_ef_m['Fecha'].dt.strftime('%Y-%m')
-    ag_disp_m = df_ef_m.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
-    
     if not df_im_f.empty:
-        df_im_m = df_im_f.copy()
-        df_im_m['K_Mes'] = df_im_m['FECHA'].dt.strftime('%Y-%m')
-        piv_m = pd.pivot_table(df_im_m, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
-        df6_mobile = pd.merge(ag_disp_m, piv_m, on='K_Mes', how='left').fillna(0)
-        list_c_m = [c for c in df6_mobile.columns if c not in ['HH_Disponibles', 'K_Mes']]
+        if s_pl:
+            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
+            if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
+        if s_li:
+            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
+            if col_li: df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
+        if s_pu:
+            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
+            if col_pu: df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
+        if s_mes and "🎯 Acumulado YTD" not in s_mes: 
+            col_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
+            if col_mes: df_im_f = df_im_f[df_im_f[col_mes].isin(s_mes)]
+
+    warn_linea = False
+    
+    if s_pu: 
+        df_plot_1 = df_ef_f.copy()
+    elif s_li:
+        df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
+        if not df_salida.empty: 
+            df_plot_1 = df_salida
+        else: 
+            df_plot_1 = df_ef_f.copy(); warn_linea = True
     else: 
-        df6_mobile = ag_disp_m.copy()
-        list_c_m = []
+        df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
+        if not df_salida.empty: 
+            df_plot_1 = df_salida
+        else: 
+            df_plot_1 = df_ef_f.copy()
+
+    # =========================================================================
+    # PRE-CÁLCULOS EXCLUSIVOS PARA TABLAS MÓVILES (MÉTRICAS 5 Y 6)
+    # =========================================================================
+    ag5_mobile = pd.DataFrame()
+    if not df_im_f.empty:
+        ag5_mobile = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
+        nm_m = df_im_f['FECHA'].nunique()
+        div_m = nm_m if nm_m > 0 else 1
+        ag5_mobile['Prom_M'] = ag5_mobile['HH_IMPRODUCTIVAS'] / div_m
+        ag5_mobile = ag5_mobile.sort_values(by='Prom_M', ascending=False)
+        ag5_mobile['Pct_Acu'] = (ag5_mobile['Prom_M'].cumsum() / ag5_mobile['Prom_M'].sum()) * 100
+
+    df6_mobile = pd.DataFrame()
+    if not df_ef_f.empty:
+        df_ef_m = df_ef_f.copy()
+        df_ef_m['K_Mes'] = df_ef_m['Fecha'].dt.strftime('%Y-%m')
+        ag_disp_m = df_ef_m.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
         
-    df6_mobile['Suma_I'] = df6_mobile[list_c_m].sum(axis=1) if list_c_m else 0
-    df6_mobile['Inc_%'] = (df6_mobile['Suma_I'] / df6_mobile['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-    df6_mobile['Fecha_O'] = pd.to_datetime(df6_mobile['K_Mes'] + '-01')
-    df6_mobile = df6_mobile.sort_values(by='Fecha_O')
+        if not df_im_f.empty:
+            df_im_m = df_im_f.copy()
+            df_im_m['K_Mes'] = df_im_m['FECHA'].dt.strftime('%Y-%m')
+            piv_m = pd.pivot_table(df_im_m, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
+            df6_mobile = pd.merge(ag_disp_m, piv_m, on='K_Mes', how='left').fillna(0)
+            list_c_m = [c for c in df6_mobile.columns if c not in ['HH_Disponibles', 'K_Mes']]
+        else: 
+            df6_mobile = ag_disp_m.copy()
+            list_c_m = []
+            
+        df6_mobile['Suma_I'] = df6_mobile[list_c_m].sum(axis=1) if list_c_m else 0
+        df6_mobile['Inc_%'] = (df6_mobile['Suma_I'] / df6_mobile['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
+        df6_mobile['Fecha_O'] = pd.to_datetime(df6_mobile['K_Mes'] + '-01')
+        df6_mobile = df6_mobile.sort_values(by='Fecha_O')
 
-# ARMADO DE TABLAS HTML PARA CELULAR
-mobile_tables_html = "<div class='mobile-only' style='margin-top: 15px;'>"
-if not ag5_mobile.empty:
-    mobile_tables_html += "<div style='background: #B71C1C; padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
-    mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#FFCDD2; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📊 5. PARETO DE CAUSAS (MÓVIL)</h4>"
-    mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
-    mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Motivo</th> <th style='text-align:right; padding:6px;'>HH</th> <th style='text-align:right; padding:6px;'>% Acum</th> </tr>"
-    for _, row in ag5_mobile.iterrows():
-        motivo = str(row['TIPO_PARADA'])[:20] + (".." if len(str(row['TIPO_PARADA'])) > 20 else "")
-        mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{motivo}</td> <td style='text-align:right; padding:6px;'>{row['Prom_M']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold;'>{row['Pct_Acu']:.1f}%</td> </tr>"
-    mobile_tables_html += "</table></div>"
+    # ARMADO DE TABLAS HTML PARA CELULAR
+    mobile_tables_html = "<div class='mobile-only' style='margin-top: 15px;'>"
+    if not ag5_mobile.empty:
+        mobile_tables_html += "<div style='background: #B71C1C; padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
+        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#FFCDD2; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📊 5. PARETO DE CAUSAS (MÓVIL)</h4>"
+        mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
+        mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Motivo</th> <th style='text-align:right; padding:6px;'>HH</th> <th style='text-align:right; padding:6px;'>% Acum</th> </tr>"
+        for _, row in ag5_mobile.iterrows():
+            motivo = str(row['TIPO_PARADA'])[:20] + (".." if len(str(row['TIPO_PARADA'])) > 20 else "")
+            mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{motivo}</td> <td style='text-align:right; padding:6px;'>{row['Prom_M']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold;'>{row['Pct_Acu']:.1f}%</td> </tr>"
+        mobile_tables_html += "</table></div>"
 
-if not df6_mobile.empty:
-    mobile_tables_html += "<div style='background: #0D47A1; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
-    mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#BBDEFB; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📈 6. EVOLUCIÓN INCIDENCIA (MÓVIL)</h4>"
-    mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
-    mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Mes</th> <th style='text-align:right; padding:6px;'>HH Imp</th> <th style='text-align:right; padding:6px;'>Incid.</th> </tr>"
-    for _, row in df6_mobile.iterrows():
-        mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{row['K_Mes']}</td> <td style='text-align:right; padding:6px;'>{row['Suma_I']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold; color:#FFCDD2;'>{row['Inc_%']:.1f}%</td> </tr>"
-    mobile_tables_html += "</table></div>"
-mobile_tables_html += "</div>"
+    if not df6_mobile.empty:
+        mobile_tables_html += "<div style='background: #0D47A1; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
+        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#BBDEFB; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📈 6. EVOLUCIÓN INCIDENCIA (MÓVIL)</h4>"
+        mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
+        mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Mes</th> <th style='text-align:right; padding:6px;'>HH Imp</th> <th style='text-align:right; padding:6px;'>Incid.</th> </tr>"
+        for _, row in df6_mobile.iterrows():
+            mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{row['K_Mes']}</td> <td style='text-align:right; padding:6px;'>{row['Suma_I']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold; color:#FFCDD2;'>{row['Inc_%']:.1f}%</td> </tr>"
+        mobile_tables_html += "</table></div>"
+    mobile_tables_html += "</div>"
 
-# CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
-tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
-tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
-
-tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-
-kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
-
-top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
-if not df_ef_f.empty:
-    ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
-    ag_p['Ef'] = (ag_p['HH_STD_TOTAL'] / ag_p['HH_Disponibles'] * 100).fillna(0)
-    top3_val = ag_p['Ef'].nlargest(3)
-    if not top3_val.empty:
-        filas = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9; font-size:14px;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
-        top3_m1_html = "".join(filas)
-
-top3_imp_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
-if not df_im_f.empty:
-    c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
-    if c_pu_im_top:
-        ag_imp_p = df_im_f.groupby(c_pu_im_top)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
-        if not ag_imp_p.empty:
-            filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
-            top3_imp_html = "".join(filas_imp)
-
-with col_kpi:
-    # =========================================================================
-    # INYECCIÓN: MÓDULO OEE PRO CLARO Y EXPLICATIVO
-    # =========================================================================
-    disponibilidad = ((tot_disp - tot_hh_imp) / tot_disp * 100) if tot_disp > 0 else 0.0
-    rendimiento = (tot_std / tot_prod * 100) if tot_prod > 0 else 0.0
-    calidad_sim = 98.0
-    oee_final = (max(0, disponibilidad)/100 * max(0, rendimiento)/100 * calidad_sim/100) * 100
+    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
+    tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
+    tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    color_oee = "#4CAF50" if oee_final >= 85 else "#FFC107" if oee_final >= 65 else "#F44336"
-
-    st.markdown(f"""
-    <div style='background: #1e293b; padding: 20px; border-radius: 12px; border-top: 5px solid {color_oee}; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-bottom: 20px;'>
-        <h3 style='text-align:center; color:white; margin-top:0;'>🏆 OEE: EFECTIVIDAD GENERAL DE LOS EQUIPOS</h3>
-    """, unsafe_allow_html=True)
+    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
     
-    fig_oee = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=oee_final,
-        number={'suffix': "%", 'font': {'color': color_oee, 'size': 55}},
-        gauge={
-            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "white", 'tickfont': {'color': 'white'}},
-            'bar': {'color': color_oee},
-            'bgcolor': "#0f172a",
-            'steps': [{'range': [0, 65], 'color': 'rgba(244, 67, 54, 0.3)'},
-                      {'range': [65, 85], 'color': 'rgba(255, 193, 7, 0.3)'},
-                      {'range': [85, 100], 'color': 'rgba(76, 175, 80, 0.3)'}],
-            'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': 85}
-        }
-    ))
-    fig_oee.update_layout(height=250, margin=dict(l=20, r=20, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': 'white'})
-    st.plotly_chart(fig_oee, use_container_width=True)
+    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
-    st.markdown(f"""
-        <div style='display:flex; justify-content:space-around; text-align:center; margin-top: 10px;'>
-            <div style='flex:1; padding:10px; background: #0f172a; border-radius: 8px; margin: 0 5px; border: 1px solid #334155;'>
-                <div style='font-size:12px; color:#94a3b8; font-weight:bold; text-transform:uppercase;'>Disponibilidad</div>
-                <div style='font-size:24px; color:white; font-weight:900;'>{min(disponibilidad, 100):.1f}%</div>
-                <div style='font-size:10px; color:{color_oee}; margin-top:5px; border-top: 1px solid #334155; padding-top:5px;'>Fórmula: (HH Disp - Imp) / Disp</div>
-                <div style='font-size:9px; color:#888; font-style:italic; margin-top:3px;'>Mide el tiempo real de producción frente al tiempo disponible</div>
-            </div>
-            <div style='flex:1; padding:10px; background: #0f172a; border-radius: 8px; margin: 0 5px; border: 1px solid #334155;'>
-                <div style='font-size:12px; color:#94a3b8; font-weight:bold; text-transform:uppercase;'>Rendimiento</div>
-                <div style='font-size:24px; color:white; font-weight:900;'>{min(rendimiento, 100):.1f}%</div>
-                <div style='font-size:10px; color:{color_oee}; margin-top:5px; border-top: 1px solid #334155; padding-top:5px;'>Fórmula: HH Std / HH Prod</div>
-                <div style='font-size:9px; color:#888; font-style:italic; margin-top:3px;'>Mide la velocidad de producción real vs la teórica</div>
-            </div>
-            <div style='flex:1; padding:10px; background: #0f172a; border-radius: 8px; margin: 0 5px; border: 1px solid #334155;'>
-                <div style='font-size:12px; color:#94a3b8; font-weight:bold; text-transform:uppercase;'>Calidad</div>
-                <div style='font-size:24px; color:white; font-weight:900;'>{calidad_sim:.1f}%</div>
-                <div style='font-size:10px; color:{color_oee}; margin-top:5px; border-top: 1px solid #334155; padding-top:5px;'>Fórmula: Piezas OK / Total</div>
-                <div style='font-size:9px; color:#ef4444; font-style:italic; margin-top:3px;'>(Dato Simulado Temporalmente)</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    # =========================================================================
+    top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
+    if not df_ef_f.empty:
+        ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
+        ag_p['Ef'] = (ag_p['HH_STD_TOTAL'] / ag_p['HH_Disponibles'] * 100).fillna(0)
+        top3_val = ag_p['Ef'].nlargest(3)
+        if not top3_val.empty:
+            filas = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9; font-size:14px;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
+            top3_m1_html = "".join(filas)
 
-    st.markdown(f"""
-    <div class="kpi-grid">
-        <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-            <h4 style="margin:0; color: #1E3A8A; font-size:16px;">EFICIENCIA REAL</h4>
-            <h2 style="margin:5px 0 0 0; color: #111; font-size:42px;">{kpi_ef_real:.1f}%</h2>
+    top3_imp_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
+    if not df_im_f.empty:
+        c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
+        if c_pu_im_top:
+            ag_imp_p = df_im_f.groupby(c_pu_im_top)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
+            if not ag_imp_p.empty:
+                filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
+                top3_imp_html = "".join(filas_imp)
+
+    with col_kpi:
+        # === INICIO GRÁFICO OEE (NUEVA LÓGICA SOBRE TU CÓDIGO) ===
+        disponibilidad = ((tot_disp - tot_hh_imp) / tot_disp * 100) if tot_disp > 0 else 0.0
+        rendimiento = (tot_std / tot_prod * 100) if tot_prod > 0 else 0.0
+        calidad_sim = 98.0
+        oee_final = (max(0, disponibilidad)/100 * max(0, rendimiento)/100 * calidad_sim/100) * 100
+        
+        color_oee = "#4CAF50" if oee_final >= 85 else "#FFC107" if oee_final >= 65 else "#F44336"
+        
+        st.markdown(f"""
+        <div style='background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 8px; border-top: 4px solid {color_oee}; margin-bottom: 20px; border: 1px solid #334155;'>
+            <h4 style='text-align:center; color:white; margin-bottom:-10px; margin-top:-5px;'>🏆 OEE: EFECTIVIDAD GENERAL DE LOS EQUIPOS</h4>
+        """, unsafe_allow_html=True)
+
+        fig_oee = go.Figure(go.Indicator(
+            mode = "gauge+number", value = oee_final,
+            number = {'suffix': "%", 'font': {'color': color_oee, 'size': 50}},
+            gauge = {
+                'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "white", 'tickfont': {'color': 'white'}},
+                'bar': {'color': color_oee},
+                'bgcolor': "rgba(0,0,0,0)",
+                'steps': [{'range': [0, 65], 'color': 'rgba(244, 67, 54, 0.3)'},{'range': [65, 85], 'color': 'rgba(255, 193, 7, 0.3)'},{'range': [85, 100], 'color': 'rgba(76, 175, 80, 0.3)'}],
+                'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': 85}
+            }
+        ))
+        fig_oee.update_layout(height=220, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': 'white'})
+        st.plotly_chart(fig_oee, use_container_width=True)
+
+        st.markdown(f"""
+            <div style='display:flex; justify-content:space-around; text-align:center;'>
+                <div style='flex:1; padding:10px; border-right: 1px dashed #334155;'>
+                    <span style='font-size:12px; color:#94a3b8; font-weight:bold;'>Disponibilidad</span><br>
+                    <b style='color:white; font-size:22px;'>{min(disponibilidad, 100):.1f}%</b><br>
+                    <span style='font-size:10px; color:{color_oee};'>Fórmula: (HH Disp - Imp) / Disp</span><br>
+                    <span style='font-size:9px; color:#888; font-style:italic;'>Mide el tiempo real frente al disponible</span>
+                </div>
+                <div style='flex:1; padding:10px; border-right: 1px dashed #334155;'>
+                    <span style='font-size:12px; color:#94a3b8; font-weight:bold;'>Rendimiento</span><br>
+                    <b style='color:white; font-size:22px;'>{min(rendimiento, 100):.1f}%</b><br>
+                    <span style='font-size:10px; color:{color_oee};'>Fórmula: HH Std / HH Prod</span><br>
+                    <span style='font-size:9px; color:#888; font-style:italic;'>Velocidad de producción real vs teórica</span>
+                </div>
+                <div style='flex:1; padding:10px;'>
+                    <span style='font-size:12px; color:#94a3b8; font-weight:bold;'>Calidad</span><br>
+                    <b style='color:white; font-size:22px;'>{calidad_sim:.1f}%</b><br>
+                    <span style='font-size:10px; color:{color_oee};'>Fórmula: Piezas OK / Total</span><br>
+                    <span style='font-size:9px; color:#ef4444; font-style:italic;'>(Dato Simulado Temporalmente)</span>
+                </div>
+            </div>
         </div>
-        <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-            <h4 style="margin:0; color: white; font-size:16px;">EFICIENCIA PROD.</h4>
-            <h2 style="margin:5px 0 0 0; color: white; font-size:42px;">{kpi_ef_prod:.1f}%</h2>
+        """, unsafe_allow_html=True)
+        # === FIN GRÁFICO OEE ===
+
+        st.markdown(f"""
+        <div class="kpi-grid">
+            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0; color: #1E3A8A; font-size:16px;">EFICIENCIA REAL</h4>
+                <h2 style="margin:5px 0 0 0; color: #111; font-size:42px;">{kpi_ef_real:.1f}%</h2>
+            </div>
+            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0; color: white; font-size:16px;">EFICIENCIA PROD.</h4>
+                <h2 style="margin:5px 0 0 0; color: white; font-size:42px;">{kpi_ef_prod:.1f}%</h2>
+            </div>
+            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
+                <h4 style="margin:0; color: white; font-size:22px;">COSTO HH IMPROD.</h4>
+                <p style="margin:0; color: #FFCDD2; font-size:14px;">(Oportunidad Perdida)</p>
+                <h2 style="margin:10px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
+                <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
+            </div>
+            <div style="background: #0D47A1; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
+                {top3_m1_html}
+            </div>
+            <div style="background: #B71C1C; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0 0 8px 0; font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
+                {top3_imp_html}
+            </div>
         </div>
-        <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
-            <h4 style="margin:0; color: white; font-size:22px;">COSTO HH IMPROD.</h4>
-            <p style="margin:0; color: #FFCDD2; font-size:14px;">(Oportunidad Perdida)</p>
-            <h2 style="margin:10px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
-            <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
-        </div>
-        <div style="background: #0D47A1; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-            <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
-            {top3_m1_html}
-        </div>
-        <div style="background: #B71C1C; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-            <h4 style="margin:0 0 8px 0; font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
-            {top3_imp_html}
-        </div>
-    </div>
-    {mobile_tables_html}
-    """, unsafe_allow_html=True)
+        {mobile_tables_html}
+        """, unsafe_allow_html=True)
 
 t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+'.join(s_li) if s_li else 'Todas'} | Puesto: {'+'.join(s_pu) if s_pu else 'Todos'}"
 
