@@ -143,9 +143,33 @@ try:
     url_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
     url_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
     
-    df_ef = pd.read_excel(url_ef)
-    df_im = pd.read_excel(url_im)
+    try:
+        df_ef = pd.read_excel(url_ef)
+    except:
+        df_ef = pd.read_csv(url_ef)
+        
+    try:
+        df_im = pd.read_excel(url_im)
+    except:
+        df_im = pd.read_csv(url_im)
     
+    # BLINDAJE: Renombra dinámicamente las columnas para que el código nunca falle
+    map_ef = {}
+    for c in df_ef.columns:
+        cu = str(c).upper()
+        if 'FECHA' in cu: map_ef[c] = 'Fecha'
+        elif 'PLANTA' in cu: map_ef[c] = 'Planta'
+        elif 'LÍNEA' in cu or 'LINEA' in cu: map_ef[c] = 'Linea'
+        elif 'PUESTO' in cu: map_ef[c] = 'Puesto_Trabajo'
+        elif 'ULTIMO' in cu or 'ÚLTIMO' in cu: map_ef[c] = 'Es_Ultimo_Puesto'
+        elif 'CANT' in cu and 'PROD' in cu: map_ef[c] = 'Cant._Prod._A1'
+        elif 'STD' in cu and 'TOTAL' in cu: map_ef[c] = 'HH_STD_TOTAL'
+        elif 'DISP' in cu: map_ef[c] = 'HH_Disponibles'
+        elif 'PROD' in cu and 'GAP' in cu: map_ef[c] = 'HH_Productivas_C/GAP'
+        elif 'PROD' in cu and 'GAP' not in cu and 'CANT' not in cu: map_ef[c] = 'HH_Productivas'
+        elif 'COSTO' in cu: map_ef[c] = 'Costo_Improd._$'
+    df_ef.rename(columns=map_ef, inplace=True)
+
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
@@ -364,6 +388,20 @@ with st.container():
     kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
     kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
+    # -------------------------------------------------------------
+    # NUEVO MÓDULO OEE (SIMULADO)
+    # -------------------------------------------------------------
+    calidad_simulada = 98.0
+    kpi_disponibilidad = (tot_prod / tot_disp * 100) if tot_disp > 0 else 0
+    if kpi_disponibilidad > 100: kpi_disponibilidad = 100.0  # Limita al 100%
+    
+    # OEE = Disponibilidad * Rendimiento * Calidad
+    oee_simulado = kpi_ef_real * (calidad_simulada / 100)
+    
+    color_oee = "#4CAF50" if oee_simulado >= 85 else ("#FFEB3B" if oee_simulado >= 60 else "#F44336")
+    text_color_oee = "#000" if color_oee == "#FFEB3B" else "#fff"
+    # -------------------------------------------------------------
+
     top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
         ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
@@ -383,6 +421,23 @@ with st.container():
                 top3_imp_html = "".join(filas_imp)
 
     with col_kpi:
+        # --- RENDER DEL MÓDULO OEE ---
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #ffffff, #f0f4f8); border: 2px solid #1E3A8A; padding: 15px; border-radius: 8px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); text-align: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #1E3A8A; font-size: 20px;">🏆 OEE: Efectividad General de los Equipos <span style="color:#D32F2F;">(SIMULADO)</span></h3>
+            <p style="margin: 5px 0 10px 0; color: #555; font-size: 14px;">
+                Disponibilidad (<b>{kpi_disponibilidad:.1f}%</b>) &times; Rendimiento (<b>{kpi_ef_prod:.1f}%</b>) &times; Calidad Simulada (<b>{calidad_simulada:.1f}%</b>)
+            </p>
+            <div style="background: #e0e0e0; border-radius: 20px; width: 100%; height: 35px; overflow: hidden; border: 1px solid #aaa;">
+                <div style="background: {color_oee}; width: {min(oee_simulado, 100):.1f}%; height: 100%; display: flex; align-items: center; justify-content: center; color: {text_color_oee}; font-weight: bold; font-size: 18px; transition: width 1s;">
+                    {oee_simulado:.1f}%
+                </div>
+            </div>
+            <p style="margin: 8px 0 0 0; color: #333; font-weight: bold; font-size: 13px;">🎯 META CLASE MUNDIAL: 85%</p>
+        </div>
+        """, unsafe_allow_html=True)
+        # -----------------------------
+
         st.markdown(f"""
         <div class="kpi-grid">
             <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
