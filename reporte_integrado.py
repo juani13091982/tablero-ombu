@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.subplots as plt
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -146,7 +145,7 @@ try:
     except:
         df_im = pd.read_csv(url_im)
     
-    # BLINDAJE ANTI-CLONES (El parche para el error de tu foto)
+    # BLINDAJE ANTI-CLONES
     map_ef = {}
     for c in df_ef.columns:
         cu = str(c).upper()
@@ -163,13 +162,11 @@ try:
         elif 'COSTO' in cu: map_ef[c] = 'Costo_Improd._$'
     df_ef.rename(columns=map_ef, inplace=True)
 
-    # Elimina cualquier columna duplicada accidentalmente
     df_ef = df_ef.loc[:, ~df_ef.columns.duplicated()]
 
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    # ESCUDO NIVEL DIOS
     if 'Es_Ultimo_Puesto' not in df_ef.columns: df_ef['Es_Ultimo_Puesto'] = 'SI'
     if 'Planta' not in df_ef.columns: df_ef['Planta'] = 'S/D'
     if 'Linea' not in df_ef.columns: df_ef['Linea'] = 'S/D'
@@ -433,4 +430,78 @@ with col4:
         if not df_im_f.empty: ag4 = pd.merge(ag4, df_im_f.groupby('FECHA')['HH_IMPRODUCTIVAS'].sum().reset_index().rename(columns={'FECHA':'Fecha', 'HH_IMPRODUCTIVAS':'HH_Imp'}), on='Fecha', how='left').fillna(0)
         else: ag4['HH_Imp'] = 0
         fig4, ax4 = plt.subplots(figsize=(14, 10)); ax4_line = ax4.twinx(); fig4.subplots_adjust(top=0.80, bottom=0.22, left=0.08, right=0.92); fig4.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold'); x_idx = np.arange(len(ag4))
-        bi = ax
+        bi = ax4.bar(x_idx, ag4['HH_Imp'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2); ax4.bar_label(bi, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4); set_escala_y(ax4, ag4['HH_Imp'].max(), 1.6) 
+        ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5); add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$']); ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)); ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
+        for i, val in enumerate(ag4['Costo_Improd._$']): ax4_line.annotate(f"${val:,.0f}", (x_idx[i], val + (ax4_line.get_ylim()[1]*0.04)), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
+        ax4.set_xticks(x_idx); ax4.set_xticklabels(ag4['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold'); ax4.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True); ax4_line.legend(loc='lower right', bbox_to_anchor=(1, 1.05), frameon=True); agregar_sello_agua(fig4); st.pyplot(fig4, use_container_width=True)
+    else: st.warning("⚠️ No hay datos económicos.")
+
+st.markdown("---")
+
+# =========================================================================
+# 8. GRÁFICOS MÉTRICAS 5 Y 6
+# =========================================================================
+col5, col6 = st.columns(2)
+with col5:
+    st.header("5. PARETO DE CAUSAS")
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
+    if not df_im_f.empty:
+        ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index(); ag5['Prom_M'] = ag5['HH_IMPRODUCTIVAS'] / (df_im_f['FECHA'].nunique() or 1); ag5 = ag5.sort_values(by='Prom_M', ascending=False); ag5['Pct_Acu'] = (ag5['Prom_M'].cumsum() / ag5['Prom_M'].sum()) * 100
+        fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5_line = ax5.twinx(); fig5.subplots_adjust(top=0.75, bottom=0.28, left=0.08, right=0.92); fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold'); x_idx = np.arange(len(ag5))
+        bp = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2); set_escala_y(ax5, ag5['Prom_M'].max(), 2.8); ax5.bar_label(bp, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
+        ax5_line.plot(x_idx, ag5['Pct_Acu'], color='red', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, zorder=5); ax5_line.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1); ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) 
+        ax5.set_xticks(x_idx); ax5.set_xticklabels([textwrap.fill(str(t), 12) for t in ag5['TIPO_PARADA']], rotation=90, fontsize=12, fontweight='bold')
+        for i, val in enumerate(ag5['Pct_Acu']): ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 4), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
+        agregar_sello_agua(fig5); st.pyplot(fig5, use_container_width=True)
+    else: st.success("✅ ¡Felicitaciones! Cero horas improductivas en este periodo.")
+
+with col6:
+    st.header("6. EVOLUCIÓN INCIDENCIA %")
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
+    if not df_ef_f.empty:
+        df_ef_f['K_Mes'] = df_ef_f['Fecha'].dt.strftime('%Y-%m'); ag_disp = df_ef_f.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
+        if not df_im_f.empty: df_im_f['K_Mes'] = df_im_f['FECHA'].dt.strftime('%Y-%m'); df6 = pd.merge(ag_disp, pd.pivot_table(df_im_f, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index(), on='K_Mes', how='left').fillna(0); list_c = [c for c in df6.columns if c not in ['HH_Disponibles', 'K_Mes']]
+        else: df6, list_c = ag_disp.copy(), []
+        df6['Suma_I'] = df6[list_c].sum(axis=1) if list_c else 0; df6['Inc_%'] = (df6['Suma_I'] / df6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0); df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
+        fig6, ax6 = plt.subplots(figsize=(14, 10)); fig6.subplots_adjust(top=0.68, bottom=0.22, left=0.08, right=0.92); fig6.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold'); x_idx = np.arange(len(df6))
+        if list_c:
+            base_st = np.zeros(len(df6)); paleta = plt.cm.tab20.colors
+            for i, c_nom in enumerate(list_c): vals = df6[c_nom].values; bar_stack = ax6.bar(x_idx, vals, bottom=base_st, label=textwrap.fill(c_nom, 15), color=paleta[i % 20], edgecolor='white', zorder=2); ax6.bar_label(bar_stack, labels=[f"{int(v)}" if v > 0 else "" for v in vals], label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n); base_st += vals
+            ax6.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=4, framealpha=0.9, fontsize=11)
+        else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
+        set_escala_y(ax6, df6['Suma_I'].max(), 1.8) 
+        for i in range(len(x_idx)):
+            if df6['Suma_I'].iloc[i] > 0: ax6.annotate(f"Imp: {int(df6['Suma_I'].iloc[i])}\nDisp: {int(df6['HH_Disponibles'].iloc[i])}", (i, df6['Suma_I'].iloc[i] + (ax6.get_ylim()[1]*0.02)), ha='center', bbox=caja_o, fontweight='bold', zorder=10)
+        ax6_line = ax6.twinx(); ax6_line.plot(x_idx, df6['Inc_%'], color='red', marker='o', markersize=12, linewidth=6, path_effects=efecto_b, label='% Incidencia', zorder=5); add_tendencia(ax6_line, x_idx, df6['Inc_%']); ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1); ax6_line.text(x_idx[-1] if len(x_idx)>0 else 0, 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
+        for i, val in enumerate(df6['Inc_%']): 
+            if df6['Suma_I'].iloc[i] > 0: ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
+        ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold'); ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5)); agregar_sello_agua(fig6); st.pyplot(fig6, use_container_width=True)
+    else: st.warning("⚠️ Sin datos históricos de eficiencia para cruzar.")
+
+st.markdown("---")
+
+# =========================================================================
+# 9. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)
+# =========================================================================
+st.header("7. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)")
+st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Apertura de registros detallados con fecha, operario y motor de sugerencia de acciones</i></div>", unsafe_allow_html=True)
+
+if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
+    motivos_disp = sorted(df_im_f['TIPO_PARADA'].dropna().unique())
+    motivo_sel = st.columns([1, 2])[0].selectbox("🔍 Filtrar Motivo a detallar:", ["Todos los motivos"] + list(motivos_disp))
+    df_detalles = df_im_f[df_im_f['TIPO_PARADA'] == motivo_sel] if motivo_sel != "Todos los motivos" else df_im_f.copy()
+    if not df_detalles.empty:
+        df_detalles['FECHA_STR'] = df_detalles['FECHA_EXACTA'].dt.strftime('%d/%m/%Y').fillna('S/D')
+        c_pu_det = next((c for c in df_detalles.columns if 'PUESTO' in c), 'PUESTO_X')
+        if c_pu_det not in df_detalles.columns: df_detalles[c_pu_det] = "S/D"
+        df_detalles[['OPERARIO', 'DETALLE', c_pu_det]] = df_detalles[['OPERARIO', 'DETALLE', c_pu_det]].fillna('S/D')
+        ag_det = df_detalles.groupby(['FECHA_STR', 'OPERARIO', c_pu_det, 'DETALLE']).agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index().sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
+        t_det = ag_det['HH_IMPRODUCTIVAS'].sum()
+        ag_det['%'] = (ag_det['HH_IMPRODUCTIVAS'] / t_det) * 100 if t_det > 0 else 0
+        ag_det['Acción Sugerida'] = ag_det['DETALLE'].apply(generar_accion_sugerida)
+        ag_det.columns = ['Fecha', 'Operario', 'Puesto', 'Detalle Registrado', 'Subtotal HH', '%', 'Acción Sugerida']
+        ag_det = pd.concat([ag_det, pd.DataFrame({'Fecha': ['---'], 'Operario': ['---'], 'Puesto': ['---'], 'Detalle Registrado': ['✅ TOTAL SUMATORIA'], 'Subtotal HH': [t_det], '%': [100.0], 'Acción Sugerida': ['🎯 ACCIÓN GLOBAL']})], ignore_index=True)
+        st.dataframe(ag_det.style.map(lambda val: 'background-color: rgba(211, 47, 47, 0.5); color: white; font-weight: bold;' if val == ag_det['Subtotal HH'].iloc[:-1].max() else '', subset=['Subtotal HH']), use_container_width=True, hide_index=True, column_config={"Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), "%": st.column_config.NumberColumn(format="%.1f %%")})
+        st.download_button("📥 Descargar Detalle Operativo (CSV)", data=ag_det.to_csv(index=False).encode('utf-8'), file_name="Detalles_Operativos.csv", mime="text/csv", use_container_width=True, type="primary")
+    else: st.info("No hay registros detallados para el motivo seleccionado en este periodo.")
+else: st.info("No hay horas
