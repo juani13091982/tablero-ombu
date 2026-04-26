@@ -10,57 +10,58 @@ import textwrap
 import re
 
 # =========================================================================
-# 1. CONFIGURACIÓN Y ESTILO SINCRONIZADO (CSS)
+# 1. MOTOR DE TEMATIZACIÓN DINÁMICA (COLORES SINCRONIZADOS)
 # =========================================================================
-st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Tablero CGP Pro - Ombú S.A.", layout="wide", initial_sidebar_state="collapsed")
 
-def inject_theme_cgp(color_per):
+def inject_theme(color_status):
     st.markdown(f"""
     <style>
         header, [data-testid="stHeader"], [data-testid="stToolbar"], footer {{display: none !important;}}
-        .block-container {{padding-top: 1rem !important; background-color: #0f172a;}}
+        .main {{ background-color: #0f172a; }}
+        .block-container {{padding-top: 1rem !important; background-color: #0f172a;}} 
         
         /* Sticky Header */
         div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {{
             position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
             background-color: rgba(15, 23, 42, 0.98) !important; z-index: 99999 !important;
-            padding: 5px 10px 15px 10px !important; border-bottom: 2px solid {color_per} !important;
+            padding: 5px 10px 15px 10px !important; border-bottom: 3px solid {color_status} !important;
             box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
         }}
 
         /* Tarjeta OEE Master */
-        .card-oee {{
-            background-color: #1e293b; border-radius: 20px; padding: 25px; 
-            margin-bottom: 20px; border: 1px solid #334155;
-            box-shadow: 0px 15px 25px rgba(0,0,0,0.2);
+        .card-dark {{
+            background-color: #1e293b; border-radius: 15px; padding: 20px; 
+            margin-bottom: 15px; border: 1px solid #334155;
+            box-shadow: 0px 10px 20px rgba(0,0,0,0.2);
         }}
 
-        /* Pilares Sincronizados */
+        /* Pilares OEE */
         .pillar-box {{ 
-            background: #0f172a; border-radius: 15px; padding: 20px; flex: 1;
+            background: #0f172a; border-radius: 12px; padding: 15px; flex: 1;
             border: 1px solid #334155; text-align: center;
-            border-top: 5px solid {color_per} !important;
+            border-top: 5px solid {color_status} !important;
         }}
-        .p-label {{ font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }}
-        .p-val {{ font-size: 32px; font-weight: 900; color: white; margin: 0; }}
-        .p-formula {{ font-size: 10px; color: {color_per}; margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px; font-style: italic; }}
+        .p-label {{ font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }}
+        .p-val {{ font-size: 30px; font-weight: 900; color: white; margin: 5px 0; }}
+        .p-formula {{ font-size: 10px; color: {color_status}; margin-top: 8px; border-top: 1px solid #334155; padding-top: 5px; font-style: italic; }}
 
-        /* KPIs de Soporte (Originales del Main) */
-        .kpi-integrated {{
-            background: #1e293b; padding: 20px; border-radius: 15px;
+        /* KPIs de Soporte (Tu Main) */
+        .kpi-footer {{
+            background: #1e293b; padding: 18px; border-radius: 12px;
             text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-top: 4px solid {color_per};
+            border-top: 4px solid {color_status};
         }}
-        .kpi-integrated h2 {{ margin: 5px 0; font-size: 35px; color: white; }}
-        .kpi-integrated p {{ margin: 0; font-size: 12px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }}
+        .kpi-footer h2 {{ margin: 5px 0; font-size: 32px; color: white; font-weight: 900; }}
+        .kpi-footer p {{ margin: 0; font-size: 11px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }}
 
-        /* Responsive */
-        @media (max-width: 768px) {{
-            [data-testid="stHorizontalBlock"] {{ flex-direction: column !important; }}
-            .pillar-box {{ margin-bottom: 10px; }}
-        }}
+        /* Tablas */
+        .stDataFrame {{ background: #1e293b; border-radius: 10px; border: 1px solid #334155; }}
     </style>
     """, unsafe_allow_html=True)
+
+plt.rcParams.update({'font.size': 12, 'font.weight': 'bold'})
+efecto_b, efecto_n = [pe.withStroke(linewidth=3, foreground='white')], [pe.withStroke(linewidth=3, foreground='black')]
 
 # =========================================================================
 # 2. SEGURIDAD
@@ -69,7 +70,7 @@ if 'auth' not in st.session_state: st.session_state['auth'] = False
 if not st.session_state['auth']:
     c1, c2, c3 = st.columns([1, 1.8, 1])
     with c2:
-        st.markdown("<div style='text-align:center; margin-top:100px;'><h1 style='color:white;'>🏭 SISTEMA OMBÚ</h1><p style='color:#94a3b8;'>Acceso Control de Gestión</p></div>", unsafe_allow_html=True)
+        st.markdown("<br><br><div style='text-align:center;'><h1 style='color:white;'>🏭 SISTEMA OMBÚ</h1><p style='color:#94a3b8;'>Acceso Control de Gestión v4.0</p></div>", unsafe_allow_html=True)
         with st.form("login"):
             u, p = st.text_input("Usuario"), st.text_input("Contraseña", type="password")
             if st.form_submit_button("INGRESAR AL TABLERO", use_container_width=True):
@@ -79,155 +80,141 @@ if not st.session_state['auth']:
     st.stop()
 
 # =========================================================================
-# 3. MOTOR DE DATOS Y LÓGICA DE NEGOCIO (THE BEAST)
+# 3. CARGA DE DATOS Y LÓGICA DE NEGOCIO (THE TITAN)
 # =========================================================================
-def safe_val(series):
-    try:
-        res = series.sum()
-        return float(res.iloc[0]) if hasattr(res, 'iloc') else float(res)
-    except: return 0.0
+def safe_match(s_list, val):
+    if pd.isna(val): return False
+    v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
+    for s in s_list:
+        s_norm = re.sub(r'[^A-Z0-9]', '', str(s).upper())
+        if s_norm == v_norm and s_norm != "": return True
+    return False
 
 def generar_accion_sugerida(detalle):
     d = str(detalle).upper()
     if any(x in d for x in ['ROTURA', 'FALLA', 'MANTENIMIENTO', 'MECANICO']): return "⚙️ Revisar Equipo"
-    if any(x in d for x in ['FALTA', 'MATERIAL', 'LOGISTICA', 'ABASTECIMIENTO']): return "📦 Apurar Logística"
-    if any(x in d for x in ['CALIDAD', 'ERROR', 'REPROCESO', 'DEFECTO']): return "🔎 Ajustar Calidad"
-    if any(x in d for x in ['LIMPIEZA', 'ORDEN', '5S']): return "🧹 Optimizar 5S"
+    if any(x in d for x in ['FALTA', 'MATERIAL', 'LOGISTICA']): return "📦 Apurar Logística"
+    if any(x in d for x in ['REPROCESO', 'CALIDAD', 'ERROR']): return "🔎 Ajustar Calidad"
     return "⚡ Investigar Causa"
 
 @st.cache_data(ttl=300)
-def load_all_data():
-    url_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
-    url_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
-    d_ef, d_im = pd.read_excel(url_ef), pd.read_excel(url_im)
+def load_data_integrada():
+    u_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
+    u_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
     
-    # --- LIMPIEZA EFICIENCIAS ---
-    d_ef.columns = [str(c).strip().upper() for c in d_ef.columns]
-    map_ef = {'FECHA':'Fecha', 'PLANTA':'Planta', 'LINEA':'Linea', 'STD':'HH_STD', 'DISP':'HH_Disp', 'PROD':'HH_Prod', 'COSTO':'Costo', 'ULTIMO':'Es_Ultimo', 'PUESTO':'Puesto'}
-    for c in d_ef.columns:
-        for k, v in map_ef.items():
-            if k in c: d_ef.rename(columns={c: v}, inplace=True)
+    d_ef = pd.read_excel(u_ef).loc[:, ~pd.read_excel(u_ef).columns.duplicated()]
+    d_im = pd.read_excel(u_im).loc[:, ~pd.read_excel(u_im).columns.duplicated()]
     
-    # Orden Cronológico
-    d_ef['Fecha'] = pd.to_datetime(d_ef['Fecha'], errors='coerce')
+    # --- NORMALIZACIÓN ---
+    d_ef.columns = [str(c).strip() for c in d_ef.columns]
+    mapping = {
+        'Fecha': 'Fecha', 'Planta': 'Planta', 'Línea': 'Linea', 'Puesto_Trabajo': 'Puesto',
+        'HH_STD_TOTAL': 'HH_STD', 'HH_Disponibles': 'HH_Disp', 'HH_Productivas_C/GAP': 'HH_Prod',
+        'Costo_Improd._$': 'Costo', 'Es_Ultimo_Puesto': 'Es_Ultimo'
+    }
+    d_ef = d_ef.rename(columns=mapping)
+    
+    # ORDEN CRONOLÓGICO REAL
+    d_ef['Fecha'] = pd.to_datetime(d_ef['Fecha'], errors='coerce', dayfirst=True)
     d_ef = d_ef.sort_values('Fecha')
     d_ef['Mes_Str'] = d_ef['Fecha'].dt.strftime('%b-%Y')
-    
+
     for c in ['HH_STD', 'HH_Disp', 'HH_Prod', 'Costo']:
         if c in d_ef.columns: d_ef[c] = pd.to_numeric(d_ef[c], errors='coerce').fillna(0)
 
-    # --- LIMPIEZA IMPRODUCTIVAS ---
+    # Improductivas
     d_im.columns = [str(c).strip().upper() for c in d_im.columns]
-    map_im = {'HH':'HH_Imp', 'TIPO':'Motivo', 'MOTIVO':'Motivo', 'DETALLE':'Detalle', 'PLANTA':'Planta', 'LINEA':'Linea', 'PUESTO':'Puesto'}
-    for c in d_im.columns:
-        for k, v in map_im.items():
-            if k in c: d_im.rename(columns={c: v}, inplace=True)
-    
-    d_im['HH_Imp'] = pd.to_numeric(d_im['HH_Imp'], errors='coerce').fillna(0).abs()
+    c_hh_im = next((c for c in d_im.columns if 'HH' in c and 'IMP' in c), None)
+    c_mot_im = next((c for c in d_im.columns if 'TIPO' in c or 'MOTIVO' in c), None)
+    if c_hh_im: d_im.rename(columns={c_hh_im: 'HH_Imp'}, inplace=True)
+    if c_mot_im: d_im.rename(columns={c_mot_im: 'Motivo'}, inplace=True)
+    d_im['HH_Imp'] = pd.to_numeric(d_im.get('HH_Imp', 0), errors='coerce').fillna(0).abs()
     
     # Operarios
     c_nom = next((c for c in d_im.columns if 'NOMBRE' in c), None)
     c_ape = next((c for c in d_im.columns if 'APELLIDO' in c), None)
-    if c_nom and c_ape: d_im['OPERARIO'] = d_im[c_nom].astype(str).replace('nan','') + ' ' + d_im[c_ape].astype(str).replace('nan','')
+    if c_nom and c_ape: d_im['OPERARIO'] = d_im[c_nom].astype(str) + ' ' + d_im[c_ape].astype(str)
     else: d_im['OPERARIO'] = "S/D"
-    
+
     return d_ef, d_im
 
 try:
-    df_ef, df_im = load_all_data()
+    df_ef, df_im = load_data_integrada()
 except Exception as e:
-    st.error(f"Error cargando datos: {e}"); st.stop()
+    st.error(f"Error cargando Drive: {e}"); st.stop()
 
 # =========================================================================
-# 4. HEADER Y FILTROS MAESTROS (CASCADA)
+# 4. HEADER Y FILTROS MAESTROS
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
     h_col1, h_col2 = st.columns([4, 1])
-    with h_col1:
-        st.markdown("<h2 style='color:white; margin:0;'>REPORTING INDUSTRIAL CGP - OMBÚ</h2>", unsafe_allow_html=True)
-    with h_col2:
-        if st.button("🚪 Salir", use_container_width=True): 
-            st.session_state['auth'] = False; st.rerun()
+    h_col1.markdown("<h2 style='color:white; margin:0;'>REPORTING INDUSTRIAL CGP - INTEGRACIÓN TOTAL</h2>", unsafe_allow_html=True)
+    if h_col2.button("🚪 Salir", use_container_width=True): 
+        st.session_state['auth'] = False; st.rerun()
 
-    # Filtros en el Sidebar
-    with st.sidebar:
-        st.header("⚙️ FILTROS")
-        # Meses Cronológicos
-        lista_meses = df_ef['Mes_Str'].unique().tolist()
-        sel_mes = st.multiselect("📅 Mes", lista_meses, placeholder="Seleccionar Mes")
-        
-        sel_planta = st.multiselect("🏭 Planta", sorted(df_ef['Planta'].dropna().unique()))
-        sel_linea = st.multiselect("⚙️ Línea", sorted(df_ef['Linea'].dropna().unique()))
-        sel_puesto = st.multiselect("🛠️ Puesto", sorted(df_ef['Puesto'].dropna().unique()))
+with st.sidebar:
+    st.header("⚙️ FILTROS MAESTROS")
+    lista_meses = df_ef['Mes_Str'].unique().tolist()
+    sel_mes = st.multiselect("📅 Mes (Cronológico)", lista_meses)
+    
+    sel_planta = st.multiselect("🏭 Planta", sorted(df_ef['Planta'].dropna().unique()))
+    sel_linea = st.multiselect("⚙️ Línea", sorted(df_ef['Linea'].dropna().unique()))
 
-# Lógica de Filtrado Cruzado
-df_ef_f = df_ef.copy()
+# Aplicación cruzada
+df_f = df_ef.copy()
 df_im_f = df_im.copy()
 
-if sel_mes: 
-    df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(sel_mes)]
+if sel_mes: df_f = df_f[df_f['Mes_Str'].isin(sel_mes)]
 if sel_planta: 
-    df_ef_f = df_ef_f[df_ef_f['Planta'].isin(sel_planta)]
-    df_im_f = df_im_f[df_im_f['Planta'].astype(str).isin(sel_planta)]
-if sel_linea:
-    df_ef_f = df_ef_f[df_ef_f['Linea'].isin(sel_linea)]
-    df_im_f = df_im_f[df_im_f['Linea'].astype(str).isin(sel_linea)]
-if sel_puesto:
-    df_ef_f = df_ef_f[df_ef_f['Puesto'].isin(sel_puesto)]
-    df_im_f = df_im_f[df_im_f['Puesto'].astype(str).isin(sel_puesto)]
+    df_f = df_f[df_f['Planta'].isin(sel_planta)]
+    c_pl = next((c for c in df_im_f.columns if 'PLANTA' in c), None)
+    if c_pl: df_im_f = df_im_f[df_im_f[c_pl].astype(str).isin(sel_planta)]
+if sel_linea: df_f = df_f[df_f['Linea'].isin(sel_linea)]
 
 # =========================================================================
-# 5. CÁLCULOS OEE (FORMULACIÓN OMBÚ)
+# 5. CÁLCULOS TÉCNICOS OEE (MAQUETA PARA MAÑANA)
 # =========================================================================
-t_std = safe_val(df_ef_f['HH_STD'])
-t_disp = safe_val(df_ef_f['HH_Disp'])
-t_prod = safe_val(df_ef_f['HH_Prod'])
-t_costo = safe_val(df_ef_f['Costo'])
-t_imp = safe_val(df_im_f['HH_Imp'])
+def get_sum(series): return float(series.sum())
 
-# 1. DISPONIBILIDAD = (HH Disponibles - HH Improductivas) / HH Disponibles
+t_std = get_sum(df_f['HH_STD'])
+t_disp = get_sum(df_f['HH_Disp'])
+t_prod = get_sum(df_f['HH_Prod'])
+t_costo = get_sum(df_f['Costo'])
+t_imp = get_sum(df_im_f['HH_Imp'])
+
+# Fórmulas Ombú
 disponibilidad = ((t_disp - t_imp) / t_disp * 100) if t_disp > 0 else 0.0
-
-# 2. RENDIMIENTO = Eficiencia Productiva (HH Standard / HH Productivas)
 rendimiento = (t_std / t_prod * 100) if t_prod > 0 else 0.0
-
-# 3. CALIDAD = 98.0% (Simulado hasta carga real)
-calidad_sim = 98.0
+calidad_sim = 98.0 # Simulado hasta recibir columnas de Calidad
 
 oee_final = (max(0, disponibilidad)/100 * max(0, rendimiento)/100 * calidad_sim/100) * 100
 
-# Color Maestro Sincronizado
+# Color Sincronizado
 color_status = "#22c55e" if oee_final >= 85 else "#eab308" if oee_final >= 65 else "#ef4444"
-inject_theme_cgp(color_status)
+inject_theme(color_status)
 
 # =========================================================================
 # 6. VELOCÍMETRO OEE PRO
 # =========================================================================
-st.markdown("<div class='card-oee'>", unsafe_allow_html=True)
-
+st.markdown("<div class='card-dark'>", unsafe_allow_html=True)
 fig_oee = go.Figure(go.Indicator(
     mode = "gauge+number", value = oee_final,
     title = {'text': "INDICADOR OEE GLOBAL", 'font': {'color': 'white', 'size': 16}},
     number = {'suffix': "%", 'font': {'color': color_status, 'size': 80}},
     gauge = {
         'axis': {'range': [None, 100], 'tickcolor': "white"},
-        'bar': {'color': "white"},
-        'bgcolor': "rgba(0,0,0,0)",
-        'steps': [
-            {'range': [0, 65], 'color': '#ef4444'},
-            {'range': [65, 85], 'color': '#eab308'},
-            {'range': [85, 100], 'color': '#22c55e'}
-        ],
+        'bar': {'color': "white"}, 'bgcolor': "rgba(0,0,0,0)",
+        'steps': [{'range': [0, 65], 'color': '#ef4444'},{'range': [65, 85], 'color': '#eab308'},{'range': [85, 100], 'color': '#22c55e'}],
         'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': 85}
     }
 ))
-fig_oee.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "white"}, height=380, margin=dict(l=30, r=30, t=50, b=0))
+fig_oee.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "white"}, height=350, margin=dict(l=30, r=30, t=50, b=0))
 st.plotly_chart(fig_oee, use_container_width=True)
 
-# Pilares OEE con Fórmulas
+# Pilares desglosados con fórmulas escritas
 st.markdown(f"""
-    <div style='display: flex; gap: 15px; margin-top: 10px;'>
+    <div style='display: flex; gap: 15px;'>
         <div class='pillar-box'>
             <p class='p-label'>⏱️ Disponibilidad</p>
             <p class='p-val'>{min(disponibilidad, 100.0):.1f}%</p>
@@ -248,21 +235,21 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# 7. MÉTRICAS DE SOPORTE (INTEGRACIÓN MAIN)
+# 7. INTEGRACIÓN MÉTRICAS MAIN (SOPORTE)
 # =========================================================================
-st.markdown("<h4 style='color:white; margin-bottom:15px; font-size:18px;'>📊 MÉTRICAS DE GESTIÓN Y COSTOS</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='color:white; margin-bottom:15px; font-size:18px;'>📊 GESTIÓN DE PLANTA Y COSTOS</h4>", unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
     ef_real = (t_std / t_disp * 100) if t_disp > 0 else 0.0
-    st.markdown(f"<div class='kpi-integrated'><p>Eficiencia Real</p><h2 style='color:{color_status};'>{ef_real:.1f}%</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi-footer'><p>Eficiencia Real</p><h2 style='color:{color_status};'>{ef_real:.1f}%</h2></div>", unsafe_allow_html=True)
 with c2:
-    st.markdown(f"<div class='kpi-integrated'><p>HH Standard Producidas</p><h2>{t_std:,.0f}</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi-footer'><p>HH Standard Totales</p><h2>{t_std:,.0f}</h2></div>", unsafe_allow_html=True)
 with c3:
-    st.markdown(f"<div class='kpi-integrated' style='border-top-color:#ef4444;'><p>Costo Ineficiencia</p><h2 style='color:#ef4444;'>${t_costo:,.0f}</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi-footer' style='border-top-color:#ef4444;'><p>Costo Ineficiencia</p><h2 style='color:#ef4444;'>${t_costo:,.0f}</h2></div>", unsafe_allow_html=True)
 with c4:
     gap_h = t_disp - t_prod
-    st.markdown(f"<div class='kpi-integrated' style='border-top-color:#3b82f6;'><p>Gap de Horas (Sin Cargar)</p><h2 style='color:#3b82f6;'>{int(gap_h)}h</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi-footer' style='border-top-color:#3b82f6;'><p>Gap HH (Sin Cargar)</p><h2 style='color:#3b82f6;'>{int(gap_h)}h</h2></div>", unsafe_allow_html=True)
 
 # =========================================================================
 # 8. GRÁFICOS Y PARETO
@@ -271,12 +258,12 @@ st.markdown("<br>", unsafe_allow_html=True)
 g_col1, g_col2 = st.columns([2, 1])
 
 with g_col1:
-    st.markdown("<h4 style='color:white;'>📈 Evolución Cronológica de Eficiencia Real</h4>", unsafe_allow_html=True)
-    if not df_ef_f.empty:
+    st.markdown(f"<h4 style='color:white; border-left: 4px solid {color_status}; padding-left:10px;'>📈 Evolución de Eficiencia</h4>", unsafe_allow_html=True)
+    if not df_f.empty:
         fig_trend, ax_trend = plt.subplots(figsize=(10, 4.5), facecolor='#0f172a')
-        ag_trend = df_ef_f.groupby('Mes_Str', sort=False).agg({'HH_STD':'sum', 'HH_Disp':'sum'})
+        ag_trend = df_f.groupby('Mes_Str', sort=False).agg({'HH_STD':'sum', 'HH_Disp':'sum'})
         ag_trend['Ef'] = (ag_trend['HH_STD'] / ag_trend['HH_Disp'] * 100)
-        ax_trend.plot(ag_trend.index, ag_trend['Ef'], marker='o', color=color_status, linewidth=4, markersize=10, label='% Eficiencia Real')
+        ax_trend.plot(ag_trend.index, ag_trend['Ef'], marker='o', color=color_status, linewidth=4, markersize=10, label='% Efic. Real')
         ax_trend.fill_between(ag_trend.index, ag_trend['Ef'], color=color_status, alpha=0.1)
         ax_trend.axhline(85, color='#22c55e', linestyle='--', alpha=0.6, label="Meta (85%)")
         ax_trend.set_ylim(0, 110); ax_trend.tick_params(colors='white'); ax_trend.grid(axis='y', alpha=0.1)
@@ -284,38 +271,26 @@ with g_col1:
         st.pyplot(fig_trend)
 
 with g_col2:
-    st.markdown("<h4 style='color:white;'>⚠️ Top Causas Improductivas</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color:white; border-left: 4px solid #ef4444; padding-left:10px;'>⚠️ Top 5 Motivos de Parada</h4>", unsafe_allow_html=True)
     if not df_im_f.empty:
         res_pareto = df_im_f.groupby('Motivo')['HH_Imp'].sum().sort_values(ascending=False).head(5)
         fig_p, ax_p = plt.subplots(figsize=(5, 8.5), facecolor='#0f172a')
         res_pareto.plot(kind='barh', color='#ef4444', ax=ax_p)
-        ax_p.invert_yaxis(); ax_p.tick_params(colors='white'); ax_p.set_xlabel("HH Perdidas", color='white')
+        ax_p.invert_yaxis(); ax_p.tick_params(colors='white')
         st.pyplot(fig_p)
 
 # =========================================================================
-# 9. TABLA DE DETALLES (EL CORAZÓN DEL ANÁLISIS)
+# 9. TABLA DE DETALLES Y MOTOR DE ACCIONES
 # =========================================================================
 st.markdown("---")
-st.header("📋 ANÁLISIS DE OPERACIÓN Y ACCIONES SUGERIDAS")
+st.header("📋 ANÁLISIS DETALLADO Y ACCIONES")
 
 if not df_im_f.empty:
     df_im_f['Acción Sugerida'] = df_im_f['Detalle'].apply(generar_accion_sugerida)
-    # Formateo para visualización
     cols_display = ['OPERARIO', 'Motivo', 'Detalle', 'HH_Imp', 'Acción Sugerida']
-    df_mesa = df_im_f[cols_display].sort_values(by='HH_Imp', ascending=False)
-    
-    # Tabla interactiva con búsqueda
-    st.dataframe(df_mesa, use_container_width=True, hide_index=True)
-    
-    # Descarga directa
-    st.download_button(
-        label="📥 Descargar Reporte de Operación (CSV)",
-        data=df_mesa.to_csv(index=False).encode('utf-8'),
-        file_name="Reporte_Industrial_Ombu.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
+    df_ver = df_im_f[cols_display].sort_values(by='HH_Imp', ascending=False)
+    st.dataframe(df_ver, use_container_width=True, hide_index=True)
 else:
-    st.info("No hay registros de improductividad para los filtros seleccionados.")
+    st.info("Sin registros de improductividad para los filtros seleccionados.")
 
-st.caption("Ombu Industrial Intelligence © 2026 | Desarrollado para Control de Gestión de Planta")
+st.caption("Ombu Industrial Intelligence © 2026 | Desarrollado para Control de Gestión")
