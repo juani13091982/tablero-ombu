@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.subplots as plt_subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -199,7 +200,7 @@ with st.container():
         try: st.image("LOGO OMBÚ.jpg", width=90)
         except: st.markdown("##### OMBÚ")
     with h_t: 
-        st.markdown("<h3 style='margin:0; padding:0; color:white;'>TABLERO INTEGRADO C.G.P.</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin:0; padding:0;'>TABLERO INTEGRADO C.G.P.</h3>", unsafe_allow_html=True)
     with h_s:
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
@@ -273,7 +274,6 @@ with st.container():
 
     warn_linea = False
     
-    # LÓGICA VITAL: df_plot_1 SE USA PARA EL OEE Y LOS GRÁFICOS (SOLO ÚLTIMO PUESTO)
     if s_pu: 
         df_plot_1 = df_ef_f.copy()
     elif s_li:
@@ -344,29 +344,19 @@ with st.container():
         mobile_tables_html += "</table></div>"
     mobile_tables_html += "</div>"
 
-    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES (GLOBALES)
+    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES GLOBALES
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
-    # === VARIABLES OEE EXACTAS (SOLO DE DF_PLOT_1: ÚLTIMA ESTACIÓN) ===
-    tot_std_oee = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-    tot_disp_oee = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
     
-    # Buscar la columna exacta de productivas para el Rendimiento
-    col_prod_gap = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
-    tot_prod_oee = df_plot_1[col_prod_gap].sum() if col_prod_gap in df_plot_1.columns and not df_plot_1.empty else 0
-
-    # Improductivas que corresponden SÓLO al último puesto (para Disponibilidad)
-    c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
-    if not df_im_f.empty and not df_plot_1.empty and c_pu_im_top:
-        puestos_plot_1 = df_plot_1['Puesto_Trabajo'].unique()
-        tot_imp_oee = df_im_f[df_im_f[c_pu_im_top].isin(puestos_plot_1)]['HH_IMPRODUCTIVAS'].sum()
-    else:
-        tot_imp_oee = 0
-
-    # === CÁLCULOS KPIs ===
-    kpi_ef_real = (tot_std_oee / tot_disp_oee * 100) if tot_disp_oee > 0 else 0
-    kpi_ef_prod = (tot_std_oee / tot_prod_oee * 100) if tot_prod_oee > 0 else 0
+    # PRODUCTIVAS DE LA ÚLTIMA ESTACIÓN (Para Rendimiento)
+    c_prod_gap = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
+    tot_prod = df_plot_1[c_prod_gap].sum() if c_prod_gap in df_plot_1.columns and not df_plot_1.empty else 0
+    
+    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
     top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
@@ -378,23 +368,31 @@ with st.container():
             top3_m1_html = "".join(filas)
 
     top3_imp_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
-    if not df_im_f.empty and c_pu_im_top:
-        ag_imp_p = df_im_f.groupby(c_pu_im_top)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
-        if not ag_imp_p.empty:
-            filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
-            top3_imp_html = "".join(filas_imp)
+    if not df_im_f.empty:
+        c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
+        if c_pu_im_top:
+            ag_imp_p = df_im_f.groupby(c_pu_im_top)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
+            if not ag_imp_p.empty:
+                filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
+                top3_imp_html = "".join(filas_imp)
 
     with col_kpi:
         # =========================================================================
         # INYECCIÓN: MÓDULO OEE PRO CLARO Y EXPLICATIVO
         # =========================================================================
-        disponibilidad = ((tot_disp_oee - tot_imp_oee) / tot_disp_oee * 100) if tot_disp_oee > 0 else 0.0
-        rendimiento = (tot_std_oee / tot_prod_oee * 100) if tot_prod_oee > 0 else 0.0
+        # Para la disponibilidad del OEE, solo restamos las improductivas de los últimos puestos
+        if not df_im_f.empty and 'Puesto_Trabajo' in df_plot_1.columns and c_pu_im_top:
+            puestos_ultimo = df_plot_1['Puesto_Trabajo'].unique()
+            tot_imp_oee = df_im_f[df_im_f[c_pu_im_top].isin(puestos_ultimo)]['HH_IMPRODUCTIVAS'].sum()
+        else:
+            tot_imp_oee = tot_hh_imp
+
+        disponibilidad = ((tot_disp - tot_imp_oee) / tot_disp * 100) if tot_disp > 0 else 0.0
+        rendimiento = (tot_std / tot_prod * 100) if tot_prod > 0 else 0.0
         calidad_sim = 98.0
         oee_final = (max(0, disponibilidad)/100 * max(0, rendimiento)/100 * calidad_sim/100) * 100
         color_oee = "#4CAF50" if oee_final >= 85 else "#FFC107" if oee_final >= 65 else "#F44336"
 
-        # Inyectamos el color para el borde del sticky
         st.markdown(f"<style>div[data-testid='stVerticalBlock'] > div:has(#sticky-header) {{ border-bottom: 4px solid {color_oee} !important; }}</style>", unsafe_allow_html=True)
 
         st.markdown(f"""
@@ -412,7 +410,6 @@ with st.container():
                 'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': 85}
             }
         ))
-        # Altura comprimida para que no moleste el scroll
         fig_oee.update_layout(height=180, margin=dict(l=20, r=20, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': 'white'})
         st.plotly_chart(fig_oee, use_container_width=True)
 
@@ -441,7 +438,7 @@ with st.container():
         """, unsafe_allow_html=True)
         # =========================================================================
 
-        # TU KPI GRID ORIGINAL (AHORA CON BORDES SINCRONIZADOS AL OEE)
+        # TUS CARTELES ORIGINALES INTACTOS, BORDES SINCRONIZADOS
         st.markdown(f"""
         <div class="kpi-grid">
             <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid {color_oee}; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
@@ -506,8 +503,7 @@ with col1:
             if vu > 0: 
                 ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height()*0.05, f"{vu} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=efecto_n, zorder=4)
         
-        # Color dinámico de línea OEE
-        ax1_line.plot(x_idx, ag1['Ef_Real'], color=color_oee, marker='o', markersize=12, linewidth=4, path_effects=efecto_b, label='% Efic. Real', zorder=5)
+        ax1_line.plot(x_idx, ag1['Ef_Real'], color='dimgray', marker='o', markersize=12, linewidth=4, path_effects=efecto_b, label='% Efic. Real', zorder=5)
         add_tendencia(ax1_line, x_idx, ag1['Ef_Real'])
         ax1_line.axhline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         
@@ -530,9 +526,9 @@ with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
     if not df_plot_1.empty:
-        c_prod_gap = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
-        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', c_prod_gap: 'sum'}).reset_index()
-        ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[c_prod_gap]).replace([np.inf, -np.inf], 0).fillna(0) * 100
+        c_prod = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
+        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', c_prod: 'sum'}).reset_index()
+        ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[c_prod]).replace([np.inf, -np.inf], 0).fillna(0) * 100
         
         fig2, ax2 = plt.subplots(figsize=(14, 10)); ax2_line = ax2.twinx()
         fig2.subplots_adjust(top=0.80, bottom=0.22, left=0.08, right=0.92)
@@ -540,9 +536,9 @@ with col2:
         
         x_idx = np.arange(len(ag2))
         bs = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
-        bp = ax2.bar(x_idx + 0.17, ag2[c_prod_gap], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        bp = ax2.bar(x_idx + 0.17, ag2[c_prod], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
-        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2[c_prod_gap].max()), 1.6)
+        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2[c_prod].max()), 1.6)
         ax2.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(bp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
@@ -577,8 +573,7 @@ with col3:
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
-        c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH_Productivas_C/GAP'
-        if c_prod not in df_ef_f.columns: c_prod = df_ef_f.columns[-1] # fallback
+        c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH Productivas'
         ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
         
         if not df_im_f.empty:
