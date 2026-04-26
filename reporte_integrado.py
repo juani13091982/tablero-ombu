@@ -51,9 +51,10 @@ def inyectar_estilos_integrados(color_per):
             border: 1px solid #334155; text-align: center;
             border-top: 4px solid {color_per} !important;
         }}
-        .p-label {{ font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }}
-        .p-val {{ font-size: 28px; font-weight: 900; color: white; margin: 0; }}
-        .p-formula {{ font-size: 10px; color: {color_per}; margin-top: 8px; border-top: 1px solid #334155; padding-top: 5px; font-style: italic; }}
+        .p-label {{ font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px; }}
+        .p-val {{ font-size: 32px; font-weight: 900; color: white; margin: 0; }}
+        .p-formula {{ font-size: 11px; color: {color_per}; margin-top: 8px; border-top: 1px solid #334155; padding-top: 8px; font-weight: bold; }}
+        .p-desc {{ font-size: 11px; color: #cbd5e1; margin-top: 5px; line-height: 1.3; font-style: italic; }}
 
         .kpi-card-custom {{
             background: #1e293b; border-radius: 12px; padding: 20px; text-align: center;
@@ -84,7 +85,7 @@ if not st.session_state['autenticado']:
     st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE (TU LÓGICA ORIGINAL)
+# 3. MOTOR INTELIGENTE
 # =========================================================================
 def safe_match(s_list, val):
     if pd.isna(val): return False
@@ -115,7 +116,7 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA Y LIMPIEZA EXTREMA (MATA EL ERROR DE LAS SERIES)
+# 4. CARGA Y LIMPIEZA EXTREMA
 # =========================================================================
 @st.cache_data(ttl=300)
 def cargar_datos_drive():
@@ -143,14 +144,12 @@ def cargar_datos_drive():
         elif 'COSTO' in c_up: m_ef[c] = 'Costo'
         
     d_ef.rename(columns=m_ef, inplace=True)
-    d_ef = d_ef.loc[:, ~d_ef.columns.duplicated()] # Mata duplicados por renombre
+    d_ef = d_ef.loc[:, ~d_ef.columns.duplicated()]
     
-    # Forzado Numérico Seguro
     for col in ['HH_STD', 'HH_Disp', 'HH_Prod', 'Costo']:
         if col not in d_ef.columns: d_ef[col] = 0.0
         d_ef[col] = pd.to_numeric(d_ef[col], errors='coerce').fillna(0)
     
-    # Orden Cronológico Blindado
     if 'Fecha' in d_ef.columns:
         d_ef['Fecha'] = pd.to_datetime(d_ef['Fecha'], errors='coerce', dayfirst=True)
         d_ef = d_ef.sort_values('Fecha')
@@ -237,7 +236,7 @@ if sel_puesto and 'Puesto_Trabajo' in df_ef_f.columns:
     df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(sel_puesto)]
 
 # =========================================================================
-# 6. CÁLCULOS OEE (CON BLINDAJE DE SERIES AMBIGUAS)
+# 6. CÁLCULOS OEE Y SINCRONIZACIÓN DE COLORES
 # =========================================================================
 def safe_sum(ser): 
     try:
@@ -266,7 +265,7 @@ else: color_main = "#ef4444" # Rojo
 inyectar_estilos_integrados(color_main)
 
 # =========================================================================
-# 7. PORTADA: VELOCÍMETRO OEE PRO
+# 7. PORTADA: VELOCÍMETRO OEE PRO CON EXPLICACIONES
 # =========================================================================
 st.markdown("<div class='card-oee'>", unsafe_allow_html=True)
 fig_oee = go.Figure(go.Indicator(
@@ -288,17 +287,20 @@ st.markdown(f"""
         <div class='pillar-item'>
             <p class='p-label'>⏱️ Disponibilidad</p>
             <h2 style='color: white; margin:0;'>{min(disponibilidad, 100.0):.1f}%</h2>
-            <p class='p-formula'>(HH Disp - HH Imp) / HH Disp</p>
+            <p class='p-formula'>Fórmula: (HH Disp - HH Imp) / HH Disp</p>
+            <p class='p-desc'>Mide el tiempo real de producción de la planta frente al tiempo que estuvo abierta, penalizado por las horas improductivas.</p>
         </div>
         <div class='pillar-item'>
             <p class='p-label'>🚀 Rendimiento</p>
             <h2 style='color: white; margin:0;'>{min(rendimiento, 100.0):.1f}%</h2>
-            <p class='p-formula'>HH Standard / HH Productivas</p>
+            <p class='p-formula'>Fórmula: HH Standard / HH Productivas</p>
+            <p class='p-desc'>Evalúa la velocidad de producción real comparada con el tiempo estándar establecido (Eficacia Productiva).</p>
         </div>
         <div class='pillar-item'>
             <p class='p-label'>💎 Calidad</p>
             <h2 style='color: white; margin:0;'>{calidad_sim:.1f}%</h2>
-            <p class='p-formula'>Piezas OK / Total <br><span style='color:#ef4444'>(SIMULADO)</span></p>
+            <p class='p-formula'>Fórmula: Piezas OK / Total <span style='color:#ef4444'>(SIM)</span></p>
+            <p class='p-desc'>Representa el porcentaje de piezas producidas correctamente sin necesidad de descartes ni reprocesos.</p>
         </div>
     </div>
 </div>
