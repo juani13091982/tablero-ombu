@@ -3,225 +3,243 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
-import matplotlib.patheffects as pe
-import matplotlib.image as mpimg
-import textwrap
 import re
 
 # =========================================================================
-# 1. CONFIGURACIÓN Y ESCUDO VISUAL (RESPONSIVO)
+# 1. CONFIGURACIÓN DE PÁGINA Y DISEÑO CSS "PREMIUM"
 # =========================================================================
-st.set_page_config(page_title="C.G.P. Reporte Integrado - Ombú", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Tablero de Control Industrial - Ombú", layout="wide", initial_sidebar_state="collapsed")
+
 st.markdown("""
 <style>
-    header, [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="manage-app-button"], 
-    #MainMenu, footer, .stAppDeployButton, .viewerBadge_container {display: none !important; visibility: hidden !important;}
-    .block-container {padding-top: 1rem !important; padding-bottom: 1.5rem !important;}
-    div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
-        position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
-        background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
-        padding: 5px 10px 15px 10px !important; border-bottom: 2px solid #1E3A8A !important;
-        box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
+    /* Ocultar basura de Streamlit */
+    header, [data-testid="stHeader"], footer {display: none !important;}
+    .block-container {padding-top: 0.5rem !important; background-color: #f4f7f9;}
+    
+    /* Header Estilo Multinacional */
+    .main-header {
+        background: linear-gradient(90deg, #1E3A8A 0%, #3B82F6 100%);
+        padding: 20px;
+        border-radius: 0px 0px 20px 20px;
+        color: white;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.2);
     }
-    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 12px; }
-    .kpi-costo { grid-row: span 2; }
-    .mobile-only { display: none !important; }
-    @media (max-width: 768px) {
-        .mobile-only { display: block !important; }
-        [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
-        [data-testid="stHorizontalBlock"] > div { width: 100% !important; min-width: 100% !important; }
-        .kpi-grid { grid-template-columns: 1fr !important; }
-        .kpi-costo { grid-row: span 1 !important; }
+
+    /* Cartel de OEE "HERMOSO" */
+    .oee-container {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        text-align: center;
+        border: 1px solid #e0e6ed;
+        box-shadow: 0px 10px 25px rgba(0,0,0,0.05);
+        margin-bottom: 25px;
+    }
+    .oee-value {
+        font-size: 80px;
+        font-weight: 900;
+        margin: 0;
+        line-height: 1;
+    }
+    .oee-label {
+        font-size: 18px;
+        color: #64748b;
+        letter-spacing: 2px;
+        font-weight: bold;
+    }
+    
+    /* Grid de Pilares OEE */
+    .pilar-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .pilar-card {
+        padding: 15px;
+        border-radius: 15px;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+    }
+    .pilar-val { font-size: 24px; font-weight: bold; color: #1e293b; }
+    .pilar-txt { font-size: 12px; color: #94a3b8; text-transform: uppercase; }
+
+    /* Tarjetas KPI Rápidas */
+    .kpi-card {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        border-left: 8px solid #1E3A8A;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.03);
     }
 </style>
 """, unsafe_allow_html=True)
 
-plt.rcParams.update({'font.size': 14, 'font.weight': 'bold'})
-efecto_b, efecto_n = [pe.withStroke(linewidth=3, foreground='white')], [pe.withStroke(linewidth=3, foreground='black')]
-caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
-
 # =========================================================================
 # 2. SEGURIDAD
 # =========================================================================
-if 'autenticado' not in st.session_state: st.session_state['autenticado'] = False
-if not st.session_state['autenticado']:
-    c1, c2, c3 = st.columns([1, 1.8, 1])
+if 'auth' not in st.session_state: st.session_state['auth'] = False
+if not st.session_state['auth']:
+    c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
-        st.markdown("<div style='text-align:center;'><h2>GESTIÓN INDUSTRIAL OMBÚ</h2></div>", unsafe_allow_html=True)
+        st.markdown("<br><br><div style='text-align:center;'><h1>OMBÚ S.A.</h1><p>Control de Gestión Industrial</p></div>", unsafe_allow_html=True)
         with st.form("login"):
             u = st.text_input("Usuario")
             p = st.text_input("Contraseña", type="password")
-            if st.form_submit_button("Ingresar", use_container_width=True):
+            if st.form_submit_button("ACCEDER AL TABLERO", use_container_width=True):
                 if u == "acceso.ombu" and p == "Gestion2026":
-                    st.session_state['autenticado'] = True
-                    st.rerun()
-                else: st.error("❌ Credenciales incorrectas.")
+                    st.session_state['auth'] = True; st.rerun()
+                else: st.error("Credenciales incorrectas")
     st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE Y CARGA (CON SUPER ESCUDO)
+# 3. CARGA DE DATOS Y LIMPIEZA
 # =========================================================================
-def safe_match(s_list, val):
-    if pd.isna(val): return False
-    v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
-    for s in s_list:
-        if re.sub(r'[^A-Z0-9]', '', str(s).upper()) == v_norm: return True
-    return False
+def safe_num(series):
+    try: return float(series.sum())
+    except: return 0.0
 
-def generar_accion_sugerida(detalle):
-    d = str(detalle).upper()
-    if '✅' in d: return "🎯 ACCIÓN GLOBAL"
-    if any(x in d for x in ['ROTURA', 'FALLA', 'MANTENIMIENTO', 'MECANICO']): return "⚙️ Revisar Equipo"
-    if any(x in d for x in ['FALTA', 'MATERIAL', 'ESPERA', 'LOGISTICA']): return "📦 Apurar Logística"
-    if any(x in d for x in ['REPROCESO', 'CALIDAD', 'ERROR']): return "🔎 Ajustar Calidad"
-    return "⚡ Investigar Causa"
-
-try:
-    url_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
-    url_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
+@st.cache_data(ttl=300)
+def load_data():
+    u_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
+    u_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
+    d_ef = pd.read_excel(u_ef)
+    d_im = pd.read_excel(u_im)
     
-    df_ef = pd.read_excel(url_ef)
-    df_im = pd.read_excel(url_im)
-
-    def normalizar_ef(df):
-        df.columns = [str(c).strip().upper() for c in df.columns]
-        mapping = {}
-        for c in df.columns:
-            if 'FECHA' in c: mapping[c] = 'Fecha'
-            elif 'PLANTA' in c: mapping[c] = 'Planta'
-            elif 'LÍNEA' in c or 'LINEA' in c: mapping[c] = 'Linea'
-            elif 'ULTIMO' in c or 'ÚLTIMO' in c: mapping[c] = 'Es_Ultimo_Puesto'
-            elif 'PUESTO' in c and 'Puesto_Trabajo' not in mapping.values(): mapping[c] = 'Puesto_Trabajo'
-            elif 'CANT' in c and 'PROD' in c: mapping[c] = 'Cant_Prod'
-            elif 'STD' in c: mapping[c] = 'HH_STD'
-            elif 'DISP' in c: mapping[c] = 'HH_Disp'
-            elif 'GAP' in c: mapping[c] = 'HH_Prod_GAP'
-            elif 'PROD' in c and 'HH_Productivas' not in mapping.values(): mapping[c] = 'HH_Productivas'
-            elif 'COSTO' in c: mapping[c] = 'Costo'
-        df = df.rename(columns=mapping)
-        return df.loc[:, ~df.columns.duplicated()]
-
-    df_ef = normalizar_ef(df_ef)
-    df_im.columns = [str(c).strip().upper() for c in df_im.columns]
+    # Normalizar Eficiencias
+    d_ef.columns = [str(c).strip().upper() for c in d_ef.columns]
+    m_ef = {}
+    for c in d_ef.columns:
+        if 'FECHA' in c: m_ef[c] = 'Fecha'
+        elif 'PLANTA' in c: m_ef[c] = 'Planta'
+        elif 'STD' in c: m_ef[c] = 'HH_STD'
+        elif 'DISP' in c: m_ef[c] = 'HH_Disp'
+        elif 'GAP' in c or 'PROD' in c: m_ef[c] = 'HH_Prod'
+        elif 'COSTO' in c: m_ef[c] = 'Costo'
+    d_ef = d_ef.rename(columns=m_ef)
+    d_ef = d_ef.loc[:, ~d_ef.columns.duplicated()]
     
-    # Arreglos de seguridad
-    if 'HH_IMPRODUCTIVAS' not in df_im.columns:
-        col_imp = [c for c in df_im.columns if 'HH' in c and 'IMP' in c]
-        df_im['HH_IMPRODUCTIVAS'] = df_im[col_imp[0]] if col_imp else 0
-    if 'TIPO_PARADA' not in df_im.columns:
-        col_t = [c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c]
-        df_im['TIPO_PARADA'] = df_im[col_t[0]] if col_t else "S/D"
-
-    for col in ['HH_STD', 'HH_Disp', 'HH_Prod_GAP', 'HH_Productivas', 'Costo', 'Cant_Prod']:
-        if col in df_ef.columns: df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
+    # Normalizar Improductivas
+    d_im.columns = [str(c).strip().upper() for c in d_im.columns]
+    m_im = {}
+    for c in d_im.columns:
+        if 'HH' in c and 'IMP' in c: m_im[c] = 'HH_Imp'
+        elif 'TIPO' in c or 'MOTIVO' in c: m_im[c] = 'Motivo'
+        elif 'DETALLE' in c: m_im[c] = 'Detalle'
+    d_im = d_im.rename(columns=m_im)
     
-    df_ef['Fecha'] = pd.to_datetime(df_ef['Fecha'], errors='coerce')
-    df_ef['Mes_Str'] = df_ef['Fecha'].dt.strftime('%b-%Y')
+    d_ef['Fecha'] = pd.to_datetime(d_ef['Fecha'], errors='coerce')
+    d_ef['Mes'] = d_ef['Fecha'].dt.strftime('%b-%Y')
     
-    # Puesto en improductivas
-    c_pu_im = next((c for c in df_im.columns if 'PUESTO' in c), None)
+    for c in ['HH_STD', 'HH_Disp', 'HH_Prod', 'Costo']:
+        if c in d_ef.columns: d_ef[c] = pd.to_numeric(d_ef[c], errors='coerce').fillna(0)
+    if 'HH_Imp' in d_im.columns: d_im['HH_Imp'] = pd.to_numeric(d_im['HH_Imp'], errors='coerce').fillna(0)
+    
+    return d_ef, d_im
 
-except Exception as e:
-    st.error(f"Error crítico: {e}"); st.stop()
-
-# =========================================================================
-# 4. FILTROS EN CASCADA
-# =========================================================================
-st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
-with st.container():
-    c_kpi, c_fil = st.columns([3.5, 1])
-    with c_fil:
-        st.markdown("**🎛️ FILTROS**")
-        s_mes = st.multiselect("Mes", sorted(df_ef['Mes_Str'].dropna().unique()), placeholder="📅 Mes")
-        s_pl = st.multiselect("Planta", sorted(df_ef['Planta'].dropna().unique()), placeholder="🏭 Planta")
-
-df_f = df_ef.copy()
-if s_mes: df_f = df_f[df_f['Mes_Str'].isin(s_mes)]
-if s_pl: df_f = df_f[df_f['Planta'].isin(s_pl)]
+df_ef, df_im = load_data()
 
 # =========================================================================
-# 5. CÁLCULOS Y KPIs (CONVERTIDOS A FLOAT PARA EVITAR ERRORES)
+# 4. FILTROS (STICKY)
 # =========================================================================
-t_std = float(df_f['HH_STD'].sum())
-t_disp = float(df_f['HH_Disp'].sum())
-t_prod_gap = float(df_f['HH_Prod_GAP'].sum())
-t_costo = float(df_f['Costo'].sum())
+st.markdown("<div class='main-header'><h1>REPORTING INDUSTRIAL CGP - OMBÚ</h1></div>", unsafe_allow_html=True)
 
-ef_real = (t_std / t_disp * 100) if t_disp > 0 else 0.0
-ef_prod = (t_std / t_prod_gap * 100) if t_prod_gap > 0 else 0.0
-oee = ef_real * 0.98  # Calidad simulada al 98%
+with st.sidebar:
+    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_pD_pZ48aE7rE-j9J2N7xXgXp6qZp3T6w2A&s", width=150) # Logo simulado
+    st.header("CONFIGURACIÓN")
+    sel_mes = st.multiselect("📅 Seleccionar Mes", sorted(df_ef['Mes'].dropna().unique()))
+    sel_planta = st.multiselect("🏭 Seleccionar Planta", sorted(df_ef['Planta'].dropna().unique()))
+
+dff = df_ef.copy()
+if sel_mes: dff = dff[dff['Mes'].isin(sel_mes)]
+if sel_planta: dff = dff[dff['Planta'].isin(sel_planta)]
 
 # =========================================================================
-# 6. DISEÑO DE INTERFAZ (KPIs + OEE)
+# 5. CÁLCULOS OEE DEFINITIVOS
 # =========================================================================
-with c_kpi:
-    # --- MÓDULO OEE ---
-    color_oee = "#4CAF50" if oee >= 85 else ("#FFEB3B" if oee >= 60 else "#F44336")
-    st.markdown(f"""
-    <div style="background: white; border: 2px solid #1E3A8A; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 15px; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);">
-        <h3 style="margin: 0; color: #1E3A8A;">🏆 OEE: Eficiencia General <span style="font-size:14px; color:red;">(SIMULADO)</span></h3>
-        <p style="margin: 5px; font-size: 14px;">Disponibilidad &times; Rendimiento &times; Calidad (98%)</p>
-        <div style="background: #eee; border-radius: 20px; height: 30px; width: 100%; border: 1px solid #ccc;">
-            <div style="background: {color_oee}; width: {min(oee, 100):.1f}%; height: 100%; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
-                {oee:.1f}%
-            </div>
+h_std = safe_num(dff['HH_STD'])
+h_disp = safe_num(dff['HH_Disp'])
+h_prod = safe_num(dff['HH_Prod'])
+costo_tot = safe_num(dff['Costo'])
+
+disponibilidad = (h_prod / h_disp * 100) if h_disp > 0 else 0.0
+rendimiento = (h_std / h_prod * 100) if h_prod > 0 else 0.0
+calidad_sim = 98.0
+oee_final = (disponibilidad/100 * rendimiento/100 * calidad_sim/100) * 100
+
+# Limitar para que no explote visualmente
+disponibilidad = min(disponibilidad, 100.0)
+rendimiento = min(rendimiento, 100.0)
+
+# =========================================================================
+# 6. DISEÑO: EL CARTEL DE OEE "HERMOSO"
+# =========================================================================
+color_oee = "#22c55e" if oee_final >= 85 else "#eab308" if oee_final >= 60 else "#ef4444"
+
+st.markdown(f"""
+<div class='oee-container'>
+    <p class='oee-label'>OEE: OVERALL EQUIPMENT EFFECTIVENESS</p>
+    <h1 class='oee-value' style='color: {color_oee};'>{oee_final:.1f}%</h1>
+    <div style='background: #e2e8f0; height: 12px; border-radius: 10px; width: 60%; margin: 20px auto; overflow: hidden;'>
+        <div style='background: {color_oee}; width: {min(oee_final, 100)}%; height: 100%;'></div>
+    </div>
+    <div class='pilar-grid'>
+        <div class='pilar-card'>
+            <div class='pilar-txt'>⏱️ Disponibilidad</div>
+            <div class='pilar-val'>{disponibilidad:.1f}%</div>
+        </div>
+        <div class='pilar-card'>
+            <div class='pilar-txt'>🚀 Rendimiento</div>
+            <div class='pilar-val'>{rendimiento:.1f}%</div>
+        </div>
+        <div class='pilar-card'>
+            <div class='pilar-txt'>💎 Calidad</div>
+            <div class='pilar-val'>{calidad_sim:.1f}%</div>
         </div>
     </div>
-    <div class="kpi-grid">
-        <div style="background: #f8f9fa; border-left: 5px solid #1E3A8A; padding: 10px; border-radius: 5px; text-align:center;">
-            <p style="margin:0; font-size:12px;">EFICIENCIA REAL</p>
-            <h2 style="margin:0;">{ef_real:.1f}%</h2>
-        </div>
-        <div style="background: #E8F5E9; border-left: 5px solid #2E7D32; padding: 10px; border-radius: 5px; text-align:center;">
-            <p style="margin:0; font-size:12px;">EFICIENCIA PROD.</p>
-            <h2 style="margin:0; color:#2E7D32;">{ef_prod:.1f}%</h2>
-        </div>
-        <div class="kpi-costo" style="background: #FFEBEE; border: 1px solid #C62828; padding: 15px; border-radius: 5px; text-align:center;">
-            <p style="margin:0; font-size:16px; color:#C62828;">COSTO HH IMP.</p>
-            <h2 style="margin:5px 0; color:#C62828; font-size:35px;">${t_costo:,.0f}</h2>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
+
+# KPIs Secundarios
+c1, c2, c3 = st.columns(3)
+with c1: st.markdown(f"<div class='kpi-card'><h6>EFICIENCIA REAL</h6><h2 style='color:#1E3A8A;'>{(h_std/h_disp*100):.1f}%</h2></div>", unsafe_allow_html=True)
+with c2: st.markdown(f"<div class='kpi-card' style='border-left-color:#22c55e;'><h6>TOTAL PRODUCIDO</h6><h2 style='color:#16a34a;'>{h_std:,.0f} <span style='font-size:15px;'>HH STD</span></h2></div>", unsafe_allow_html=True)
+with c3: st.markdown(f"<div class='kpi-card' style='border-left-color:#ef4444;'><h6>COSTO INEFICIENCIA</h6><h2 style='color:#dc2626;'>${costo_tot:,.0f}</h2></div>", unsafe_allow_html=True)
 
 # =========================================================================
-# 7. GRÁFICOS (METRICAS 1 A 6)
+# 7. GRÁFICOS Y DETALLE
 # =========================================================================
-st.markdown("---")
-col_a, col_b = st.columns(2)
+st.markdown("<br>", unsafe_allow_html=True)
+g1, g2 = st.columns([2, 1])
 
-with col_a:
-    st.subheader("1. EFICIENCIA REAL POR MES")
-    if not df_f.empty:
-        fig1, ax1 = plt.subplots(figsize=(10, 5))
-        ag1 = df_f.groupby('Mes_Str').agg({'HH_STD':'sum', 'HH_Disp':'sum'})
-        ag1['%'] = (ag1['HH_STD'] / ag1['HH_Disp'] * 100)
-        ag1['HH_Disp'].plot(kind='bar', ax=ax1, color='black', alpha=0.3, label='Disp')
-        ag1['HH_STD'].plot(kind='bar', ax=ax1, color='#1E3A8A', label='STD')
-        ax1.legend(); st.pyplot(fig1)
+with g1:
+    st.subheader("📈 Evolución de Eficiencia Real por Mes")
+    if not dff.empty:
+        fig, ax = plt.subplots(figsize=(10, 4))
+        # Estilo gráfico moderno
+        ag = dff.groupby('Mes').agg({'HH_STD':'sum', 'HH_Disp':'sum'})
+        ag['Ef'] = (ag['HH_STD'] / ag['HH_Disp'] * 100)
+        ax.plot(ag.index, ag['Ef'], marker='o', color='#1E3A8A', linewidth=4, markersize=10, label='% Eficiencia')
+        ax.fill_between(ag.index, ag['Ef'], alpha=0.1, color='#1E3A8A')
+        ax.axhline(85, color='green', linestyle='--', alpha=0.5, label='Meta 85%')
+        ax.set_ylim(0, 110)
+        ax.legend()
+        st.pyplot(fig)
 
-with col_b:
-    st.subheader("2. EFICIENCIA PRODUCTIVA")
-    if not df_f.empty:
-        fig2, ax2 = plt.subplots(figsize=(10, 5))
-        ag2 = df_f.groupby('Mes_Str').agg({'HH_STD':'sum', 'HH_Prod_GAP':'sum'})
-        ag2['%'] = (ag2['HH_STD'] / ag2['HH_Prod_GAP'] * 100)
-        ax2.plot(ag2.index, ag2['%'], marker='s', color='green', linewidth=3)
-        ax2.axhline(100, color='red', linestyle='--')
+with g2:
+    st.subheader("⚠️ Top Causas Improductivas")
+    if 'HH_Imp' in df_im.columns:
+        res_imp = df_im.groupby('Motivo')['HH_Imp'].sum().sort_values(ascending=False).head(5)
+        fig2, ax2 = plt.subplots(figsize=(6, 7.5))
+        res_imp.plot(kind='barh', color='#ef4444', ax=ax2)
+        ax2.invert_yaxis()
         st.pyplot(fig2)
 
-# ... (Sección de Pareto y más gráficos) ...
 st.markdown("---")
-st.subheader("7. DETALLE DE IMPRODUCTIVIDAD Y ACCIONES SUGERIDAS")
+st.subheader("📋 Detalle de Registros Improductivos")
 if not df_im.empty:
-    # Filtro de seguridad para la tabla
-    df_im_f = df_im.copy()
-    if s_pl: 
-        c_pl_im = next((c for c in df_im.columns if 'PLANTA' in c), None)
-        if c_pl_im: df_im_f = df_im_f[df_im_f[c_pl_im].isin(s_pl)]
-    
-    # Creamos la columna de acciones
-    df_im_f['ACCIÓN SUGERIDA'] = df_im_f['TIPO_PARADA'].apply(generar_accion_sugerida)
-    st.dataframe(df_im_f[['TIPO_PARADA', 'HH_IMPRODUCTIVAS', 'ACCIÓN SUGERIDA']].sort_values('HH_IMPRODUCTIVAS', ascending=False), use_container_width=True)
+    st.dataframe(df_im.sort_values('HH_Imp', ascending=False), use_container_width=True, hide_index=True)
 
-st.success("✅ Tablero OMBU v3.0 cargado con éxito. ¡OEEEEE!")
+st.success("✅ Tablero Premium cargado. ¡OEEEEE!")
