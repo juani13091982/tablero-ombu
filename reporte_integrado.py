@@ -7,7 +7,7 @@ import matplotlib.patheffects as pe
 import matplotlib.image as mpimg
 import textwrap
 import re
-import plotly.graph_objects as go  # <--- UNICO IMPORT AGREGADO
+import plotly.graph_objects as go  # <--- ÚNICO IMPORT AGREGADO PARA EL VELOCÍMETRO
 
 # =========================================================================
 # 1. CONFIGURACIÓN Y ESCUDO VISUAL
@@ -19,25 +19,25 @@ st.markdown("""
     #MainMenu, footer, .stAppDeployButton, .viewerBadge_container {display: none !important; visibility: hidden !important;}
     .block-container {padding-top: 1rem !important; padding-bottom: 1.5rem !important;}
     
-    /* --- STICKY HEADER --- */
+    /* BLOQUE STICKY CORREGIDO: Se le da un alto máximo para que NO TAPE los gráficos de abajo */
     div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
         position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
         background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
-        padding: 5px 10px 15px 10px !important; border-bottom: 2px solid #1E3A8A !important;
-        box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
-        max-height: 50vh; 
-        overflow-y: auto;
+        padding: 5px 10px 10px 10px !important; 
+        box-shadow: 0px 5px 15px rgba(0,0,0,0.6);
+        max-height: 65vh; /* <--- ESTO EVITA QUE TAPE LA PANTALLA */
+        overflow-y: auto; /* <--- PERMITE SCROLLEAR LOS FILTROS SI LA PANTALLA ES CHICA */
     }
     
-    /* --- FILTROS MAESTROS AGRANDADOS --- */
-    [data-testid="stMultiSelect"] {margin-bottom: -15px !important;}
+    /* FILTROS MAESTROS MÁS GRANDES Y VISIBLES */
+    [data-testid="stMultiSelect"] {margin-bottom: -10px !important;}
     div[data-testid="stMultiSelect"] label p { font-size: 16px !important; font-weight: bold !important; color: #90CAF9 !important; }
 
     /* --- REGLAS RESPONSIVAS PARA CELULARES --- */
     .kpi-grid {
         display: grid; 
         grid-template-columns: 1fr 1fr 1.3fr; 
-        gap: 8px; /* ACHICAMOS EL ESPACIO ENTRE CARTELES */
+        gap: 12px;
     }
     .kpi-costo {
         grid-row: span 2;
@@ -48,22 +48,12 @@ st.markdown("""
     
     @media (max-width: 768px) {
         .mobile-only { display: block !important; }
-        
-        [data-testid="stHorizontalBlock"] {
-            flex-direction: column !important;
-        }
-        [data-testid="stHorizontalBlock"] > div {
-            width: 100% !important;
-            min-width: 100% !important;
-        }
-        .kpi-grid {
-            grid-template-columns: 1fr !important;
-        }
-        .kpi-costo {
-            grid-row: span 1 !important;
-        }
-        .kpi-grid h2 { font-size: 28px !important; }
-        .kpi-grid h4 { font-size: 14px !important; }
+        [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
+        [data-testid="stHorizontalBlock"] > div { width: 100% !important; min-width: 100% !important; }
+        .kpi-grid { grid-template-columns: 1fr !important; }
+        .kpi-costo { grid-row: span 1 !important; }
+        .kpi-grid h2 { font-size: 32px !important; }
+        .kpi-grid h4 { font-size: 16px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -106,11 +96,13 @@ def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def safe_match(s_list, val):
+    """Filtro ESTRICTO ALFANUMÉRICO: Une positivos y negativos de 'REM 1' y 'REM.1' sin mezclar 1 con 10"""
     if pd.isna(val): return False
     v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
     for s in s_list:
         s_norm = re.sub(r'[^A-Z0-9]', '', str(s).upper())
-        if s_norm == v_norm and s_norm != "": return True
+        if s_norm == v_norm and s_norm != "": 
+            return True
     return False
 
 def add_tendencia(ax, x, y):
@@ -136,7 +128,7 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS
+# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS (CONEXIÓN A GOOGLE DRIVE)
 # =========================================================================
 try:
     url_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
@@ -329,6 +321,7 @@ with st.container():
         df6_mobile['Fecha_O'] = pd.to_datetime(df6_mobile['K_Mes'] + '-01')
         df6_mobile = df6_mobile.sort_values(by='Fecha_O')
 
+    # ARMADO DE TABLAS HTML PARA CELULAR
     mobile_tables_html = "<div class='mobile-only' style='margin-top: 15px;'>"
     if not ag5_mobile.empty:
         mobile_tables_html += "<div style='background: #B71C1C; padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
@@ -350,60 +343,71 @@ with st.container():
         mobile_tables_html += "</table></div>"
     mobile_tables_html += "</div>"
 
-    # CÁLCULOS PONDERADOS GLOBALES
+    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
     
     tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
     tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-    
-    # LA LÓGICA DE PRODUCTIVAS C/GAP APLICADA ACÁ PARA EL RENDIMIENTO GLOBAL
-    c_prod_gap = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
-    tot_prod = df_plot_1[c_prod_gap].sum() if c_prod_gap in df_plot_1.columns and not df_plot_1.empty else 0
+    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
     
     kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
     kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
-    top3_m1_html = "<div style='font-size:12px; color:#aaa; text-align:center;'>S/D</div>"
+    top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_ef_f.empty:
         ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
         ag_p['Ef'] = (ag_p['HH_STD_TOTAL'] / ag_p['HH_Disponibles'] * 100).fillna(0)
         top3_val = ag_p['Ef'].nlargest(3)
         if not top3_val.empty:
-            filas = [f"<div style='display:flex; justify-content:space-between; margin-top:2px; font-size:11px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9; font-size:12px;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
+            filas = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9; font-size:14px;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
             top3_m1_html = "".join(filas)
 
-    top3_imp_html = "<div style='font-size:12px; color:#aaa; text-align:center;'>S/D</div>"
+    top3_imp_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
     if not df_im_f.empty:
         c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
         if c_pu_im_top:
             ag_imp_p = df_im_f.groupby(c_pu_im_top)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
             if not ag_imp_p.empty:
-                filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:2px; font-size:11px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:12px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
+                filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
                 top3_imp_html = "".join(filas_imp)
 
     with col_kpi:
         # =========================================================================
-        # INYECCIÓN: MÓDULO OEE PRO CLARO Y EXPLICATIVO
+        # INYECCIÓN DEL OEE MATEMÁTICO PERFECTO (ADENTRO DE COL_KPI)
         # =========================================================================
-        # OEE: Improductivas SOLO del último puesto para Disponibilidad
-        if not df_im_f.empty and 'Puesto_Trabajo' in df_plot_1.columns and c_pu_im_top:
-            puestos_ultimo = df_plot_1['Puesto_Trabajo'].unique()
+        
+        # 1. Calculamos usando SOLO df_plot_1 para el rendimiento y diponibilidad (última estación)
+        tot_std_oee = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+        tot_disp_oee = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+        tot_prod_oee = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+        
+        # Para la disponibilidad, sacamos las improductivas de LOS MISMOS PUESTOS que df_plot_1
+        puestos_ultimo = df_plot_1['Puesto_Trabajo'].unique() if ('Puesto_Trabajo' in df_plot_1.columns and not df_plot_1.empty) else []
+        c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), 'PUESTO_X')
+        if len(puestos_ultimo) > 0 and c_pu_im_top in df_im_f.columns:
             tot_imp_oee = df_im_f[df_im_f[c_pu_im_top].isin(puestos_ultimo)]['HH_IMPRODUCTIVAS'].sum()
         else:
-            tot_imp_oee = tot_hh_imp
+            tot_imp_oee = 0
 
-        disponibilidad = ((tot_disp - tot_imp_oee) / tot_disp * 100) if tot_disp > 0 else 0.0
-        rendimiento = (tot_std / tot_prod * 100) if tot_prod > 0 else 0.0
+        disponibilidad = ((tot_disp_oee - tot_imp_oee) / tot_disp_oee * 100) if tot_disp_oee > 0 else 0.0
+        rendimiento = (tot_std_oee / tot_prod_oee * 100) if tot_prod_oee > 0 else 0.0
         calidad_sim = 98.0
         oee_final = (max(0, disponibilidad)/100 * max(0, rendimiento)/100 * calidad_sim/100) * 100
         
-        color_oee = "#4CAF50" if oee_final >= 85 else "#FFC107" if oee_final >= 65 else "#F44336"
+        # Color dinámico principal
+        if oee_final >= 85: color_oee = "#4CAF50" # Verde
+        elif oee_final >= 65: color_oee = "#FFC107" # Amarillo
+        else: color_oee = "#F44336" # Rojo
+        
+        # Sincronizamos el borde del Sticky Header con este color
+        st.markdown(f"<style>div[data-testid='stVerticalBlock'] > div:has(#sticky-header) {{ border-bottom: 5px solid {color_oee} !important; }}</style>", unsafe_allow_html=True)
 
-        st.markdown(f"<h4 style='text-align:center; color:#1E3A8A; margin-bottom:-10px; margin-top:-5px;'>🏆 OEE: EFECTIVIDAD GENERAL</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='text-align:center; color:#1E3A8A; margin-bottom:-10px; margin-top:-5px;'>🏆 OEE: EFECTIVIDAD GENERAL DE LOS EQUIPOS</h4>", unsafe_allow_html=True)
         fig_oee = go.Figure(go.Indicator(
             mode = "gauge+number", value = oee_final,
-            number = {'suffix': "%", 'font': {'color': '#111', 'size': 45}},
+            title = {'text': "<span style='font-size:12px;color:gray;font-style:italic;'>Fórmula: Disp × Rend × Cal</span>"},
+            number = {'prefix': 'OEE = ', 'suffix': "%", 'font': {'color': color_oee, 'size': 42}},
             gauge = {
                 'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
                 'bar': {'color': color_oee},
@@ -412,53 +416,58 @@ with st.container():
                 'threshold': {'line': {'color': "darkblue", 'width': 4}, 'thickness': 0.75, 'value': 85}
             }
         ))
-        fig_oee.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
+        # Ajustamos el alto del gráfico a 180 para que no ocupe tanto
+        fig_oee.update_layout(height=180, margin=dict(l=10, r=10, t=20, b=10))
         st.plotly_chart(fig_oee, use_container_width=True)
 
+        # Los tres pilares: Grandes, con el color dinámico y las fórmulas
         st.markdown(f"""
-        <div style='display:flex; justify-content:space-around; background:white; padding:8px; border-radius:6px; border: 2px solid {color_oee}; margin-bottom: 10px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.1);'>
-            <div style='flex:1; border-right: 1px dashed #ccc;'>
-                <span style='font-size:11px; color:#555; font-weight:bold;'>Disponibilidad</span><br>
-                <b style='color:{color_oee}; font-size:18px;'>{min(disponibilidad, 100):.1f}%</b><br>
-                <span style='font-size:9px; color:#888;'>(HH Disp - Imp)/Disp</span>
+        <div style='display:flex; justify-content:space-around; background:white; padding:10px; border-radius:6px; border: 2px solid {color_oee}; margin-bottom: 15px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.1);'>
+            <div style='flex:1; border-right: 1px dashed #aaa;'>
+                <span style='font-size:14px; color:#555; font-weight:bold;'>DISPONIBILIDAD</span><br>
+                <b style='color:{color_oee}; font-size:24px;'>{min(disponibilidad, 100):.1f}%</b><br>
+                <span style='font-size:11px; color:#1E3A8A;'>Fórmula: (Disp - Imp) / Disp</span><br>
+                <span style='font-size:9px; color:#888; font-style:italic;'>Mide el tiempo real vs planificado</span>
             </div>
-            <div style='flex:1; border-right: 1px dashed #ccc;'>
-                <span style='font-size:11px; color:#555; font-weight:bold;'>Rendimiento</span><br>
-                <b style='color:{color_oee}; font-size:18px;'>{min(rendimiento, 100):.1f}%</b><br>
-                <span style='font-size:9px; color:#888;'>HH Std / HH Prod</span>
+            <div style='flex:1; border-right: 1px dashed #aaa;'>
+                <span style='font-size:14px; color:#555; font-weight:bold;'>RENDIMIENTO</span><br>
+                <b style='color:{color_oee}; font-size:24px;'>{min(rendimiento, 100):.1f}%</b><br>
+                <span style='font-size:11px; color:#1E3A8A;'>Fórmula: HH Std / HH Prod</span><br>
+                <span style='font-size:9px; color:#888; font-style:italic;'>Velocidad real vs estándar</span>
             </div>
             <div style='flex:1;'>
-                <span style='font-size:11px; color:#555; font-weight:bold;'>Calidad</span><br>
-                <b style='color:{color_oee}; font-size:18px;'>{calidad_sim:.1f}%</b><br>
-                <span style='font-size:9px; color:red;'>(SIMULADO)</span>
+                <span style='font-size:14px; color:#555; font-weight:bold;'>CALIDAD</span><br>
+                <b style='color:{color_oee}; font-size:24px;'>{calidad_sim:.1f}%</b><br>
+                <span style='font-size:11px; color:#1E3A8A;'>Fórmula: Piezas OK / Total</span><br>
+                <span style='font-size:9px; color:red; font-style:italic;'>(Dato Simulado)</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
-        # === FIN GRÁFICO OEE ===
+        # =========================================================================
 
-        # TUS CARTELES ORIGINALES ACHICADOS PARA QUE ENTRE EL TOP 3
+        # TUS CARTELES KPI ORIGINALES ABAJO DEL OEE
         st.markdown(f"""
         <div class="kpi-grid">
-            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 8px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0; color: #1E3A8A; font-size:13px;">EFICIENCIA REAL</h4>
-                <h2 style="margin:0; color: #111; font-size:32px;">{kpi_ef_real:.1f}%</h2>
+            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0; color: #1E3A8A; font-size:16px;">EFICIENCIA REAL</h4>
+                <h2 style="margin:5px 0 0 0; color: #111; font-size:42px;">{kpi_ef_real:.1f}%</h2>
             </div>
-            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 8px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0; color: white; font-size:13px;">EFICIENCIA PROD.</h4>
-                <h2 style="margin:0; color: white; font-size:32px;">{kpi_ef_prod:.1f}%</h2>
+            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0; color: white; font-size:16px;">EFICIENCIA PROD.</h4>
+                <h2 style="margin:5px 0 0 0; color: white; font-size:42px;">{kpi_ef_prod:.1f}%</h2>
             </div>
-            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
-                <h4 style="margin:0; color: white; font-size:18px;">COSTO HH IMPROD.</h4>
-                <p style="margin:0; color: #FFCDD2; font-size:12px;">(Oportunidad Perdida)</p>
-                <h2 style="margin:5px 0; color: #FFEB3B; font-size:38px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
-                <h4 style="margin:0; color: white; font-size:18px;">{tot_hh_imp:,.1f} <span style="font-size:14px; font-weight:normal;">HH</span></h4>
+            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
+                <h4 style="margin:0; color: white; font-size:22px;">COSTO HH IMPROD.</h4>
+                <p style="margin:0; color: #FFCDD2; font-size:14px;">(Oportunidad Perdida)</p>
+                <h2 style="margin:10px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
+                <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
             </div>
-            <div style="background: #0D47A1; color: white; padding: 8px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0 0 4px 0; font-size:12px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:3px;">🏆 TOP EF. REAL (PUESTOS)</h4>
+            <div style="background: #0D47A1; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
                 {top3_m1_html}
             </div>
-            <div style="background: #B71C1C; color: white; padding: 8px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0 0 4px 0; font-size:12px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:3px;">⚠️ TOP MAYOR HH IMP.</h4>
+            <div style="background: #B71C1C; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="margin:0 0 8px 0; font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
                 {top3_imp_html}
             </div>
         </div>
