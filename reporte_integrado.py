@@ -100,17 +100,12 @@ def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
 def safe_match(s_list, val):
-    """Filtro ESTRICTO ALFANUMÉRICO: Une positivos y negativos de 'REM 1' y 'REM.1' sin mezclar 1 con 10"""
     if pd.isna(val): return False
-    
-    # Normalización extrema: Deja solo letras y números para comparar
     v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
-    
     for s in s_list:
         s_norm = re.sub(r'[^A-Z0-9]', '', str(s).upper())
         if s_norm == v_norm and s_norm != "": 
             return True
-            
     return False
 
 def add_tendencia(ax, x, y):
@@ -173,7 +168,13 @@ try:
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    # FORZADO NUMÉRICO (Garantiza que la matemática de M1/M2 y Costos no falle)
+    # ESCUDO NIVEL DIOS: Si no encuentra la columna en el Excel, la crea para no frenar
+    if 'Es_Ultimo_Puesto' not in df_ef.columns: df_ef['Es_Ultimo_Puesto'] = 'SI'
+    if 'Planta' not in df_ef.columns: df_ef['Planta'] = 'S/D'
+    if 'Linea' not in df_ef.columns: df_ef['Linea'] = 'S/D'
+    if 'Puesto_Trabajo' not in df_ef.columns: df_ef['Puesto_Trabajo'] = 'S/D'
+    
+    # FORZADO NUMÉRICO
     for col in ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']:
         if col in df_ef.columns:
             df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
