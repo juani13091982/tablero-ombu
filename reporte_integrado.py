@@ -91,7 +91,7 @@ def mostrar_login():
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
 
 # =========================================================================
-# 3. MOTOR INTELIGENTE (ALFANUMÉRICO ESTRICTO)
+# 3. MOTOR INTELIGENTE Y FUNCIONES
 # =========================================================================
 def set_escala_y(ax, vmax, factor=1.6): 
     ax.set_ylim(0, vmax * factor if vmax > 0 else 100)
@@ -99,18 +99,16 @@ def set_escala_y(ax, vmax, factor=1.6):
 def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
+# FUNCIÓN NUEVA: Limpia las listas de filtros rapidísimo
+def normalizar_lista(s_list):
+    return [re.sub(r'[^A-Z0-9]', '', str(s).upper()) for s in s_list]
+
 def safe_match(s_list, val):
-    """Filtro ESTRICTO ALFANUMÉRICO: Une positivos y negativos de 'REM 1' y 'REM.1' sin mezclar 1 con 10"""
     if pd.isna(val): return False
-    
-    # Normalización extrema: Deja solo letras y números para comparar
     v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
-    
     for s in s_list:
         s_norm = re.sub(r'[^A-Z0-9]', '', str(s).upper())
-        if s_norm == v_norm and s_norm != "": 
-            return True
-            
+        if s_norm == v_norm and s_norm != "": return True
     return False
 
 def add_tendencia(ax, x, y):
@@ -136,20 +134,17 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS (CONEXIÓN A GOOGLE DRIVE)
+# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS CACHEADA (SÚPER RÁPIDA)
 # =========================================================================
-try:
-    # --- CONEXIÓN AUTOMÁTICA CON GOOGLE DRIVE ---
+@st.cache_data(ttl=300) # ESTO EVITA QUE DESCARGUE EL EXCEL DE GOOGLE DRIVE CADA VEZ
+def cargar_datos():
     url_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
     url_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
-    
     df_ef = pd.read_excel(url_ef)
     df_im = pd.read_excel(url_im)
-    
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    # FORZADO NUMÉRICO (Garantiza que la matemática de M1/M2 y Costos no falle)
     for col in ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']:
         if col in df_ef.columns:
             df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
@@ -162,7 +157,6 @@ try:
         df_im.rename(columns={next((c for c in df_im.columns if 'DETALLE' in c or 'OBS' in c or 'DESC' in c), df_im.columns[0]): 'DETALLE'}, inplace=True)
         
     df_im['HH_IMPRODUCTIVAS'] = pd.to_numeric(df_im['HH_IMPRODUCTIVAS'], errors='coerce').fillna(0).abs()
-    
     c_pu_det = next((c for c in df_im.columns if 'PUESTO' in c), None)
     if not c_pu_det: c_pu_det = 'PUESTO_X'
     if c_pu_det not in df_im.columns: df_im[c_pu_det] = "S/D"
@@ -196,6 +190,25 @@ try:
     df_ef['Es_Ultimo_Puesto'] = df_ef['Es_Ultimo_Puesto'].astype(str).str.strip().str.upper()
     df_ef['Mes_Str'] = df_ef['Fecha'].dt.strftime('%b-%Y')
     df_im['MES_STR'] = df_im['FECHA'].dt.strftime('%b-%Y') 
+
+    # COLUMNAS INVISIBLES DE NORMALIZACIÓN (ACELERADOR RAM)
+    def norm_s(s): return s.astype(str).str.upper().str.replace(r'[^A-Z0-9]', '', regex=True)
+    if 'Planta' in df_ef.columns: df_ef['NORM_PLANTA'] = norm_s(df_ef['Planta'])
+    if 'Linea' in df_ef.columns: df_ef['NORM_LINEA'] = norm_s(df_ef['Linea'])
+    if 'Puesto_Trabajo' in df_ef.columns: df_ef['NORM_PUESTO'] = norm_s(df_ef['Puesto_Trabajo'])
+
+    c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), None)
+    c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
+    c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), None)
+    
+    if c_pl_im: df_im['NORM_PLANTA'] = norm_s(df_im[c_pl_im])
+    if c_li_im: df_im['NORM_LINEA'] = norm_s(df_im[c_li_im])
+    if c_pu_im: df_im['NORM_PUESTO'] = norm_s(df_im[c_pu_im])
+
+    return df_ef, df_im
+
+try:
+    df_ef, df_im = cargar_datos()
 except Exception as e: 
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
@@ -217,7 +230,6 @@ with st.container():
     col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
     with col_filtros:
         st.markdown("<div style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
-        
         meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
         
@@ -233,24 +245,26 @@ with st.container():
         pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
         plantas_disp = sorted(list(pl_ef | pl_im))
         
+        # FILTRO DE PLANTA (OPTIMIZADO)
         s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Seleccionar Planta")
-        
         if s_pl:
+            norm_pl = normalizar_lista(s_pl)
             df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
-            if c_pl_im and not df_base_im.empty: 
-                df_base_im = df_base_im[df_base_im[c_pl_im].apply(lambda x: safe_match(s_pl, x))]
+            if 'NORM_PLANTA' in df_base_im.columns and not df_base_im.empty: 
+                df_base_im = df_base_im[df_base_im['NORM_PLANTA'].isin(norm_pl)]
                 
         c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
         li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
         li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
         lineas_disp = sorted(list(li_ef | li_im))
         
+        # FILTRO DE LÍNEA (OPTIMIZADO)
         s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Seleccionar Línea")
-        
         if s_li:
+            norm_li = normalizar_lista(s_li)
             df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
-            if c_li_im and not df_base_im.empty: 
-                df_base_im = df_base_im[df_base_im[c_li_im].apply(lambda x: safe_match(s_li, x))]
+            if 'NORM_LINEA' in df_base_im.columns and not df_base_im.empty: 
+                df_base_im = df_base_im[df_base_im['NORM_LINEA'].isin(norm_li)]
                 
         c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
         pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
@@ -259,47 +273,43 @@ with st.container():
         
         s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Seleccionar Puesto")
 
+    # APLICACIÓN DE FILTROS A DF FINALES (OPTIMIZADO)
     df_ef_f = df_ef.copy()
     df_im_f = df_im.copy()
     
-    if s_pl: df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
-    if s_li: df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
-    if s_pu: df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
-    if s_mes and "🎯 Acumulado YTD" not in s_mes: df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
+    if s_pl: 
+        norm_pl = normalizar_lista(s_pl)
+        df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
+        if 'NORM_PLANTA' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_PLANTA'].isin(norm_pl)]
+    
+    if s_li: 
+        norm_li = normalizar_lista(s_li)
+        df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
+        if 'NORM_LINEA' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_LINEA'].isin(norm_li)]
 
-    if not df_im_f.empty:
-        if s_pl:
-            col_pl = next((c for c in df_im_f.columns if 'PLANTA' in str(c).upper()), None)
-            if col_pl: df_im_f = df_im_f[df_im_f[col_pl].apply(lambda x: safe_match(s_pl, x))]
-        if s_li:
-            col_li = next((c for c in df_im_f.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), None)
-            if col_li: df_im_f = df_im_f[df_im_f[col_li].apply(lambda x: safe_match(s_li, x))]
-        if s_pu:
-            col_pu = next((c for c in df_im_f.columns if 'PUESTO' in str(c).upper()), None)
-            if col_pu: df_im_f = df_im_f[df_im_f[col_pu].apply(lambda x: safe_match(s_pu, x))]
-        if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-            col_mes = next((c for c in df_im_f.columns if 'MES_STR' in str(c).upper()), None)
-            if col_mes: df_im_f = df_im_f[df_im_f[col_mes].isin(s_mes)]
+    if s_pu: 
+        norm_pu = normalizar_lista(s_pu)
+        df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
+        if 'NORM_PUESTO' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_PUESTO'].isin(norm_pu)]
+
+    if s_mes and "🎯 Acumulado YTD" not in s_mes: 
+        df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
+        if 'MES_STR' in df_im_f.columns: df_im_f = df_im_f[df_im_f['MES_STR'].isin(s_mes)]
 
     warn_linea = False
-    
     if s_pu: 
         df_plot_1 = df_ef_f.copy()
     elif s_li:
         df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: 
-            df_plot_1 = df_salida
-        else: 
-            df_plot_1 = df_ef_f.copy(); warn_linea = True
+        if not df_salida.empty: df_plot_1 = df_salida
+        else: df_plot_1 = df_ef_f.copy(); warn_linea = True
     else: 
         df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: 
-            df_plot_1 = df_salida
-        else: 
-            df_plot_1 = df_ef_f.copy()
+        if not df_salida.empty: df_plot_1 = df_salida
+        else: df_plot_1 = df_ef_f.copy()
 
     # =========================================================================
-    # PRE-CÁLCULOS EXCLUSIVOS PARA TABLAS MÓVILES (MÉTRICAS 5 Y 6)
+    # PRE-CÁLCULOS EXCLUSIVOS PARA TABLAS MÓVILES
     # =========================================================================
     ag5_mobile = pd.DataFrame()
     if not df_im_f.empty:
@@ -331,7 +341,6 @@ with st.container():
         df6_mobile['Fecha_O'] = pd.to_datetime(df6_mobile['K_Mes'] + '-01')
         df6_mobile = df6_mobile.sort_values(by='Fecha_O')
 
-    # ARMADO DE TABLAS HTML PARA CELULAR
     mobile_tables_html = "<div class='mobile-only' style='margin-top: 15px;'>"
     if not ag5_mobile.empty:
         mobile_tables_html += "<div style='background: #B71C1C; padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
@@ -470,8 +479,9 @@ with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
     if not df_plot_1.empty:
-        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', 'HH_Productivas_C/GAP': 'sum'}).reset_index()
-        ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2['HH_Productivas_C/GAP']).replace([np.inf, -np.inf], 0).fillna(0) * 100
+        c_prod = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
+        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', c_prod: 'sum'}).reset_index()
+        ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[c_prod]).replace([np.inf, -np.inf], 0).fillna(0) * 100
         
         fig2, ax2 = plt.subplots(figsize=(14, 10)); ax2_line = ax2.twinx()
         fig2.subplots_adjust(top=0.80, bottom=0.22, left=0.08, right=0.92)
@@ -479,9 +489,9 @@ with col2:
         
         x_idx = np.arange(len(ag2))
         bs = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
-        bp = ax2.bar(x_idx + 0.17, ag2['HH_Productivas_C/GAP'], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        bp = ax2.bar(x_idx + 0.17, ag2[c_prod], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
-        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2['HH_Productivas_C/GAP'].max()), 1.6)
+        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2[c_prod].max()), 1.6)
         ax2.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(bp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
@@ -516,7 +526,8 @@ with col3:
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
-        c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH Productivas'
+        c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH_Productivas_C/GAP'
+        if c_prod not in df_ef_f.columns: c_prod = df_ef_f.columns[-1] # fallback
         ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
         
         if not df_im_f.empty:
