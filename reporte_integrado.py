@@ -70,7 +70,7 @@ caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), 
 # =========================================================================
 # 2. SEGURIDAD
 # =========================================================================
-USUARIOS_PERMITIDOS = {"acceso.ombu": "Gestion2026"}
+USUARIOS_PERMITIDOS = {"Métricas_Ombú": "CGP_2026"}
 if 'autenticado' not in st.session_state: st.session_state['autenticado'] = False
 
 def mostrar_login():
