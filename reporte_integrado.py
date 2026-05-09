@@ -30,52 +30,61 @@ st.markdown("""
 
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
     .kpi-costo { grid-row: span 2; }
+    .mobile-only { display: none !important; }
     
-    /* Fuerza al título a mantenerse en 1 línea siempre */
-    h3 { white-space: nowrap !important; }
-
-    /* --- REGLAS RESPONSIVAS EXCLUSIVAS PARA CELULARES --- */
+    /* --- REGLAS RESPONSIVAS DE ALTA PRECISIÓN PARA CELULARES --- */
     @media (max-width: 768px) {
-        h3 { font-size: 20px !important; }
+        .mobile-only { display: block !important; }
+        
+        /* Asegura que TODOS los bloques ocupen el 100% de la pantalla */
+        div[data-testid="stHorizontalBlock"] > div { 
+            width: 100% !important; min-width: 100% !important; 
+        }
 
-        /* 1. Invierte el orden del bloque: Pone Filtros Arriba y KPIs Abajo */
+        /* INVIERTE EL ORDEN: Filtros Arriba, KPIs Abajo */
         div[data-testid="stHorizontalBlock"]:has(.kpi-grid) {
             display: flex !important;
             flex-direction: column-reverse !important;
         }
 
-        /* 2. Convierte los Filtros en una grilla 2x2 */
-        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) {
+        /* FILTROS EN UNA SOLA FILA */
+        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) {
             display: flex !important;
-            flex-wrap: wrap !important;
-            justify-content: space-between !important;
-            padding-bottom: 10px !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 4px !important;
+            align-items: center !important;
+            margin-bottom: 10px !important;
         }
-        /* Cada selector ocupa el 48% del ancho */
-        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) > div {
-            width: 48% !important;
-            min-width: 48% !important;
+        /* Oculta la palabra "FILTROS MAESTROS" en celular para dar lugar a los 4 botones */
+        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) > div:first-child {
+            display: none !important;
         }
-        /* El ancla y el título principal de filtros ocupan todo el ancho (100%) */
-        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) > div:nth-child(1),
-        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) > div:nth-child(2) {
-            width: 100% !important;
-            min-width: 100% !important;
+        /* Fuerzo a cada selector a ocupar exactamente 25% (1/4 de la fila) */
+        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) > div {
+            flex: 1 1 25% !important;
+            min-width: 0 !important;
         }
-        [data-testid="stMultiSelect"] { margin-bottom: 5px !important; }
+        /* Achico la letra adentro del filtro para que la palabra no se corte */
+        [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
+        .stMultiSelect div[data-baseweb="select"] { font-size: 11px !important; padding: 0 !important; }
 
-        /* 3. Achica el alto y espaciado de los carteles KPI */
+        /* KPI CARDS (Optimizando espacio vacío vertical) */
         .kpi-grid { grid-template-columns: 1fr !important; gap: 6px !important; }
         .kpi-costo { grid-row: span 1 !important; }
         
-        .kpi-grid > div { padding: 6px 10px !important; }
-        .kpi-grid h4 { font-size: 13px !important; margin-bottom: -2px !important; }
-        .kpi-grid h2 { font-size: 26px !important; margin-top: 0px !important; }
+        .kpi-grid > div { padding: 4px 10px !important; } /* Padding reducido */
+        .kpi-grid h4 { font-size: 13px !important; margin-bottom: -5px !important; margin-top: 2px !important; }
+        .kpi-grid h2 { font-size: 32px !important; margin-top: 0px !important; margin-bottom: 2px !important;}
         
-        .kpi-costo { padding: 8px 10px !important; }
-        .kpi-costo h4 { font-size: 16px !important; margin-bottom: -2px !important; }
-        .kpi-costo p { font-size: 10px !important; margin-bottom: -2px !important; }
-        .kpi-costo h2 { font-size: 30px !important; margin: 2px 0 !important; }
+        .kpi-costo { padding: 4px 10px !important; }
+        .kpi-costo h4 { font-size: 15px !important; margin-bottom: -3px !important; margin-top: 2px !important;}
+        .kpi-costo p { font-size: 10px !important; margin-bottom: -2px !important; margin-top: 0px !important;}
+        .kpi-costo h2 { font-size: 34px !important; margin: 0px 0 !important; }
+
+        /* Títulos en una sola línea */
+        h3 { font-size: 18px !important; white-space: nowrap !important; margin: 0 !important;}
+        h2 { font-size: 20px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -245,12 +254,11 @@ with st.container():
 
     col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
     with col_filtros:
-        # Ancla oculta para que CSS localice y reordene los filtros en celular
-        st.markdown("<div id='mobile-filters-anchor'></div>", unsafe_allow_html=True)
-        st.markdown("<div style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
+        # Hook para CSS: Ocultamos el título principal en celular y forzamos layout flex horizontal
+        st.markdown("<div class='mobile-filter-title' style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
         
         meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
-        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
+        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
         
         df_base_ef = df_ef.copy()
         df_base_im = df_im.copy()
@@ -264,7 +272,7 @@ with st.container():
         pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
         plantas_disp = sorted(list(pl_ef | pl_im))
         
-        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Seleccionar Planta")
+        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Planta")
         if s_pl:
             norm_pl = normalizar_lista(s_pl)
             df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
@@ -276,7 +284,7 @@ with st.container():
         li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
         lineas_disp = sorted(list(li_ef | li_im))
         
-        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Seleccionar Línea")
+        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Línea")
         if s_li:
             norm_li = normalizar_lista(s_li)
             df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
@@ -288,8 +296,9 @@ with st.container():
         pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
         puestos_disp = sorted(list(pu_ef | pu_im))
         
-        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Seleccionar Puesto")
+        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Puesto")
 
+    # APLICACIÓN DE FILTROS A DF FINALES
     df_ef_f = df_ef.copy()
     df_im_f = df_im.copy()
     
@@ -354,29 +363,28 @@ with st.container():
                 top3_imp_html = "".join(filas_imp)
 
     with col_kpi:
-        # Se optimizaron los paddings y margenes internos para achicar el 'alto' de las cajas KPI
         st.markdown(f"""
         <div class="kpi-grid">
-            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 10px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0; color: #1E3A8A; font-size:16px;">EFICIENCIA REAL</h4>
-                <h2 style="margin:0; color: #111; font-size:42px;">{kpi_ef_real:.1f}%</h2>
+            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4>
+                <h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
             </div>
-            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 10px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0; color: white; font-size:16px;">EFICIENCIA PROD.</h4>
-                <h2 style="margin:0; color: white; font-size:42px;">{kpi_ef_prod:.1f}%</h2>
+            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="color: white;">EFICIENCIA PROD.</h4>
+                <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
             </div>
-            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
-                <h4 style="margin:0; color: white; font-size:22px;">COSTO HH IMPROD.</h4>
-                <p style="margin:-2px 0 0 0; color: #FFCDD2; font-size:12px;">(Oportunidad Perdida)</p>
-                <h2 style="margin:5px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
-                <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
+            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
+                <h4 style="color: white;">COSTO HH IMPROD.</h4>
+                <p style="color: #FFCDD2;">(Oportunidad Perdida)</p>
+                <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
+                <h4 style="color: white;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
             </div>
-            <div style="background: #0D47A1; color: white; padding: 10px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
+            <div style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
                 {top3_m1_html}
             </div>
-            <div style="background: #B71C1C; color: white; padding: 10px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="margin:0 0 8px 0; font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
+            <div style="background: #B71C1C; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+                <h4 style="font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
                 {top3_imp_html}
             </div>
         </div>
