@@ -26,10 +26,8 @@ st.markdown("""
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
     
-    /* Estilos de etiquetas de filtros en PC */
     div[data-testid="stMultiSelect"] label p { font-size: 15px !important; font-weight: bold !important; color: #90CAF9 !important; margin-bottom: -5px !important; }
 
-    /* GRILLA DE CARTELES (KPI) PARA PC */
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
     .kpi-ef-real { grid-column: 1; grid-row: 1; }
     .kpi-ef-prod { grid-column: 2; grid-row: 1; }
@@ -39,7 +37,6 @@ st.markdown("""
 
     h3 { white-space: nowrap !important; }
 
-    /* --- REGLAS EXCLUSIVAS PARA CELULARES Y TABLETS --- */
     @media (max-width: 1024px) {
         div[data-testid="stHorizontalBlock"]:has(form) { display: flex !important; justify-content: center !important; width: 100% !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { display: none !important; }
@@ -72,10 +69,8 @@ st.markdown("""
 plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
 efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
 efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
-caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
-caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
-caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
 # 2. SEGURIDAD
@@ -93,11 +88,9 @@ def mostrar_login():
             except: st.markdown("<h2 style='text-align:center;'>OMBÚ</h2>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center;'><h2 style='color:#1E3A8A;'>GESTIÓN INDUSTRIAL PRODUCTIVA OMBÚ S.A.</h2><p>Acceso Restringido - Control de Gestión</p></div>", unsafe_allow_html=True)
         with st.form("form_login"):
-            u_in = st.text_input("Usuario Corporativo")
-            p_in = st.text_input("Contraseña", type="password")
+            u_in, p_in = st.text_input("Usuario Corporativo"), st.text_input("Contraseña", type="password")
             if st.form_submit_button("Ingresar al Sistema", use_container_width=True):
-                if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: 
-                    st.session_state['autenticado'] = True; st.rerun()
+                if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: st.session_state['autenticado'] = True; st.rerun()
                 else: st.error("❌ Credenciales incorrectas.")
 
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
@@ -140,7 +133,11 @@ def cargar_datos():
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
+    # Asegurar conversión numérica correcta buscando columnas de estándar unitario si existen
     cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
+    c_std_u_potencial = next((c for c in df_ef.columns if 'STD_UN' in str(c).upper() or ('STD' in str(c).upper() and 'UNID' in str(c).upper())), None)
+    if c_std_u_potencial and c_std_u_potencial not in cols_numericas: cols_numericas.append(c_std_u_potencial)
+
     for col in cols_numericas:
         if col in df_ef.columns: df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
     
@@ -297,7 +294,7 @@ if not df_im_f.empty:
             top3_imp_html = "".join(filas_imp)
 
 # =========================================================================
-# CARTELES KPI
+# CARTELES KPI 
 # =========================================================================
 st.markdown(f"""
 <div class="kpi-grid">
@@ -513,7 +510,6 @@ with col5:
         x_idx = np.arange(len(ag5))
         bp = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
         
-        # Escala ajustada para evitar superposición
         set_escala_y(ax5, ag5['Prom_M'].max(), 3.5)
         ax5.bar_label(bp, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
         
@@ -526,11 +522,9 @@ with col5:
         
         for i, val in enumerate(ag5['Pct_Acu']): ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 6), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
         
-        # CARTEL DE HH IMP ACUMULADAS EN EL TABLERO
         tot_imp_acum = df_im_f['HH_IMPRODUCTIVAS'].sum()
         ax5.text(0.98, 0.95, f"HH IMP. ACUMULADAS: {tot_imp_acum:,.1f}", transform=ax5.transAxes, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#f5f5f5", ec="gray", lw=1), fontsize=13, fontweight='bold', zorder=10)
         
-        # TOP 1 RESPONSABLE POR MOTIVO EN LAS 3 PRIMERAS BARRAS
         agrup_col = orig_col_pu if orig_col_pu else 'OPERARIO'
         if s_pu: agrup_col = 'OPERARIO'
         
@@ -685,39 +679,43 @@ with col7:
     if not s_li and not s_pu:
         st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
     else:
-        # CÁLCULO DIRECTO SOBRE HH PRODUCTIVAS C/GAP Y HH STD TOTAL
+        # LA FÓRMULA PERFECTA APLICADA DIRECTO DESDE TUS DATOS DE EXCEL
         c_prod = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
-        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', c_prod:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+        c_std_u = next((c for c in df_plot_1.columns if 'STD_UN' in str(c).upper() or ('STD' in str(c).upper() and 'UNID' in str(c).upper())), None)
+        
+        if c_std_u:
+            ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', c_prod:'sum', 'Cant._Prod._A1':'sum', c_std_u:'mean'}).reset_index()
+            ag8['HH_Std_U'] = ag8[c_std_u]
+        else:
+            ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', c_prod:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+            ag8['HH_Std_U'] = ag8['HH_STD_TOTAL'] / ag8['Cant._Prod._A1']
+
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
         
         if not ag8.empty:
             ag8['HH_Real_U'] = ag8[c_prod] / ag8['Cant._Prod._A1']
-            ag8['HH_Std_U'] = ag8['HH_STD_TOTAL'] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
             fig8.subplots_adjust(top=0.82, bottom=0.15, left=0.08, right=0.92)
             fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
             
-            # LEYENDAS Y LÍNEAS
             ax8.plot(x_idx, ag8['HH_Real_U'], color='firebrick', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='HH. PRODUC._C/GAP / Unidad', zorder=5)
             ax8.plot(x_idx, ag8['HH_Std_U'], color='darkgreen', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
             
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
             
-            # ETIQUETAS Y LÍNEAS VERTICALES
             for i in range(len(x_idx)): 
-                ax8.annotate(f"{ag8['HH_Real_U'].iloc[i]:.1f}h", (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,15), ha='center', fontweight='bold', bbox=caja_o, zorder=10)
-                ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.1f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="darkgreen", lw=1.5), zorder=10)
+                ax8.annotate(f"{ag8['HH_Real_U'].iloc[i]:.2f}h", (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,15), ha='center', fontweight='bold', bbox=caja_o, zorder=10)
+                ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.2f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="darkgreen", lw=1.5), zorder=10)
                 
-                # Línea de Diferencia
                 ax8.plot([x_idx[i], x_idx[i]], [ag8['HH_Std_U'].iloc[i], ag8['HH_Real_U'].iloc[i]], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
                 diff_val = ag8['HH_Real_U'].iloc[i] - ag8['HH_Std_U'].iloc[i]
                 mid_y = (ag8['HH_Real_U'].iloc[i] + ag8['HH_Std_U'].iloc[i]) / 2
-                ax8.annotate(f"{diff_val:+.1f}h", (x_idx[i] + 0.05, mid_y), color='dodgerblue', fontweight='bold', fontsize=12, zorder=4)
+                ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.05, mid_y), color='dodgerblue', fontweight='bold', fontsize=12, zorder=4)
 
-            # CÁLCULO EXACTO DE UNIDADES GANADAS/PERDIDAS
+            # MATEMÁTICA PURA SEGÚN TU SOLICITUD
             ag8['Unid_Desvio'] = ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U']
             tot_desvio = ag8['Unid_Desvio'].sum()
             
@@ -740,7 +738,6 @@ with col7:
         else: st.warning("⚠️ Sin datos de producción (Cant. Producida) para esta selección.")
 
 with col8:
-    # ---> MÉTRICA 9: RANKING DE EFICIENCIA REAL
     st.header("9. RANKING DE EFICIENCIA REAL")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Competencia Sectorial vs Meta 85%</i></div>", unsafe_allow_html=True)
     agrupar_por = 'Puesto_Trabajo' if (s_li or s_pu) else 'Linea'
