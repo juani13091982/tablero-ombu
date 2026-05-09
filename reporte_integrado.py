@@ -23,110 +23,75 @@ st.markdown("""
         background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
         padding: 5px 10px 15px 10px !important; border-bottom: 2px solid #1E3A8A !important;
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
-        max-height: 50vh; 
-        overflow-y: auto;
     }
-    [data-testid="stMultiSelect"] {margin-bottom: -15px !important;}
-    div[data-testid="stMultiSelect"] label p { font-size: 16px !important; font-weight: bold !important; color: #90CAF9 !important; }
-
+    
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
     .kpi-costo { grid-row: span 2; }
     .mobile-only { display: none !important; }
+    h3 { white-space: nowrap !important; }
+
+    /* ==================================================================================== */
+    /* --- REGLAS RESPONSIVAS BLINDADAS (MÓVIL VERTICAL Y HORIZONTAL HASTA 1024px) --- */
+    /* ==================================================================================== */
     
-    /* ==================================================================================== */
-    /* --- ESCUDO RESPONSIVO: MÓVIL VERTICAL Y HORIZONTAL HASTA 1024px --- */
-    /* ==================================================================================== */
+    /* REGLA EXCLUSIVA PARA EL LOGIN (Evita que quede desentrado) */
+    div[data-testid="stHorizontalBlock"]:only-of-type {
+        display: flex !important; justify-content: center !important; width: 100% !important;
+    }
+    div[data-testid="stHorizontalBlock"]:only-of-type > div[data-testid="column"]:nth-child(1),
+    div[data-testid="stHorizontalBlock"]:only-of-type > div[data-testid="column"]:nth-child(3) {
+        display: none !important; /* Esconde las columnas vacías laterales en celular */
+    }
+    div[data-testid="stHorizontalBlock"]:only-of-type > div[data-testid="column"]:nth-child(2) {
+        width: 100% !important; max-width: 450px !important; min-width: 300px !important;
+    }
+
     @media (max-width: 1024px) {
         .mobile-only { display: block !important; }
         
-        /* 0. LOGIN PERFECTAMENTE CENTRADO */
-        div[data-testid="stHorizontalBlock"]:has(form) { 
-            display: flex !important; justify-content: center !important; flex-wrap: wrap !important; width: 100% !important; 
-        }
-        div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { 
-            display: none !important; /* Elimina vacíos laterales */
-        }
-        div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { 
-            width: 100% !important; max-width: 450px !important; min-width: 300px !important; flex: 1 1 100% !important;
-        }
-
-        /* Reparación Títulos: Evita que se salgan del renglón */
-        h3 { font-size: 16px !important; margin: 0px !important; white-space: normal !important; }
+        /* Títulos generales más compactos para que entren en 1 renglón */
+        h3 { font-size: 16px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
         div[data-testid="stMarkdownContainer"] h2 { font-size: 17px !important; margin-top: 5px !important; margin-bottom: 0px !important; white-space: normal !important;}
 
-        /* 1. LAYOUT PRINCIPAL: Forzamos Filtros Arriba y KPIs Abajo */
-        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            flex-direction: column-reverse !important; 
+        /* --- 1. HEADER PRINCIPAL (Mantiene Logo, Título y Botón alineados) --- */
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div[data-testid="column"] {
-            width: 100% !important;
-            min-width: 100% !important;
-            flex: 1 1 100% !important;
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div[data-testid="column"]:nth-child(1) { width: 20% !important; min-width: 20% !important; }
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div[data-testid="column"]:nth-child(2) { width: 55% !important; min-width: 55% !important; }
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div[data-testid="column"]:nth-child(3) { width: 25% !important; min-width: 25% !important; }
+
+        /* --- 2. FILTROS EN 1 SOLA FILA HORIZONTAL (El 2do bloque de columnas) --- */
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 4px !important; margin-bottom: 2px !important; margin-top: -5px !important;
+        }
+        /* Fuerza a cada uno de los 4 filtros a ocupar EXACTAMENTE el 25% */
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(2) > div[data-testid="column"] {
+            width: 25% !important; min-width: 25% !important; flex: 1 1 25% !important;
+        }
+        /* Elimina etiquetas extra y reduce la letra del selector para que todo encaje */
+        div[data-testid="stMultiSelect"] label { display: none !important; }
+        [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
+        .stMultiSelect div[data-baseweb="select"] { font-size: 11px !important; padding: 0 !important; min-height: 32px !important; height: 32px !important; overflow: hidden !important;}
+
+        /* --- 3. GRÁFICOS PROTEGIDOS (Apila todo lo demás hacia abajo, evitando aplastamiento al rotar) --- */
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) {
+            display: flex !important; flex-direction: column !important; width: 100% !important;
+        }
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) > div[data-testid="column"] {
+            width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important;
         }
 
-        /* 2. FILTROS MAESTROS: Los 4 en la misma fila horizontal SIEMPRE */
-        div[data-testid="column"]:has(#filtros-container) div[data-testid="stVerticalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 4px !important;
-            margin-bottom: 0px !important;
-            padding-bottom: 5px !important;
-            align-items: center !important;
-            width: 100% !important;
-            overflow-x: auto !important; /* Deslizable si es pantalla muy chica */
-        }
-        /* Asigna exactamente el 25% del espacio a cada botón */
-        div[data-testid="column"]:has(#filtros-container) div[data-testid="stElementContainer"] {
-            flex: 1 1 25% !important;
-            min-width: 70px !important;
-        }
-        /* Oculta los títulos exteriores y contenedores extra para ganar espacio */
-        div[data-testid="column"]:has(#filtros-container) div[data-testid="stElementContainer"]:has(.mobile-filter-title),
-        div[data-testid="column"]:has(#filtros-container) div[data-testid="stElementContainer"]:has(#filtros-container) {
-            display: none !important;
-        }
-        div[data-testid="column"]:has(#filtros-container) label { display: none !important; }
-        div[data-testid="column"]:has(#filtros-container) [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        div[data-testid="column"]:has(#filtros-container) [data-baseweb="select"] { 
-            font-size: 11px !important; padding: 0 !important; min-height: 32px !important; height: 32px !important;
-        }
-
-        /* 3. GRÁFICOS: Apilarlos uno bajo el otro y evitar aplastamiento */
-        div[data-testid="stHorizontalBlock"]:not(:has(#sticky-header)):not(:has(#kpi-col-anchor)):not(:has(form)) {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            flex-direction: column !important;
-        }
-        div[data-testid="stHorizontalBlock"]:not(:has(#sticky-header)):not(:has(#kpi-col-anchor)):not(:has(form)) > div[data-testid="column"] {
-            width: 100% !important;
-            min-width: 100% !important;
-            flex: 1 1 100% !important;
-        }
-
-        /* 4. CARTELES KPI: Ultra compactos y pegados */
-        .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
+        /* --- 4. CARTELES KPI: Ultra compactos, sin espacios vacíos --- */
+        .kpi-grid { display: flex !important; flex-direction: column !important; gap: 4px !important; margin-top: 5px !important;}
         .kpi-grid > div { padding: 4px 8px !important; }
-        .kpi-grid h4 { font-size: 14px !important; margin: 0px !important; line-height: 1.2 !important; }
+        .kpi-grid h4 { font-size: 14px !important; margin: 0px !important; line-height: 1.1 !important; }
         .kpi-grid h2 { font-size: 32px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important; }
         
-        .kpi-costo { padding: 6px 8px !important; }
-        .kpi-costo h4 { font-size: 16px !important; margin: 0px !important;}
-        .kpi-costo p { font-size: 11px !important; margin: 0px !important;}
-        .kpi-costo h2 { font-size: 38px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important;}
-        
-        /* 5. HEADER (Logo y Título): Forzamos a que queden inline y no se desarmen */
-        div[data-testid="stHorizontalBlock"]:has(#sticky-header) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(#sticky-header) > div[data-testid="column"]:nth-child(1) { width: 15% !important; min-width: 15% !important;}
-        div[data-testid="stHorizontalBlock"]:has(#sticky-header) > div[data-testid="column"]:nth-child(2) { width: 60% !important; min-width: 60% !important;}
-        div[data-testid="stHorizontalBlock"]:has(#sticky-header) > div[data-testid="column"]:nth-child(3) { width: 25% !important; min-width: 25% !important;}
+        .kpi-costo { padding: 4px 8px !important; }
+        .kpi-costo h4 { font-size: 16px !important; margin: 0px !important; line-height: 1.1 !important;}
+        .kpi-costo p { font-size: 11px !important; margin: 0px !important; line-height: 1.1 !important;}
+        .kpi-costo h2 { font-size: 36px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important;}
     }
 </style>
 """, unsafe_allow_html=True)
@@ -280,8 +245,10 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. PANEL STICKY Y FILTROS EN CASCADA UNIFICADA
+# 5. ESTRUCTURA MAESTRA REORDENADA: (HEADER -> FILTROS -> KPIs -> GRÁFICOS)
 # =========================================================================
+
+# --- A. HEADER ---
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
     h_l, h_t, h_s = st.columns([0.8, 3.5, 0.7])
@@ -289,153 +256,152 @@ with st.container():
         try: st.image("LOGO OMBÚ.jpg", width=90)
         except: st.markdown("##### OMBÚ")
     with h_t: 
-        st.markdown("<h3 style='margin:0; padding:0;'>TABLERO INTEGRADO C.G.P.</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin:0; padding:0; text-align:center;'>TABLERO INTEGRADO C.G.P.</h3>", unsafe_allow_html=True)
     with h_s:
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
 
-    col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
+# --- B. FILTROS (UBICADOS DIRECTAMENTE DEBAJO DEL HEADER SIEMPRE) ---
+meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
+f_mes, f_pl, f_li, f_pu = st.columns(4)
+
+with f_mes:
+    s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
+
+df_base_ef = df_ef.copy()
+df_base_im = df_im.copy()
+
+if s_mes and "🎯 Acumulado YTD" not in s_mes:
+    df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
+    df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
     
-    with col_kpi:
-        # Ancla oculta fundamental para aplicar la inversión de layout en móvil
-        st.markdown("<div id='kpi-col-anchor'></div>", unsafe_allow_html=True)
+c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
+pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
+pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
+plantas_disp = sorted(list(pl_ef | pl_im))
+
+with f_pl:
+    s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Planta")
+
+if s_pl:
+    norm_pl = normalizar_lista(s_pl)
+    df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
+    if 'NORM_PLANTA' in df_base_im.columns and not df_base_im.empty: 
+        df_base_im = df_base_im[df_base_im['NORM_PLANTA'].isin(norm_pl)]
         
-    with col_filtros:
-        # Contenedor y anclas de filtros
-        st.markdown("<div id='filtros-container'></div>", unsafe_allow_html=True)
-        st.markdown("<div class='mobile-filter-title' style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
+c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
+li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
+li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
+lineas_disp = sorted(list(li_ef | li_im))
+
+with f_li:
+    s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Línea")
+
+if s_li:
+    norm_li = normalizar_lista(s_li)
+    df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
+    if 'NORM_LINEA' in df_base_im.columns and not df_base_im.empty: 
+        df_base_im = df_base_im[df_base_im['NORM_LINEA'].isin(norm_li)]
         
-        meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
-        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
-        
-        df_base_ef = df_ef.copy()
-        df_base_im = df_im.copy()
-        
-        if s_mes and "🎯 Acumulado YTD" not in s_mes:
-            df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
-            df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
-            
-        c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
-        pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
-        pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
-        plantas_disp = sorted(list(pl_ef | pl_im))
-        
-        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Planta")
-        if s_pl:
-            norm_pl = normalizar_lista(s_pl)
-            df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
-            if 'NORM_PLANTA' in df_base_im.columns and not df_base_im.empty: 
-                df_base_im = df_base_im[df_base_im['NORM_PLANTA'].isin(norm_pl)]
-                
-        c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
-        li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
-        li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
-        lineas_disp = sorted(list(li_ef | li_im))
-        
-        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Línea")
-        if s_li:
-            norm_li = normalizar_lista(s_li)
-            df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
-            if 'NORM_LINEA' in df_base_im.columns and not df_base_im.empty: 
-                df_base_im = df_base_im[df_base_im['NORM_LINEA'].isin(norm_li)]
-                
-        c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
-        pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
-        pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
-        puestos_disp = sorted(list(pu_ef | pu_im))
-        
-        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Puesto")
+c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
+pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
+pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
+puestos_disp = sorted(list(pu_ef | pu_im))
 
-    df_ef_f = df_ef.copy()
-    df_im_f = df_im.copy()
-    
-    if s_pl: 
-        norm_pl = normalizar_lista(s_pl)
-        df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
-        if 'NORM_PLANTA' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_PLANTA'].isin(norm_pl)]
-    
-    if s_li: 
-        norm_li = normalizar_lista(s_li)
-        df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
-        if 'NORM_LINEA' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_LINEA'].isin(norm_li)]
+with f_pu:
+    s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Puesto")
 
-    if s_pu: 
-        norm_pu = normalizar_lista(s_pu)
-        df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
-        if 'NORM_PUESTO' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_PUESTO'].isin(norm_pu)]
+# APLICACIÓN DE FILTROS A DF FINALES
+df_ef_f = df_ef.copy()
+df_im_f = df_im.copy()
 
-    if s_mes and "🎯 Acumulado YTD" not in s_mes: 
-        df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
-        if 'MES_STR' in df_im_f.columns: df_im_f = df_im_f[df_im_f['MES_STR'].isin(s_mes)]
+if s_pl: 
+    norm_pl = normalizar_lista(s_pl)
+    df_ef_f = df_ef_f[df_ef_f['Planta'].isin(s_pl)]
+    if 'NORM_PLANTA' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_PLANTA'].isin(norm_pl)]
 
-    warn_linea = False
-    if s_pu: 
-        df_plot_1 = df_ef_f.copy()
-    elif s_li:
-        df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: df_plot_1 = df_salida
-        else: df_plot_1 = df_ef_f.copy(); warn_linea = True
-    else: 
-        df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
-        if not df_salida.empty: df_plot_1 = df_salida
-        else: df_plot_1 = df_ef_f.copy()
+if s_li: 
+    norm_li = normalizar_lista(s_li)
+    df_ef_f = df_ef_f[df_ef_f['Linea'].isin(s_li)]
+    if 'NORM_LINEA' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_LINEA'].isin(norm_li)]
 
-    # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
-    tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
-    tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
-    
-    tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-    tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-    tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
-    
-    kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
-    kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+if s_pu: 
+    norm_pu = normalizar_lista(s_pu)
+    df_ef_f = df_ef_f[df_ef_f['Puesto_Trabajo'].isin(s_pu)]
+    if 'NORM_PUESTO' in df_im_f.columns: df_im_f = df_im_f[df_im_f['NORM_PUESTO'].isin(norm_pu)]
 
-    top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
-    if not df_ef_f.empty:
-        ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
-        ag_p['Ef'] = (ag_p['HH_STD_TOTAL'] / ag_p['HH_Disponibles'] * 100).fillna(0)
-        top3_val = ag_p['Ef'].nlargest(3)
-        if not top3_val.empty:
-            filas = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9; font-size:14px;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
-            top3_m1_html = "".join(filas)
+if s_mes and "🎯 Acumulado YTD" not in s_mes: 
+    df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
+    if 'MES_STR' in df_im_f.columns: df_im_f = df_im_f[df_im_f['MES_STR'].isin(s_mes)]
 
-    top3_imp_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
-    if not df_im_f.empty:
-        c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
-        if c_pu_im_top:
-            ag_imp_p = df_im_f.groupby(c_pu_im_top)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
-            if not ag_imp_p.empty:
-                filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
-                top3_imp_html = "".join(filas_imp)
+warn_linea = False
+if s_pu: 
+    df_plot_1 = df_ef_f.copy()
+elif s_li:
+    df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
+    if not df_salida.empty: df_plot_1 = df_salida
+    else: df_plot_1 = df_ef_f.copy(); warn_linea = True
+else: 
+    df_salida = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']
+    if not df_salida.empty: df_plot_1 = df_salida
+    else: df_plot_1 = df_ef_f.copy()
 
-    with col_kpi:
-        st.markdown(f"""
-        <div class="kpi-grid">
-            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4>
-                <h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
-            </div>
-            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="color: white;">EFICIENCIA PROD.</h4>
-                <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
-            </div>
-            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
-                <h4 style="color: white;">COSTO HH IMPROD.</h4>
-                <p style="color: #FFCDD2;">(Oportunidad Perdida)</p>
-                <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
-                <h4 style="color: white;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
-            </div>
-            <div class="mobile-only" style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
-                <h4 style="font-size:12px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">🏆 TOP EF. REAL (PUESTOS)</h4>
-                {top3_m1_html}
-            </div>
-            <div class="mobile-only" style="background: #B71C1C; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
-                <h4 style="font-size:12px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">⚠️ TOP MAYOR HH IMP.</h4>
-                {top3_imp_html}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+# CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
+tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
+tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
+
+tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
+tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+
+kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
+
+top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
+if not df_ef_f.empty:
+    ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
+    ag_p['Ef'] = (ag_p['HH_STD_TOTAL'] / ag_p['HH_Disponibles'] * 100).fillna(0)
+    top3_val = ag_p['Ef'].nlargest(3)
+    if not top3_val.empty:
+        filas = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#90CAF9; font-size:14px;'>{v:.1f}%</strong></div>" for i, (p, v) in enumerate(top3_val.items(), 1)]
+        top3_m1_html = "".join(filas)
+
+top3_imp_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
+if not df_im_f.empty:
+    c_pu_im_top = next((c for c in df_im_f.columns if 'PUESTO' in c), df_im_f.columns[2] if len(df_im_f.columns)>2 else None)
+    if c_pu_im_top:
+        ag_imp_p = df_im_f.groupby(c_pu_im_top)['HH_IMPRODUCTIVAS'].sum().nlargest(3)
+        if not ag_imp_p.empty:
+            filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
+            top3_imp_html = "".join(filas_imp)
+
+# --- C. CARTELES KPI ---
+st.markdown(f"""
+<div class="kpi-grid">
+    <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+        <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4>
+        <h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
+    </div>
+    <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+        <h4 style="color: white;">EFICIENCIA PROD.</h4>
+        <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
+    </div>
+    <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
+        <h4 style="color: white;">COSTO HH IMPROD.</h4>
+        <p style="color: #FFCDD2;">(Oportunidad Perdida)</p>
+        <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
+        <h4 style="color: white;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
+    </div>
+    <div class="mobile-only" style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
+        <h4 style="font-size:12px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">🏆 TOP EF. REAL (PUESTOS)</h4>
+        {top3_m1_html}
+    </div>
+    <div class="mobile-only" style="background: #B71C1C; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
+        <h4 style="font-size:12px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">⚠️ TOP MAYOR HH IMP.</h4>
+        {top3_imp_html}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+'.join(s_li) if s_li else 'Todas'} | Puesto: {'+'.join(s_pu) if s_pu else 'Todos'}"
 
