@@ -30,16 +30,52 @@ st.markdown("""
 
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
     .kpi-costo { grid-row: span 2; }
-    .mobile-only { display: none !important; }
     
+    /* Fuerza al título a mantenerse en 1 línea siempre */
+    h3 { white-space: nowrap !important; }
+
+    /* --- REGLAS RESPONSIVAS EXCLUSIVAS PARA CELULARES --- */
     @media (max-width: 768px) {
-        .mobile-only { display: block !important; }
-        [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
-        [data-testid="stHorizontalBlock"] > div { width: 100% !important; min-width: 100% !important; }
-        .kpi-grid { grid-template-columns: 1fr !important; }
+        h3 { font-size: 20px !important; }
+
+        /* 1. Invierte el orden del bloque: Pone Filtros Arriba y KPIs Abajo */
+        div[data-testid="stHorizontalBlock"]:has(.kpi-grid) {
+            display: flex !important;
+            flex-direction: column-reverse !important;
+        }
+
+        /* 2. Convierte los Filtros en una grilla 2x2 */
+        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            justify-content: space-between !important;
+            padding-bottom: 10px !important;
+        }
+        /* Cada selector ocupa el 48% del ancho */
+        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) > div {
+            width: 48% !important;
+            min-width: 48% !important;
+        }
+        /* El ancla y el título principal de filtros ocupan todo el ancho (100%) */
+        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) > div:nth-child(1),
+        div[data-testid="stVerticalBlock"]:has(#mobile-filters-anchor) > div:nth-child(2) {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+        [data-testid="stMultiSelect"] { margin-bottom: 5px !important; }
+
+        /* 3. Achica el alto y espaciado de los carteles KPI */
+        .kpi-grid { grid-template-columns: 1fr !important; gap: 6px !important; }
         .kpi-costo { grid-row: span 1 !important; }
-        .kpi-grid h2 { font-size: 28px !important; }
-        .kpi-grid h4 { font-size: 14px !important; }
+        
+        .kpi-grid > div { padding: 6px 10px !important; }
+        .kpi-grid h4 { font-size: 13px !important; margin-bottom: -2px !important; }
+        .kpi-grid h2 { font-size: 26px !important; margin-top: 0px !important; }
+        
+        .kpi-costo { padding: 8px 10px !important; }
+        .kpi-costo h4 { font-size: 16px !important; margin-bottom: -2px !important; }
+        .kpi-costo p { font-size: 10px !important; margin-bottom: -2px !important; }
+        .kpi-costo h2 { font-size: 30px !important; margin: 2px 0 !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -81,7 +117,6 @@ def set_escala_y(ax, vmax, factor=1.6):
 def dibujar_meses(ax, n_meses):
     for i in range(n_meses): ax.axvline(x=i, color='lightgray', linestyle='--', linewidth=1, zorder=0)
 
-# FUNCIÓN NUEVA: Limpia las listas de filtros rapidísimo
 def normalizar_lista(s_list):
     return [re.sub(r'[^A-Z0-9]', '', str(s).upper()) for s in s_list]
 
@@ -118,7 +153,7 @@ def generar_accion_sugerida(detalle):
 # =========================================================================
 # 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS CACHEADA (SÚPER RÁPIDA)
 # =========================================================================
-@st.cache_data(ttl=300) # ESTO EVITA QUE DESCARGUE EL EXCEL DE GOOGLE DRIVE CADA VEZ
+@st.cache_data(ttl=300)
 def cargar_datos():
     url_ef = "https://docs.google.com/spreadsheets/d/1_kO7GtjnlGHYgMnY7pkJGdRuFRAJB8xp8pGj8I0jq5E/export?format=xlsx"
     url_im = "https://docs.google.com/spreadsheets/d/1GwshvXAotIShBPcX69vlE8_juO6w5aAFBCaXEsgSdCY/export?format=xlsx"
@@ -173,7 +208,6 @@ def cargar_datos():
     df_ef['Mes_Str'] = df_ef['Fecha'].dt.strftime('%b-%Y')
     df_im['MES_STR'] = df_im['FECHA'].dt.strftime('%b-%Y') 
 
-    # COLUMNAS INVISIBLES DE NORMALIZACIÓN (ACELERADOR RAM)
     def norm_s(s): return s.astype(str).str.upper().str.replace(r'[^A-Z0-9]', '', regex=True)
     if 'Planta' in df_ef.columns: df_ef['NORM_PLANTA'] = norm_s(df_ef['Planta'])
     if 'Linea' in df_ef.columns: df_ef['NORM_LINEA'] = norm_s(df_ef['Linea'])
@@ -211,7 +245,10 @@ with st.container():
 
     col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
     with col_filtros:
+        # Ancla oculta para que CSS localice y reordene los filtros en celular
+        st.markdown("<div id='mobile-filters-anchor'></div>", unsafe_allow_html=True)
         st.markdown("<div style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
+        
         meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Seleccionar Mes")
         
@@ -227,7 +264,6 @@ with st.container():
         pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
         plantas_disp = sorted(list(pl_ef | pl_im))
         
-        # FILTRO DE PLANTA (OPTIMIZADO)
         s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Seleccionar Planta")
         if s_pl:
             norm_pl = normalizar_lista(s_pl)
@@ -240,7 +276,6 @@ with st.container():
         li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
         lineas_disp = sorted(list(li_ef | li_im))
         
-        # FILTRO DE LÍNEA (OPTIMIZADO)
         s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Seleccionar Línea")
         if s_li:
             norm_li = normalizar_lista(s_li)
@@ -255,7 +290,6 @@ with st.container():
         
         s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Seleccionar Puesto")
 
-    # APLICACIÓN DE FILTROS A DF FINALES (OPTIMIZADO)
     df_ef_f = df_ef.copy()
     df_im_f = df_im.copy()
     
@@ -290,60 +324,6 @@ with st.container():
         if not df_salida.empty: df_plot_1 = df_salida
         else: df_plot_1 = df_ef_f.copy()
 
-    # =========================================================================
-    # PRE-CÁLCULOS EXCLUSIVOS PARA TABLAS MÓVILES
-    # =========================================================================
-    ag5_mobile = pd.DataFrame()
-    if not df_im_f.empty:
-        ag5_mobile = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
-        nm_m = df_im_f['FECHA'].nunique()
-        div_m = nm_m if nm_m > 0 else 1
-        ag5_mobile['Prom_M'] = ag5_mobile['HH_IMPRODUCTIVAS'] / div_m
-        ag5_mobile = ag5_mobile.sort_values(by='Prom_M', ascending=False)
-        ag5_mobile['Pct_Acu'] = (ag5_mobile['Prom_M'].cumsum() / ag5_mobile['Prom_M'].sum()) * 100
-
-    df6_mobile = pd.DataFrame()
-    if not df_ef_f.empty:
-        df_ef_m = df_ef_f.copy()
-        df_ef_m['K_Mes'] = df_ef_m['Fecha'].dt.strftime('%Y-%m')
-        ag_disp_m = df_ef_m.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
-        
-        if not df_im_f.empty:
-            df_im_m = df_im_f.copy()
-            df_im_m['K_Mes'] = df_im_m['FECHA'].dt.strftime('%Y-%m')
-            piv_m = pd.pivot_table(df_im_m, values='HH_IMPRODUCTIVAS', index='K_Mes', columns='TIPO_PARADA', aggfunc='sum').fillna(0).reset_index()
-            df6_mobile = pd.merge(ag_disp_m, piv_m, on='K_Mes', how='left').fillna(0)
-            list_c_m = [c for c in df6_mobile.columns if c not in ['HH_Disponibles', 'K_Mes']]
-        else: 
-            df6_mobile = ag_disp_m.copy()
-            list_c_m = []
-            
-        df6_mobile['Suma_I'] = df6_mobile[list_c_m].sum(axis=1) if list_c_m else 0
-        df6_mobile['Inc_%'] = (df6_mobile['Suma_I'] / df6_mobile['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
-        df6_mobile['Fecha_O'] = pd.to_datetime(df6_mobile['K_Mes'] + '-01')
-        df6_mobile = df6_mobile.sort_values(by='Fecha_O')
-
-    mobile_tables_html = "<div class='mobile-only' style='margin-top: 15px;'>"
-    if not ag5_mobile.empty:
-        mobile_tables_html += "<div style='background: #B71C1C; padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
-        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#FFCDD2; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📊 5. PARETO DE CAUSAS (MÓVIL)</h4>"
-        mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
-        mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Motivo</th> <th style='text-align:right; padding:6px;'>HH</th> <th style='text-align:right; padding:6px;'>% Acum</th> </tr>"
-        for _, row in ag5_mobile.iterrows():
-            motivo = str(row['TIPO_PARADA'])[:20] + (".." if len(str(row['TIPO_PARADA'])) > 20 else "")
-            mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{motivo}</td> <td style='text-align:right; padding:6px;'>{row['Prom_M']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold;'>{row['Pct_Acu']:.1f}%</td> </tr>"
-        mobile_tables_html += "</table></div>"
-
-    if not df6_mobile.empty:
-        mobile_tables_html += "<div style='background: #0D47A1; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);'>"
-        mobile_tables_html += "<h4 style='margin:0 0 10px 0; text-align:center; font-size:16px; color:#BBDEFB; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;'>📈 6. EVOLUCIÓN INCIDENCIA (MÓVIL)</h4>"
-        mobile_tables_html += "<table style='width:100%; border-collapse: collapse; font-size:13px;'>"
-        mobile_tables_html += "<tr style='border-bottom: 1px solid rgba(255,255,255,0.3);'> <th style='text-align:left; padding:6px;'>Mes</th> <th style='text-align:right; padding:6px;'>HH Imp</th> <th style='text-align:right; padding:6px;'>Incid.</th> </tr>"
-        for _, row in df6_mobile.iterrows():
-            mobile_tables_html += f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.1);'> <td style='padding:6px;'>{row['K_Mes']}</td> <td style='text-align:right; padding:6px;'>{row['Suma_I']:.1f}</td> <td style='text-align:right; padding:6px; font-weight:bold; color:#FFCDD2;'>{row['Inc_%']:.1f}%</td> </tr>"
-        mobile_tables_html += "</table></div>"
-    mobile_tables_html += "</div>"
-
     # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
     tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
     tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
@@ -374,32 +354,32 @@ with st.container():
                 top3_imp_html = "".join(filas_imp)
 
     with col_kpi:
+        # Se optimizaron los paddings y margenes internos para achicar el 'alto' de las cajas KPI
         st.markdown(f"""
         <div class="kpi-grid">
-            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+            <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; padding: 10px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
                 <h4 style="margin:0; color: #1E3A8A; font-size:16px;">EFICIENCIA REAL</h4>
-                <h2 style="margin:5px 0 0 0; color: #111; font-size:42px;">{kpi_ef_real:.1f}%</h2>
+                <h2 style="margin:0; color: #111; font-size:42px;">{kpi_ef_real:.1f}%</h2>
             </div>
-            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 15px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+            <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; padding: 10px; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
                 <h4 style="margin:0; color: white; font-size:16px;">EFICIENCIA PROD.</h4>
-                <h2 style="margin:5px 0 0 0; color: white; font-size:42px;">{kpi_ef_prod:.1f}%</h2>
+                <h2 style="margin:0; color: white; font-size:42px;">{kpi_ef_prod:.1f}%</h2>
             </div>
-            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
+            <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
                 <h4 style="margin:0; color: white; font-size:22px;">COSTO HH IMPROD.</h4>
-                <p style="margin:0; color: #FFCDD2; font-size:14px;">(Oportunidad Perdida)</p>
-                <h2 style="margin:10px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
+                <p style="margin:-2px 0 0 0; color: #FFCDD2; font-size:12px;">(Oportunidad Perdida)</p>
+                <h2 style="margin:5px 0; color: #FFEB3B; font-size:48px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
                 <h4 style="margin:0; color: white; font-size:22px;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
             </div>
-            <div style="background: #0D47A1; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+            <div style="background: #0D47A1; color: white; padding: 10px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
                 <h4 style="margin:0 0 8px 0; font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
                 {top3_m1_html}
             </div>
-            <div style="background: #B71C1C; color: white; padding: 15px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+            <div style="background: #B71C1C; color: white; padding: 10px; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
                 <h4 style="margin:0 0 8px 0; font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
                 {top3_imp_html}
             </div>
         </div>
-        {mobile_tables_html}
         """, unsafe_allow_html=True)
 
 t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+'.join(s_li) if s_li else 'Todas'} | Puesto: {'+'.join(s_pu) if s_pu else 'Todos'}"
