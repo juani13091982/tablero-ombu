@@ -133,7 +133,6 @@ def cargar_datos():
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    # Asegurar conversión numérica correcta buscando columnas de estándar unitario si existen
     cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
     c_std_u_potencial = next((c for c in df_ef.columns if 'STD_UN' in str(c).upper() or ('STD' in str(c).upper() and 'UNID' in str(c).upper())), None)
     if c_std_u_potencial and c_std_u_potencial not in cols_numericas: cols_numericas.append(c_std_u_potencial)
@@ -263,6 +262,17 @@ else:
     else: df_plot_1 = df_ef_f.copy(); warn_linea = True if s_li else False
 
 # =========================================================================
+# BLINDAJE DE COLUMNA DE HH PRODUCTIVAS TOTALES
+# =========================================================================
+col_prod_tot = 'HH_Productivas_C/GAP'
+for c in df_ef_f.columns:
+    c_upper = str(c).upper()
+    # Buscamos la columna de totales, excluyendo cualquier columna que diga UNID o UNIT
+    if 'PROD' in c_upper and 'GAP' in c_upper and 'UNID' not in c_upper and '/ U' not in c_upper:
+        col_prod_tot = c
+        break
+
+# =========================================================================
 # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
 # =========================================================================
 tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
@@ -270,7 +280,7 @@ tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
 
 tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
 tot_disp_eficiencia = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
-tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
+tot_prod = df_plot_1[col_prod_tot].sum() if (col_prod_tot in df_plot_1.columns and not df_plot_1.empty) else 0
 
 kpi_ef_real = (tot_std / tot_disp_eficiencia * 100) if tot_disp_eficiencia > 0 else 0
 kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
@@ -375,9 +385,8 @@ with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
     if not df_plot_1.empty:
-        c_prod = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
-        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', c_prod: 'sum'}).reset_index()
-        ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[c_prod]).replace([np.inf, -np.inf], 0).fillna(0) * 100
+        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', col_prod_tot: 'sum'}).reset_index()
+        ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[col_prod_tot]).replace([np.inf, -np.inf], 0).fillna(0) * 100
         
         fig2, ax2 = plt.subplots(figsize=(14, 10)); ax2_line = ax2.twinx()
         fig2.subplots_adjust(top=0.80, bottom=0.22, left=0.08, right=0.92)
@@ -385,9 +394,9 @@ with col2:
         
         x_idx = np.arange(len(ag2))
         bs = ax2.bar(x_idx - 0.17, ag2['HH_STD_TOTAL'], 0.35, color='midnightblue', edgecolor='white', label='HH STD TOTAL', zorder=2)
-        bp = ax2.bar(x_idx + 0.17, ag2[c_prod], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        bp = ax2.bar(x_idx + 0.17, ag2[col_prod_tot], 0.35, color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
         
-        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2[c_prod].max()), 1.6)
+        set_escala_y(ax2, max(ag2['HH_STD_TOTAL'].max(), ag2[col_prod_tot].max()), 1.6)
         ax2.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(bp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
@@ -416,24 +425,22 @@ with col3:
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
-        c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH_Productivas_C/GAP'
-        if c_prod not in df_ef_f.columns: c_prod = df_ef_f.columns[-1]
-        ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
+        ag3 = df_ef_f.groupby('Fecha').agg({col_prod_tot: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
         
         if not df_im_f.empty:
             ag_im = df_im_f.groupby('FECHA')['HH_IMPRODUCTIVAS'].sum().reset_index().rename(columns={'FECHA':'Fecha', 'HH_IMPRODUCTIVAS':'HH_Imp'})
             ag3 = pd.merge(ag3, ag_im, on='Fecha', how='left').fillna(0)
         else: ag3['HH_Imp'] = 0
             
-        ag3['Total_Decl'] = ag3[c_prod] + ag3['HH_Imp']
+        ag3['Total_Decl'] = ag3[col_prod_tot] + ag3['HH_Imp']
         
         fig3, ax3 = plt.subplots(figsize=(14, 10))
         fig3.subplots_adjust(top=0.82, bottom=0.15, left=0.06, right=0.94)
         fig3.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(ag3))
-        bp = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
-        bi = ax3.bar(x_idx, ag3['HH_Imp'], bottom=ag3[c_prod], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
+        bp = ax3.bar(x_idx, ag3[col_prod_tot], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
+        bi = ax3.bar(x_idx, ag3['HH_Imp'], bottom=ag3[col_prod_tot], color='firebrick', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
         ax3.bar_label(bp, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
         ax3.bar_label(bi, label_type='center', color='white', fontweight='bold', fmt='%.0f', zorder=4)
         
@@ -673,27 +680,29 @@ st.markdown("<br>", unsafe_allow_html=True)
 col7, col8 = st.columns(2)
 
 with col7:
-    # ---> MÉTRICA 8: ESTABILIDAD DEL PROCESO
+    # ---> MÉTRICA 8: ESTABILIDAD DEL PROCESO Y CHASIS PERDIDOS
     st.header("8. ESTABILIDAD DEL PROCESO")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
     if not s_li and not s_pu:
         st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
     else:
-        # LA FÓRMULA PERFECTA APLICADA DIRECTO DESDE TUS DATOS DE EXCEL
-        c_prod = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
-        c_std_u = next((c for c in df_plot_1.columns if 'STD_UN' in str(c).upper() or ('STD' in str(c).upper() and 'UNID' in str(c).upper())), None)
+        # CÁLCULO DIRECTO Y PERFECTO SOBRE COLUMNA TOTAL, EXCLUYENDO POR COMPLETO LAS COLUMNAS YA DIVIDIDAS
+        c_std_u = next((c for c in df_plot_1.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
+        
+        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         
         if c_std_u:
-            ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', c_prod:'sum', 'Cant._Prod._A1':'sum', c_std_u:'mean'}).reset_index()
+            ag_std_u = df_plot_1.groupby('Fecha')[c_std_u].mean().reset_index()
+            ag8 = pd.merge(ag8, ag_std_u, on='Fecha', how='left')
             ag8['HH_Std_U'] = ag8[c_std_u]
         else:
-            ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', c_prod:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
             ag8['HH_Std_U'] = ag8['HH_STD_TOTAL'] / ag8['Cant._Prod._A1']
-
+            
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
         
         if not ag8.empty:
-            ag8['HH_Real_U'] = ag8[c_prod] / ag8['Cant._Prod._A1']
+            # DIVISIÓN LIMPIA UNA SOLA VEZ SOBRE LOS TOTALES
+            ag8['HH_Real_U'] = ag8[col_prod_tot] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
             fig8.subplots_adjust(top=0.82, bottom=0.15, left=0.08, right=0.92)
@@ -715,8 +724,8 @@ with col7:
                 mid_y = (ag8['HH_Real_U'].iloc[i] + ag8['HH_Std_U'].iloc[i]) / 2
                 ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.05, mid_y), color='dodgerblue', fontweight='bold', fontsize=12, zorder=4)
 
-            # MATEMÁTICA PURA SEGÚN TU SOLICITUD
-            ag8['Unid_Desvio'] = ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U']
+            # CÁLCULO EXACTO A PRUEBA DE BALAS DE UNIDADES GANADAS/PERDIDAS
+            ag8['Unid_Desvio'] = np.where(ag8['HH_Std_U'] > 0, ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U'], 0)
             tot_desvio = ag8['Unid_Desvio'].sum()
             
             if tot_desvio < 0:
