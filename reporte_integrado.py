@@ -17,6 +17,7 @@ st.markdown("""
     header, [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="manage-app-button"], 
     #MainMenu, footer, .stAppDeployButton, .viewerBadge_container {display: none !important; visibility: hidden !important;}
     .block-container {padding-top: 1rem !important; padding-bottom: 1.5rem !important;}
+    
     div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
         position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
         background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
@@ -31,101 +32,101 @@ st.markdown("""
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
     .kpi-costo { grid-row: span 2; }
     .mobile-only { display: none !important; }
-    h3 { white-space: nowrap !important; }
-
+    
     /* ==================================================================================== */
-    /* --- REGLAS RESPONSIVAS DE ALTA PRECISIÓN (MÓVIL VERTICAL Y HORIZONTAL) --- */
+    /* --- ESCUDO RESPONSIVO: MÓVIL VERTICAL Y HORIZONTAL HASTA 1024px --- */
     /* ==================================================================================== */
     @media (max-width: 1024px) {
         .mobile-only { display: block !important; }
         
-        /* --- 0. LOGIN CENTRADO PERFECTO EN CELULAR --- */
+        /* 0. LOGIN PERFECTAMENTE CENTRADO */
         div[data-testid="stHorizontalBlock"]:has(form) { 
-            display: flex !important; justify-content: center !important; width: 100% !important; 
+            display: flex !important; justify-content: center !important; flex-wrap: wrap !important; width: 100% !important; 
         }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { 
-            display: none !important; /* Elimina las columnas vacías que desconfiguran el centro */
+            display: none !important; /* Elimina vacíos laterales */
         }
         div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { 
-            width: 100% !important; max-width: 450px !important; min-width: 300px !important; 
+            width: 100% !important; max-width: 450px !important; min-width: 300px !important; flex: 1 1 100% !important;
         }
 
-        /* Títulos generales más compactos para que entren en 1 renglón */
-        h3 { font-size: 16px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
-        div[data-testid="stMarkdownContainer"] h2 { font-size: 16px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; margin-top: 5px !important; margin-bottom: 0px !important;}
+        /* Reparación Títulos: Evita que se salgan del renglón */
+        h3 { font-size: 16px !important; margin: 0px !important; white-space: normal !important; }
+        div[data-testid="stMarkdownContainer"] h2 { font-size: 17px !important; margin-top: 5px !important; margin-bottom: 0px !important; white-space: normal !important;}
 
-        /* --- 1. SECCIÓN SUPERIOR: Fuerza Filtros Arriba y KPIs Abajo SIEMPRE --- */
+        /* 1. LAYOUT PRINCIPAL: Forzamos Filtros Arriba y KPIs Abajo */
         div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) {
             display: flex !important;
+            flex-wrap: wrap !important;
             flex-direction: column-reverse !important; 
         }
-        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div {
+        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div[data-testid="column"] {
             width: 100% !important;
             min-width: 100% !important;
+            flex: 1 1 100% !important;
         }
 
-        /* --- 2. FILTROS: Los 4 en la misma fila horizontal obligatoriamente --- */
-        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) {
+        /* 2. FILTROS MAESTROS: Los 4 en la misma fila horizontal SIEMPRE */
+        div[data-testid="column"]:has(#filtros-container) div[data-testid="stVerticalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             gap: 4px !important;
-            margin-bottom: 5px !important;
+            margin-bottom: 0px !important;
+            padding-bottom: 5px !important;
             align-items: center !important;
             width: 100% !important;
+            overflow-x: auto !important; /* Deslizable si es pantalla muy chica */
         }
-        /* Oculta el contenedor del título "FILTROS MAESTROS" para usar todo el ancho de pantalla */
-        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) > div:has(.mobile-filter-title) {
+        /* Asigna exactamente el 25% del espacio a cada botón */
+        div[data-testid="column"]:has(#filtros-container) div[data-testid="stElementContainer"] {
+            flex: 1 1 25% !important;
+            min-width: 70px !important;
+        }
+        /* Oculta los títulos exteriores y contenedores extra para ganar espacio */
+        div[data-testid="column"]:has(#filtros-container) div[data-testid="stElementContainer"]:has(.mobile-filter-title),
+        div[data-testid="column"]:has(#filtros-container) div[data-testid="stElementContainer"]:has(#filtros-container) {
             display: none !important;
         }
-        /* Asigna exactamente el 25% de ancho a cada filtro */
-        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) > div {
-            flex: 1 1 25% !important;
-            width: 25% !important;
-            min-width: 0 !important;
+        div[data-testid="column"]:has(#filtros-container) label { display: none !important; }
+        div[data-testid="column"]:has(#filtros-container) [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
+        div[data-testid="column"]:has(#filtros-container) [data-baseweb="select"] { 
+            font-size: 11px !important; padding: 0 !important; min-height: 32px !important; height: 32px !important;
         }
-        /* Oculta el texto exterior del filtro y compacta el cajón interior */
-        div[data-testid="stMultiSelect"] label { display: none !important; }
-        [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 10px !important; padding: 0 !important; min-height: 32px !important; }
 
-        /* --- 3. GRÁFICOS: Forzados a usar el 100% del ancho siempre --- */
-        div[data-testid="stHorizontalBlock"]:has(h2) {
+        /* 3. GRÁFICOS: Apilarlos uno bajo el otro y evitar aplastamiento */
+        div[data-testid="stHorizontalBlock"]:not(:has(#sticky-header)):not(:has(#kpi-col-anchor)):not(:has(form)) {
             display: flex !important;
+            flex-wrap: wrap !important;
             flex-direction: column !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(h2) > div {
+        div[data-testid="stHorizontalBlock"]:not(:has(#sticky-header)):not(:has(#kpi-col-anchor)):not(:has(form)) > div[data-testid="column"] {
             width: 100% !important;
             min-width: 100% !important;
+            flex: 1 1 100% !important;
         }
-    }
 
-    /* --- CELULAR VERTICAL (Menos de 768px de ancho) --- */
-    @media (max-width: 768px) {
-        .kpi-grid { display: flex !important; flex-direction: column !important; gap: 4px !important; }
+        /* 4. CARTELES KPI: Ultra compactos y pegados */
+        .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
         .kpi-grid > div { padding: 4px 8px !important; }
-        .kpi-grid h4 { font-size: 14px !important; margin: 0px !important; }
-        .kpi-grid h2 { font-size: 30px !important; margin: 0px !important; white-space: normal !important; overflow: visible !important;}
+        .kpi-grid h4 { font-size: 14px !important; margin: 0px !important; line-height: 1.2 !important; }
+        .kpi-grid h2 { font-size: 32px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important; }
         
         .kpi-costo { padding: 6px 8px !important; }
         .kpi-costo h4 { font-size: 16px !important; margin: 0px !important;}
         .kpi-costo p { font-size: 11px !important; margin: 0px !important;}
-        .kpi-costo h2 { font-size: 34px !important; margin: 0px !important; white-space: normal !important; overflow: visible !important;}
-    }
-
-    /* --- CELULAR HORIZONTAL / TABLET (De 769px a 1024px) --- */
-    @media (min-width: 769px) and (max-width: 1024px) {
-        .kpi-grid { display: grid !important; grid-template-columns: 1fr 1fr 1.3fr !important; gap: 6px !important; }
-        .kpi-costo { grid-row: span 2 !important; }
+        .kpi-costo h2 { font-size: 38px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important;}
         
-        .kpi-grid > div { padding: 4px 6px !important; }
-        .kpi-grid h4 { font-size: 12px !important; margin: 0px !important; }
-        .kpi-grid h2 { font-size: 24px !important; margin: 0px !important; }
-        
-        .kpi-costo { padding: 4px 6px !important; }
-        .kpi-costo h4 { font-size: 14px !important; margin: 0px !important;}
-        .kpi-costo p { font-size: 10px !important; margin: 0px !important;}
-        .kpi-costo h2 { font-size: 28px !important; margin: 0px !important; }
+        /* 5. HEADER (Logo y Título): Forzamos a que queden inline y no se desarmen */
+        div[data-testid="stHorizontalBlock"]:has(#sticky-header) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(#sticky-header) > div[data-testid="column"]:nth-child(1) { width: 15% !important; min-width: 15% !important;}
+        div[data-testid="stHorizontalBlock"]:has(#sticky-header) > div[data-testid="column"]:nth-child(2) { width: 60% !important; min-width: 60% !important;}
+        div[data-testid="stHorizontalBlock"]:has(#sticky-header) > div[data-testid="column"]:nth-child(3) { width: 25% !important; min-width: 25% !important;}
     }
 </style>
 """, unsafe_allow_html=True)
@@ -296,10 +297,13 @@ with st.container():
     col_kpi, col_filtros = st.columns([3.5, 1], gap="large")
     
     with col_kpi:
+        # Ancla oculta fundamental para aplicar la inversión de layout en móvil
         st.markdown("<div id='kpi-col-anchor'></div>", unsafe_allow_html=True)
         
     with col_filtros:
-        st.markdown("<div class='mobile-filter-title'></div>", unsafe_allow_html=True)
+        # Contenedor y anclas de filtros
+        st.markdown("<div id='filtros-container'></div>", unsafe_allow_html=True)
+        st.markdown("<div class='mobile-filter-title' style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
         
         meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
