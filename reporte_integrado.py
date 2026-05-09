@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.subplots as plt_subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -41,12 +42,10 @@ st.markdown("""
 
     /* --- REGLAS EXCLUSIVAS PARA CELULARES Y TABLETS --- */
     @media (max-width: 1024px) {
-        /* LOGIN CENTRADO */
         div[data-testid="stHorizontalBlock"]:has(form) { display: flex !important; justify-content: center !important; width: 100% !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { width: 100% !important; max-width: 450px !important; }
 
-        /* HEADER Y FILTROS EN EL CELULAR */
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 5px !important; }
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { width: 20% !important; }
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 60% !important; }
@@ -55,17 +54,16 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"]:has(#filtro-row) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2px !important; margin-top: 0px !important; }
         div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { width: 25% !important; flex: 1 1 25% !important; padding: 0 !important; }
         
-        /* ELIMINAR PALABRAS CELESTES EN CELULAR */
-        div[data-testid="stHorizontalBlock"]:has(#filtro-row) label { display: none !important; }
+        div[data-testid="stMultiSelect"] label { display: none !important; }
+        div[data-testid="stMultiSelect"] label p { display: none !important; }
+        [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
         .stMultiSelect div[data-baseweb="select"] { font-size: 14px !important; padding: 0 !important; min-height: 40px !important; height: 40px !important; }
 
-        /* CARTELES GIGANTES */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
         .kpi-grid h2 { font-size: 48px !important; line-height: 1.0 !important; }
         .kpi-grid h4 { font-size: 18px !important; margin-bottom: 0px !important; }
         .kpi-costo h2 { font-size: 52px !important; }
         
-        /* GRÁFICOS AL 100% */
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) { display: flex !important; flex-direction: column !important; width: 100% !important; }
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) > div[data-testid="column"] { width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important; }
     }
@@ -139,17 +137,13 @@ def cargar_datos():
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    # Identificar la COLUMNA M (Índice 12 en arrays de 0) para "Tiempo Real / Unidad" con Horas Ocultas
     col_m_name = df_ef.columns[12] if len(df_ef.columns) > 12 else None
-    
-    # Forzar conversión numérica de columnas clave
     cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
     if col_m_name and col_m_name not in cols_numericas: cols_numericas.append(col_m_name)
 
     for col in cols_numericas:
         if col in df_ef.columns: df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
     
-    # Asignar explícitamente la columna M a una variable interna de uso seguro
     df_ef['HH_REAL_COL_M'] = df_ef[col_m_name] if col_m_name else 0
 
     if 'TIPO_PARADA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c), df_im.columns[0]): 'TIPO_PARADA'}, inplace=True)
@@ -190,10 +184,10 @@ def cargar_datos():
     if c_li_im: df_im['NORM_LINEA'] = norm_s(df_im[c_li_im])
     if c_pu_im: df_im['NORM_PUESTO'] = norm_s(df_im[c_pu_im])
 
-    return df_ef, df_im
+    return df_ef, df_im, c_pl_im, c_li_im, c_pu_im
 
 try:
-    df_ef, df_im = cargar_datos()
+    df_ef, df_im, orig_col_pl, orig_col_li, orig_col_pu = cargar_datos()
 except Exception as e: 
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
@@ -222,9 +216,8 @@ with st.container():
         df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
         df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
         
-    c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
     pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
-    pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
+    pl_im = set(df_base_im[orig_col_pl].dropna().astype(str).unique()) if orig_col_pl and not df_base_im.empty else set()
     
     with f_pl: s_pl = st.multiselect("Planta", sorted(list(pl_ef | pl_im)), placeholder="🏭 Planta")
         
@@ -233,9 +226,8 @@ with st.container():
         df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
         if 'NORM_PLANTA' in df_base_im.columns and not df_base_im.empty: df_base_im = df_base_im[df_base_im['NORM_PLANTA'].isin(norm_pl)]
             
-    c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
     li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
-    li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
+    li_im = set(df_base_im[orig_col_li].dropna().astype(str).unique()) if orig_col_li and not df_base_im.empty else set()
     
     with f_li: s_li = st.multiselect("Línea", sorted(list(li_ef | li_im)), placeholder="⚙️ Línea")
         
@@ -244,9 +236,8 @@ with st.container():
         df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
         if 'NORM_LINEA' in df_base_im.columns and not df_base_im.empty: df_base_im = df_base_im[df_base_im['NORM_LINEA'].isin(norm_li)]
             
-    c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
     pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
-    pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
+    pu_im = set(df_base_im[orig_col_pu].dropna().astype(str).unique()) if orig_col_pu and not df_base_im.empty else set()
     
     with f_pu: s_pu = st.multiselect("Puesto", sorted(list(pu_ef | pu_im)), placeholder="🛠️ Puesto")
 
@@ -268,7 +259,7 @@ if s_mes and "🎯 Acumulado YTD" not in s_mes:
     df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
     if 'MES_STR' in df_im_f.columns: df_im_f = df_im_f[df_im_f['MES_STR'].isin(s_mes)]
 
-# REGLA DE ORO: df_plot_1 SIRVE EXCLUSIVAMENTE PARA EFICIENCIA DE LÍNEA (Usa 'Ultimo Puesto')
+# REGLA DE ORO: df_plot_1 SIRVE EXCLUSIVAMENTE PARA EFICIENCIA DE LÍNEA
 warn_linea = False
 if s_pu: df_plot_1 = df_ef_f.copy()
 else: 
@@ -282,7 +273,6 @@ else:
 tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
 tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
 
-# EFICIENCIAS: Usan df_plot_1 (Solo ultimo puesto para no duplicar horas de la misma línea en producción)
 tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
 tot_disp_eficiencia = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
 tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
@@ -290,7 +280,6 @@ tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in
 kpi_ef_real = (tot_std / tot_disp_eficiencia * 100) if tot_disp_eficiencia > 0 else 0
 kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
-# CARTELES TOP 3
 top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
 if not df_ef_f.empty:
     ag_p = df_ef_f.groupby('Puesto_Trabajo').agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'})
@@ -525,17 +514,40 @@ with col5:
         
         x_idx = np.arange(len(ag5))
         bp = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
-        set_escala_y(ax5, ag5['Prom_M'].max(), 2.8)
+        
+        # AUMENTAMOS EL YLIM PARA DEJAR MUCHO AIRE ARRIBA PARA EL TEXTO VERTICAL
+        set_escala_y(ax5, ag5['Prom_M'].max(), 3.5)
         ax5.bar_label(bp, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
         
         ax5_line.plot(x_idx, ag5['Pct_Acu'], color='red', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, zorder=5)
         ax5_line.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1)
         ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) 
         
+        # ETIQUETAS DEL EJE X
         lbls = [textwrap.fill(str(t), 20) for t in ag5['TIPO_PARADA']]
         ax5.set_xticks(x_idx); ax5.set_xticklabels(lbls, rotation=45, ha='right', fontsize=11, fontweight='bold')
         
+        # ETIQUETAS DE LA LÍNEA ROJA
         for i, val in enumerate(ag5['Pct_Acu']): ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 6), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
+        
+        # 1) CARTEL SUTIL (TOTAL HH IMP ACUMULADAS)
+        tot_imp_acum = df_im_f['HH_IMPRODUCTIVAS'].sum()
+        ax5.text(0.98, 0.95, f"HH IMP. ACUMULADAS: {tot_imp_acum:,.1f}", transform=ax5.transAxes, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#f5f5f5", ec="gray", lw=1), fontsize=13, fontweight='bold', zorder=10)
+        
+        # 2) TOP 1 RESPONSABLE EN LAS 3 PRIMERAS BARRAS (VERTICAL)
+        agrup_col = orig_col_pu if orig_col_pu else 'OPERARIO'
+        if s_pu: agrup_col = 'OPERARIO' # Si filtró por puesto, mostramos el operario
+        
+        top3_causas = ag5['TIPO_PARADA'].head(3).tolist()
+        for i, causa in enumerate(top3_causas):
+            df_c = df_im_f[df_im_f['TIPO_PARADA'] == causa]
+            if not df_c.empty and agrup_col in df_c.columns:
+                top_name = df_c.groupby(agrup_col)['HH_IMPRODUCTIVAS'].sum().idxmax()
+                top_val = df_c.groupby(agrup_col)['HH_IMPRODUCTIVAS'].sum().max()
+                # Imprimir texto vertical arriba de la barra
+                y_pos = ag5['Prom_M'].iloc[i] + (ag5['Prom_M'].max() * 0.1)
+                ax5.text(i, y_pos, f"🚨 {top_name}\n({top_val:.1f}h)", rotation=90, ha='center', va='bottom', color='darkred', fontsize=11, fontweight='bold', bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.8), zorder=15)
+                
         agregar_sello_agua(fig5); st.pyplot(fig5, use_container_width=True)
     else: st.success("✅ ¡Felicitaciones! Cero horas improductivas en este periodo.")
 
@@ -558,7 +570,8 @@ with col6:
         df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
         
         fig6, ax6 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.72, bottom=0.15, left=0.06, right=0.94)
+        # 3) DEJAMOS MUCHO AIRE ARRIBA PARA QUE NADA SE SOLAPE
+        fig6.subplots_adjust(top=0.60, bottom=0.15, left=0.06, right=0.94) 
         fig6.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(df6))
@@ -570,21 +583,27 @@ with col6:
                 lbls_stk = [f"{int(v)}" if v > 0 else "" for v in vals]
                 ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
                 base_st += vals
-            ax6.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=4, framealpha=0.9, fontsize=11)
+            # LEYENDA A TODO LO ANCHO
+            ax6.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=4, framealpha=0.9, fontsize=12)
         else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
             
-        set_escala_y(ax6, df6['Suma_I'].max(), 1.8) 
-        for i in range(len(x_idx)):
-            v_i, v_d = df6['Suma_I'].iloc[i], df6['HH_Disponibles'].iloc[i]
-            if v_i > 0: ax6.annotate(f"Imp: {int(v_i)}\nDisp: {int(v_d)}", (i, v_i + (ax6.get_ylim()[1]*0.02)), ha='center', bbox=caja_o, fontweight='bold', zorder=10)
-                
+        set_escala_y(ax6, df6['Suma_I'].max(), 3.0) 
+        
+        # LÍNEA ROJA Y SUS ETIQUETAS (POR ENCIMA DE LA LÍNEA)
         ax6_line = ax6.twinx(); ax6_line.plot(x_idx, df6['Inc_%'], color='red', marker='o', markersize=12, linewidth=6, path_effects=efecto_b, label='% Incidencia', zorder=5)
         add_tendencia(ax6_line, x_idx, df6['Inc_%'])
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
         ax6_line.text(x_idx[-1] if len(x_idx)>0 else 0, 16, 'META = 15%', color='white', bbox=caja_v, fontsize=14, fontweight='bold', zorder=10, ha='right', va='bottom')
         
         for i, val in enumerate(df6['Inc_%']): 
-            if df6['Suma_I'].iloc[i] > 0: ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val + 2), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
+            if df6['Suma_I'].iloc[i] > 0: 
+                ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val), textcoords="offset points", xytext=(0, 20), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
+        
+        # ETIQUETAS IMP/DISP FIJAS EN LA PARTE SUPERIOR (PARA NO PISAR LAS BARRAS NI LA LÍNEA ROJA)
+        altura_fija_etiquetas = df6['Suma_I'].max() * 1.3
+        for i in range(len(x_idx)):
+            v_i, v_d = df6['Suma_I'].iloc[i], df6['HH_Disponibles'].iloc[i]
+            if v_i > 0: ax6.annotate(f"Imp: {int(v_i)}\nDisp: {int(v_d)}", (i, altura_fija_etiquetas), ha='center', bbox=caja_o, fontweight='bold', zorder=10)
                 
         ax6.set_xticks(x_idx); ax6.set_xticklabels(df6['K_Mes'], fontsize=14, fontweight='bold')
         ax6_line.set_ylim(0, max(30, df6['Inc_%'].max() * 1.5))
@@ -687,14 +706,44 @@ with col7:
             fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
             
-            ax8.plot(x_idx, ag8['HH_Real_U'], color='firebrick', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='Tiempo REAL / Unidad', zorder=5)
+            # 4) CAMBIO DE NOMBRE DE LA LEYENDA A 'HH. PRODUC._C/GAP / Unidad'
+            ax8.plot(x_idx, ag8['HH_Real_U'], color='firebrick', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='HH. PRODUC._C/GAP / Unidad', zorder=5)
             ax8.plot(x_idx, ag8['HH_Std_U'], color='darkgreen', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
             
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
             
-            for i in range(len(x_idx)): ax8.annotate(f"{ag8['HH_Real_U'].iloc[i]:.1f}h", (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,15), ha='center', fontweight='bold', bbox=caja_o)
+            # 4) ETIQUETAS DE DATOS Y LÍNEAS VERTICALES DE DESVÍO
+            for i in range(len(x_idx)): 
+                ax8.annotate(f"{ag8['HH_Real_U'].iloc[i]:.1f}h", (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,15), ha='center', fontweight='bold', bbox=caja_o, zorder=10)
+                ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.1f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="darkgreen", lw=1.5), zorder=10)
+                
+                # Línea Vertical
+                ax8.plot([x_idx[i], x_idx[i]], [ag8['HH_Std_U'].iloc[i], ag8['HH_Real_U'].iloc[i]], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
+                
+                # Diferencia flotante al lado de la línea
+                diff_val = ag8['HH_Real_U'].iloc[i] - ag8['HH_Std_U'].iloc[i]
+                mid_y = (ag8['HH_Real_U'].iloc[i] + ag8['HH_Std_U'].iloc[i]) / 2
+                ax8.annotate(f"{diff_val:+.1f}h", (x_idx[i] + 0.05, mid_y), color='dodgerblue', fontweight='bold', fontsize=12, zorder=4)
+
+            # 4) CÁLCULO DE UNIDADES GANADAS / PERDIDAS Y CARTEL CENTRAL
+            ag8['Unid_Desvio'] = ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U']
+            tot_desvio = ag8['Unid_Desvio'].sum()
             
+            if tot_desvio < 0:
+                cartel_txt = f"🏆 UNIDADES GANADAS: {abs(tot_desvio):.1f}"
+                cartel_col = "#1B5E20"
+            else:
+                cartel_txt = f"⚠️ UNIDADES PERDIDAS: {abs(tot_desvio):.1f}"
+                cartel_col = "#B71C1C"
+                
+            ax8.text(0.5, 0.95, cartel_txt, transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=16, fontweight='bold', zorder=20)
+            
+            # Ampliar la escala para que el cartel no pise la gráfica
+            min_y = min(ag8['HH_Real_U'].min(), ag8['HH_Std_U'].min()) * 0.8
+            max_y = max(ag8['HH_Real_U'].max(), ag8['HH_Std_U'].max()) * 1.3
+            ax8.set_ylim(min_y, max_y)
+
             ax8.set_xticks(x_idx); ax8.set_xticklabels(ag8['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
             ax8.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True)
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
