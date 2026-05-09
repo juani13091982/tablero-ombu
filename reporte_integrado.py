@@ -75,7 +75,7 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 60% !important; min-width: 60% !important; margin-bottom: 0px !important;}
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { width: 20% !important; min-width: 20% !important; margin-bottom: 0px !important;}
 
-        /* FILTROS EN 1 SOLA FILA HORIZONTAL CON 25% CADA UNO */
+        /* FILTROS EN 1 SOLA FILA HORIZONTAL Y PEGADOS */
         div[data-testid="stHorizontalBlock"]:has(#filtro-row) {
             display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2px !important; overflow: hidden !important; margin-top: 0px !important;
         }
@@ -84,7 +84,8 @@ st.markdown("""
         }
         
         /* OCULTAR LETRAS DE FILTROS EN CELULAR (SOLO QUEDAN ICONOS) */
-        div[data-testid="stHorizontalBlock"]:has(#filtro-row) label { display: none !important; }
+        div[data-testid="stMultiSelect"] label { display: none !important; }
+        div[data-testid="stMultiSelect"] label p { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
         .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 38px !important; height: 38px !important; overflow: hidden !important;}
 
@@ -261,7 +262,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. BLOQUE PEGAJOSO (HEADER Y FILTROS FIJOS)
+# 5. BLOQUE PEGAJOSO (HEADER Y FILTROS FIJOS AL SCROLLEAR)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -278,7 +279,7 @@ with st.container():
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
 
-    # --- FILA 2: FILTROS MAESTROS (Con etiquetas en PC, ocultas en móvil) ---
+    # --- FILA 2: FILTROS MAESTROS (Con etiquetas en PC, solo iconos en móvil) ---
     st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
     
@@ -525,7 +526,7 @@ with col2:
 st.markdown("---")
 
 # =========================================================================
-# 7. GRÁFICOS MÉTRICAS 3 Y 4
+# 7. GRÁFICOS MÉTRICAS 3 Y 4 (CON CÁLCULOS ACUMULADOS EN CARTELES)
 # =========================================================================
 col3, col4 = st.columns(2)
 with col3:
@@ -534,7 +535,7 @@ with col3:
     
     if not df_ef_f.empty:
         c_prod = 'HH_Productivas' if 'HH_Productivas' in df_ef_f.columns else 'HH_Productivas_C/GAP'
-        if c_prod not in df_ef_f.columns: c_prod = df_ef_f.columns[-1] # fallback
+        if c_prod not in df_ef_f.columns: c_prod = df_ef_f.columns[-1]
         ag3 = df_ef_f.groupby('Fecha').agg({c_prod: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
         
         if not df_im_f.empty:
@@ -545,9 +546,11 @@ with col3:
             
         ag3['Total_Decl'] = ag3[c_prod] + ag3['HH_Imp']
         
+        # MÁRGENES AMPLIADOS
         fig3, ax3 = plt.subplots(figsize=(14, 10))
-        fig3.subplots_adjust(top=0.80, bottom=0.22, left=0.08, right=0.92)
-        fig3.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig3.subplots_adjust(top=0.82, bottom=0.15, left=0.06, right=0.94)
+        fig3.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        
         x_idx = np.arange(len(ag3))
         
         bp = ax3.bar(x_idx, ag3[c_prod], color='darkgreen', edgecolor='white', label='HH PRODUCTIVAS', zorder=2)
@@ -557,6 +560,10 @@ with col3:
         
         ax3.plot(x_idx, ag3['HH_Disponibles'], color='black', marker='D', markersize=12, linewidth=4, path_effects=efecto_b, label='HH DISPONIBLES', zorder=5)
         set_escala_y(ax3, ag3['HH_Disponibles'].max(), 1.6); dibujar_meses(ax3, len(x_idx))
+
+        # CÁLCULO Y CARTEL DE GAP ACUMULADO FLOTANTE EN ESPACIO BLANCO
+        tot_gap = ag3['HH_Disponibles'].sum() - ag3['Total_Decl'].sum()
+        ax3.text(0.01, 0.98, f" GAP ACUMULADO: {int(tot_gap):,} HH ", transform=ax3.transAxes, fontsize=14, color='firebrick', bbox=dict(boxstyle="round,pad=0.4", fc="#FFEBEE", ec="firebrick", lw=2), fontweight='bold', zorder=20, va='top', ha='left')
 
         for i in range(len(x_idx)):
             hd, ht = ag3['HH_Disponibles'].iloc[i], ag3['Total_Decl'].iloc[i]; gap = hd - ht
@@ -582,9 +589,10 @@ with col4:
         else: 
             ag4['HH_Imp'] = 0
 
+        # MÁRGENES AMPLIADOS
         fig4, ax4 = plt.subplots(figsize=(14, 10)); ax4_line = ax4.twinx()
-        fig4.subplots_adjust(top=0.80, bottom=0.22, left=0.08, right=0.92)
-        fig4.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig4.subplots_adjust(top=0.82, bottom=0.15, left=0.06, right=0.94)
+        fig4.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(ag4))
         bi = ax4.bar(x_idx, ag4['HH_Imp'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
@@ -595,6 +603,11 @@ with col4:
         add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
         ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3))
         ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
+
+        # CÁLCULO Y CARTEL DE COSTOS ACUMULADOS FLOTANTE EN ESPACIO BLANCO
+        tot_imp = ag4['HH_Imp'].sum()
+        tot_cost = ag4['Costo_Improd._$'].sum()
+        ax4.text(0.01, 0.98, f" HH IMPROD. ACUM.: {tot_imp:,.1f} HH  |  COSTO ACUM.: ${tot_cost:,.0f} ", transform=ax4.transAxes, fontsize=14, color='maroon', bbox=dict(boxstyle="round,pad=0.4", fc="#FFEBEE", ec="maroon", lw=2), fontweight='bold', zorder=20, va='top', ha='left')
 
         for i, val in enumerate(ag4['Costo_Improd._$']): 
             ax4_line.annotate(f"${val:,.0f}", (x_idx[i], val + (ax4_line.get_ylim()[1]*0.04)), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
@@ -608,7 +621,7 @@ with col4:
 st.markdown("---")
 
 # =========================================================================
-# 8. GRÁFICOS MÉTRICAS 5 Y 6
+# 8. GRÁFICOS MÉTRICAS 5 Y 6 (CON MEJORA DE ROTACIÓN DE TEXTOS EN PARETO)
 # =========================================================================
 col5, col6 = st.columns(2)
 with col5:
@@ -621,9 +634,10 @@ with col5:
         ag5['Prom_M'] = ag5['HH_IMPRODUCTIVAS'] / div; ag5 = ag5.sort_values(by='Prom_M', ascending=False)
         ag5['Pct_Acu'] = (ag5['Prom_M'].cumsum() / ag5['Prom_M'].sum()) * 100
         
+        # MÁRGENES AMPLIADOS EN EL EJE INFERIOR PARA QUE ENTREN LAS LETRAS INCLINADAS
         fig5, ax5 = plt.subplots(figsize=(14, 10)); ax5_line = ax5.twinx()
-        fig5.subplots_adjust(top=0.75, bottom=0.28, left=0.08, right=0.92)
-        fig5.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig5.subplots_adjust(top=0.80, bottom=0.35, left=0.06, right=0.92)
+        fig5.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(ag5))
         bp = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
@@ -634,11 +648,13 @@ with col5:
         ax5_line.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1)
         ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) 
         
-        lbls = [textwrap.fill(str(t), 12) for t in ag5['TIPO_PARADA']]
-        ax5.set_xticks(x_idx); ax5.set_xticklabels(lbls, rotation=90, fontsize=12, fontweight='bold')
+        # TEXTOS INCLINADOS A 45° PARA QUE NO SE PISEN
+        lbls = [textwrap.fill(str(t), 20) for t in ag5['TIPO_PARADA']]
+        ax5.set_xticks(x_idx)
+        ax5.set_xticklabels(lbls, rotation=45, ha='right', fontsize=11, fontweight='bold')
         
         for i, val in enumerate(ag5['Pct_Acu']): 
-            ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 4), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
+            ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 6), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
             
         agregar_sello_agua(fig5); st.pyplot(fig5, use_container_width=True)
     else: st.success("✅ ¡Felicitaciones! Cero horas improductivas en este periodo.")
@@ -663,9 +679,10 @@ with col6:
         df6['Inc_%'] = (df6['Suma_I'] / df6['HH_Disponibles'] * 100).replace([np.inf, -np.inf], 0).fillna(0)
         df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
         
+        # MÁRGENES AMPLIADOS
         fig6, ax6 = plt.subplots(figsize=(14, 10))
-        fig6.subplots_adjust(top=0.68, bottom=0.22, left=0.08, right=0.92)
-        fig6.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+        fig6.subplots_adjust(top=0.72, bottom=0.15, left=0.06, right=0.94)
+        fig6.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(df6))
         
