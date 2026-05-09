@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.subplots as plt_subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -137,13 +136,17 @@ def cargar_datos():
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
+    # Identificar la COLUMNA M (Índice 12 en arrays de 0) para "Tiempo Real / Unidad" con Horas Ocultas
     col_m_name = df_ef.columns[12] if len(df_ef.columns) > 12 else None
+    
+    # Forzar conversión numérica de columnas clave
     cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
     if col_m_name and col_m_name not in cols_numericas: cols_numericas.append(col_m_name)
 
     for col in cols_numericas:
         if col in df_ef.columns: df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
     
+    # Asignar explícitamente la columna M a una variable interna de uso seguro
     df_ef['HH_REAL_COL_M'] = df_ef[col_m_name] if col_m_name else 0
 
     if 'TIPO_PARADA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c), df_im.columns[0]): 'TIPO_PARADA'}, inplace=True)
