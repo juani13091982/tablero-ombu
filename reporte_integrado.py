@@ -31,54 +31,77 @@ st.markdown("""
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
     .kpi-costo { grid-row: span 2; }
     .mobile-only { display: none !important; }
-    
-    /* Fuerza al título a mantenerse en 1 línea siempre */
     h3 { white-space: nowrap !important; }
 
     /* ==================================================================================== */
-    /* --- REGLAS RESPONSIVAS DE ALTA PRECISIÓN (VERTICAL Y HORIZONTAL HASTA 1024px) --- */
+    /* --- REGLAS RESPONSIVAS DE ALTA PRECISIÓN (MÓVIL VERTICAL Y HORIZONTAL) --- */
     /* ==================================================================================== */
     @media (max-width: 1024px) {
         .mobile-only { display: block !important; }
         
-        /* Achicamos todos los títulos generales para que entren en 1 renglón */
+        /* --- 0. LOGIN CENTRADO PERFECTO EN CELULAR --- */
+        div[data-testid="stHorizontalBlock"]:has(form) { 
+            display: flex !important; justify-content: center !important; width: 100% !important; 
+        }
+        div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { 
+            display: none !important; /* Elimina las columnas vacías que desconfiguran el centro */
+        }
+        div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { 
+            width: 100% !important; max-width: 450px !important; min-width: 300px !important; 
+        }
+
+        /* Títulos generales más compactos para que entren en 1 renglón */
         h3 { font-size: 16px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
         div[data-testid="stMarkdownContainer"] h2 { font-size: 16px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; margin-top: 5px !important; margin-bottom: 0px !important;}
 
-        /* 1. SECCIÓN SUPERIOR -> Obligamos a que apile con Filtros arriba y KPIs abajo */
+        /* --- 1. SECCIÓN SUPERIOR: Fuerza Filtros Arriba y KPIs Abajo SIEMPRE --- */
         div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) {
             display: flex !important;
             flex-direction: column-reverse !important; 
         }
-        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div[data-testid="column"] {
+        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div {
             width: 100% !important;
             min-width: 100% !important;
         }
 
-        /* 2. FILTROS -> Los 4 en la misma fila obligatoriamente */
-        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div[data-testid="column"]:nth-child(2) > div[data-testid="stVerticalBlock"] {
+        /* --- 2. FILTROS: Los 4 en la misma fila horizontal obligatoriamente --- */
+        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             gap: 4px !important;
             margin-bottom: 5px !important;
             align-items: center !important;
+            width: 100% !important;
         }
-        /* Oculta la palabra "FILTROS MAESTROS" para ganar todo el ancho de la fila */
-        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div[data-testid="column"]:nth-child(2) > div[data-testid="stVerticalBlock"] > div:first-child {
+        /* Oculta el contenedor del título "FILTROS MAESTROS" para usar todo el ancho de pantalla */
+        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) > div:has(.mobile-filter-title) {
             display: none !important;
         }
-        /* Cada selector ocupa el 25% de la fila exacta */
-        div[data-testid="stHorizontalBlock"]:has(#kpi-col-anchor) > div[data-testid="column"]:nth-child(2) > div[data-testid="stVerticalBlock"] > div {
+        /* Asigna exactamente el 25% de ancho a cada filtro */
+        div[data-testid="stVerticalBlock"]:has(.mobile-filter-title) > div {
             flex: 1 1 25% !important;
+            width: 25% !important;
             min-width: 0 !important;
         }
-        /* Saca la etiqueta que dice "Mes", "Planta" de arriba del cajón (se ve adentro) y compacta el alto */
+        /* Oculta el texto exterior del filtro y compacta el cajón interior */
         div[data-testid="stMultiSelect"] label { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 11px !important; padding: 0 !important; min-height: 32px !important; }
+        .stMultiSelect div[data-baseweb="select"] { font-size: 10px !important; padding: 0 !important; min-height: 32px !important; }
 
-        /* 3. CARTELES KPI -> Reducción brutal de espacios en alto */
+        /* --- 3. GRÁFICOS: Forzados a usar el 100% del ancho siempre --- */
+        div[data-testid="stHorizontalBlock"]:has(h2) {
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(h2) > div {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+    }
+
+    /* --- CELULAR VERTICAL (Menos de 768px de ancho) --- */
+    @media (max-width: 768px) {
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 4px !important; }
         .kpi-grid > div { padding: 4px 8px !important; }
         .kpi-grid h4 { font-size: 14px !important; margin: 0px !important; }
@@ -88,16 +111,21 @@ st.markdown("""
         .kpi-costo h4 { font-size: 16px !important; margin: 0px !important;}
         .kpi-costo p { font-size: 11px !important; margin: 0px !important;}
         .kpi-costo h2 { font-size: 34px !important; margin: 0px !important; white-space: normal !important; overflow: visible !important;}
+    }
 
-        /* 4. GRAFICOS -> Forzamos 100% de ancho incluso cuando rotás el celular */
-        div[data-testid="stHorizontalBlock"]:has(h2) {
-            display: flex !important;
-            flex-direction: column !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(h2) > div[data-testid="column"] {
-            width: 100% !important;
-            min-width: 100% !important;
-        }
+    /* --- CELULAR HORIZONTAL / TABLET (De 769px a 1024px) --- */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .kpi-grid { display: grid !important; grid-template-columns: 1fr 1fr 1.3fr !important; gap: 6px !important; }
+        .kpi-costo { grid-row: span 2 !important; }
+        
+        .kpi-grid > div { padding: 4px 6px !important; }
+        .kpi-grid h4 { font-size: 12px !important; margin: 0px !important; }
+        .kpi-grid h2 { font-size: 24px !important; margin: 0px !important; }
+        
+        .kpi-costo { padding: 4px 6px !important; }
+        .kpi-costo h4 { font-size: 14px !important; margin: 0px !important;}
+        .kpi-costo p { font-size: 10px !important; margin: 0px !important;}
+        .kpi-costo h2 { font-size: 28px !important; margin: 0px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -271,7 +299,7 @@ with st.container():
         st.markdown("<div id='kpi-col-anchor'></div>", unsafe_allow_html=True)
         
     with col_filtros:
-        st.markdown("<div class='mobile-filter-title' style='color:#4B8BBE; font-size:16px; font-weight:bold; margin-bottom:5px;'>🎛️ FILTROS MAESTROS</div>", unsafe_allow_html=True)
+        st.markdown("<div class='mobile-filter-title'></div>", unsafe_allow_html=True)
         
         meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
@@ -394,12 +422,12 @@ with st.container():
                 <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
                 <h4 style="color: white;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
             </div>
-            <div style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">🏆 TOP EF. REAL (PUESTOS)</h4>
+            <div class="mobile-only" style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
+                <h4 style="font-size:12px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">🏆 TOP EF. REAL (PUESTOS)</h4>
                 {top3_m1_html}
             </div>
-            <div style="background: #B71C1C; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
-                <h4 style="font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">⚠️ TOP MAYOR HH IMP.</h4>
+            <div class="mobile-only" style="background: #B71C1C; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
+                <h4 style="font-size:12px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">⚠️ TOP MAYOR HH IMP.</h4>
                 {top3_imp_html}
             </div>
         </div>
