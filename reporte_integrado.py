@@ -18,10 +18,11 @@ st.markdown("""
     #MainMenu, footer, .stAppDeployButton, .viewerBadge_container {display: none !important; visibility: hidden !important;}
     .block-container {padding-top: 1rem !important; padding-bottom: 1.5rem !important;}
     
+    /* CAJA PEGAJOSA PARA EL HEADER Y LOS FILTROS */
     div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
         position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
         background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
-        padding: 5px 10px 15px 10px !important; border-bottom: 2px solid #1E3A8A !important;
+        padding: 5px 10px 10px 10px !important; border-bottom: 2px solid #1E3A8A !important;
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
     
@@ -34,55 +35,53 @@ st.markdown("""
     /* --- REGLAS RESPONSIVAS BLINDADAS (MÓVIL VERTICAL Y HORIZONTAL HASTA 1024px) --- */
     /* ==================================================================================== */
     
-    /* REGLA EXCLUSIVA PARA EL LOGIN (Evita que quede desentrado) */
-    div[data-testid="stHorizontalBlock"]:only-of-type {
+    /* REGLA EXCLUSIVA PARA EL LOGIN CENTRADO */
+    div[data-testid="stHorizontalBlock"]:has(form) {
         display: flex !important; justify-content: center !important; width: 100% !important;
     }
-    div[data-testid="stHorizontalBlock"]:only-of-type > div[data-testid="column"]:nth-child(1),
-    div[data-testid="stHorizontalBlock"]:only-of-type > div[data-testid="column"]:nth-child(3) {
-        display: none !important; /* Esconde las columnas vacías laterales en celular */
+    div[data-testid="stHorizontalBlock"]:has(form) > div[data-testid="column"]:nth-child(1),
+    div[data-testid="stHorizontalBlock"]:has(form) > div[data-testid="column"]:nth-child(3) {
+        display: none !important;
     }
-    div[data-testid="stHorizontalBlock"]:only-of-type > div[data-testid="column"]:nth-child(2) {
+    div[data-testid="stHorizontalBlock"]:has(form) > div[data-testid="column"]:nth-child(2) {
         width: 100% !important; max-width: 450px !important; min-width: 300px !important;
     }
 
     @media (max-width: 1024px) {
         .mobile-only { display: block !important; }
         
-        /* Títulos generales más compactos para que entren en 1 renglón */
         h3 { font-size: 16px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
         div[data-testid="stMarkdownContainer"] h2 { font-size: 17px !important; margin-top: 5px !important; margin-bottom: 0px !important; white-space: normal !important;}
 
-        /* --- 1. HEADER PRINCIPAL (Mantiene Logo, Título y Botón alineados) --- */
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important;
+        /* --- 1. APILAR TODOS LOS BLOQUES HORIZONTALES PARA PROTEGER GRÁFICOS --- */
+        div[data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
         }
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div[data-testid="column"]:nth-child(1) { width: 20% !important; min-width: 20% !important; }
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div[data-testid="column"]:nth-child(2) { width: 55% !important; min-width: 55% !important; }
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div[data-testid="column"]:nth-child(3) { width: 25% !important; min-width: 25% !important; }
+        div[data-testid="stHorizontalBlock"] > div {
+            width: 100% !important; min-width: 100% !important; margin-bottom: 5px !important;
+        }
 
-        /* --- 2. FILTROS EN 1 SOLA FILA HORIZONTAL (El 2do bloque de columnas) --- */
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 4px !important; margin-bottom: 2px !important; margin-top: -5px !important;
+        /* --- 2. EXCEPCIÓN A: HEADER PRINCIPAL (Se mantiene en fila) --- */
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) {
+            flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 0px !important;
         }
-        /* Fuerza a cada uno de los 4 filtros a ocupar EXACTAMENTE el 25% */
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(2) > div[data-testid="column"] {
-            width: 25% !important; min-width: 25% !important; flex: 1 1 25% !important;
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div:nth-child(1) { width: 20% !important; min-width: 20% !important; margin-bottom: 0px !important;}
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div:nth-child(2) { width: 55% !important; min-width: 55% !important; margin-bottom: 0px !important;}
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div:nth-child(3) { width: 25% !important; min-width: 25% !important; margin-bottom: 0px !important;}
+
+        /* --- 3. EXCEPCIÓN B: FILTROS EN 1 FILA HORIZONTAL (Pegados y al 25% c/u) --- */
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
+            flex-direction: row !important; flex-wrap: nowrap !important; gap: 4px !important; margin-top: -5px !important; margin-bottom: 0px !important;
         }
-        /* Elimina etiquetas extra y reduce la letra del selector para que todo encaje */
-        div[data-testid="stMultiSelect"] label { display: none !important; }
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(2) > div {
+            width: 25% !important; min-width: 25% !important; flex: 1 1 25% !important; padding: 0 !important; margin-bottom: 0px !important;
+        }
+        /* Eliminar etiquetas extra de los filtros para compactar */
+        [data-testid="stMultiSelect"] label { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
         .stMultiSelect div[data-baseweb="select"] { font-size: 11px !important; padding: 0 !important; min-height: 32px !important; height: 32px !important; overflow: hidden !important;}
 
-        /* --- 3. GRÁFICOS PROTEGIDOS (Apila todo lo demás hacia abajo, evitando aplastamiento al rotar) --- */
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) {
-            display: flex !important; flex-direction: column !important; width: 100% !important;
-        }
-        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) > div[data-testid="column"] {
-            width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important;
-        }
-
-        /* --- 4. CARTELES KPI: Ultra compactos, sin espacios vacíos --- */
+        /* --- 4. CARTELES KPI: Ultra compactos y juntos --- */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 4px !important; margin-top: 5px !important;}
         .kpi-grid > div { padding: 4px 8px !important; }
         .kpi-grid h4 { font-size: 14px !important; margin: 0px !important; line-height: 1.1 !important; }
@@ -245,12 +244,12 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. ESTRUCTURA MAESTRA REORDENADA: (HEADER -> FILTROS -> KPIs -> GRÁFICOS)
+# 5. BLOQUE PEGAJOSO (HEADER Y FILTROS JUNTOS SIEMPRE)
 # =========================================================================
-
-# --- A. HEADER ---
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
+    
+    # --- FILA 1: HEADER ---
     h_l, h_t, h_s = st.columns([0.8, 3.5, 0.7])
     with h_l:
         try: st.image("LOGO OMBÚ.jpg", width=90)
@@ -261,57 +260,59 @@ with st.container():
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
 
-# --- B. FILTROS (UBICADOS DIRECTAMENTE DEBAJO DEL HEADER SIEMPRE) ---
-meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
-f_mes, f_pl, f_li, f_pu = st.columns(4)
-
-with f_mes:
-    s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
-
-df_base_ef = df_ef.copy()
-df_base_im = df_im.copy()
-
-if s_mes and "🎯 Acumulado YTD" not in s_mes:
-    df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
-    df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
+    # --- FILA 2: FILTROS MAESTROS (En 4 columnas para garantizar la fila) ---
+    meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
+    f_mes, f_pl, f_li, f_pu = st.columns(4)
     
-c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
-pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
-pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
-plantas_disp = sorted(list(pl_ef | pl_im))
-
-with f_pl:
-    s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Planta")
-
-if s_pl:
-    norm_pl = normalizar_lista(s_pl)
-    df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
-    if 'NORM_PLANTA' in df_base_im.columns and not df_base_im.empty: 
-        df_base_im = df_base_im[df_base_im['NORM_PLANTA'].isin(norm_pl)]
+    with f_mes:
+        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
         
-c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
-li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
-li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
-lineas_disp = sorted(list(li_ef | li_im))
-
-with f_li:
-    s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Línea")
-
-if s_li:
-    norm_li = normalizar_lista(s_li)
-    df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
-    if 'NORM_LINEA' in df_base_im.columns and not df_base_im.empty: 
-        df_base_im = df_base_im[df_base_im['NORM_LINEA'].isin(norm_li)]
+    df_base_ef = df_ef.copy()
+    df_base_im = df_im.copy()
+    
+    if s_mes and "🎯 Acumulado YTD" not in s_mes:
+        df_base_ef = df_base_ef[df_base_ef['Mes_Str'].isin(s_mes)]
+        df_base_im = df_base_im[df_base_im['MES_STR'].isin(s_mes)]
         
-c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
-pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
-pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
-puestos_disp = sorted(list(pu_ef | pu_im))
+    c_pl_im = next((c for c in df_im.columns if 'PLANTA' in str(c).upper()), df_im.columns[0] if len(df_im.columns)>0 else None)
+    pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
+    pl_im = set(df_base_im[c_pl_im].dropna().astype(str).unique()) if c_pl_im and not df_base_im.empty else set()
+    plantas_disp = sorted(list(pl_ef | pl_im))
+    
+    with f_pl:
+        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Planta")
+        
+    if s_pl:
+        norm_pl = normalizar_lista(s_pl)
+        df_base_ef = df_base_ef[df_base_ef['Planta'].isin(s_pl)]
+        if 'NORM_PLANTA' in df_base_im.columns and not df_base_im.empty: 
+            df_base_im = df_base_im[df_base_im['NORM_PLANTA'].isin(norm_pl)]
+            
+    c_li_im = next((c for c in df_im.columns if 'LINEA' in str(c).upper() or 'LÍNEA' in str(c).upper()), df_im.columns[1] if len(df_im.columns)>1 else None)
+    li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
+    li_im = set(df_base_im[c_li_im].dropna().astype(str).unique()) if c_li_im and not df_base_im.empty else set()
+    lineas_disp = sorted(list(li_ef | li_im))
+    
+    with f_li:
+        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Línea")
+        
+    if s_li:
+        norm_li = normalizar_lista(s_li)
+        df_base_ef = df_base_ef[df_base_ef['Linea'].isin(s_li)]
+        if 'NORM_LINEA' in df_base_im.columns and not df_base_im.empty: 
+            df_base_im = df_base_im[df_base_im['NORM_LINEA'].isin(norm_li)]
+            
+    c_pu_im = next((c for c in df_im.columns if 'PUESTO' in str(c).upper()), df_im.columns[2] if len(df_im.columns)>2 else None)
+    pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
+    pu_im = set(df_base_im[c_pu_im].dropna().astype(str).unique()) if c_pu_im and not df_base_im.empty else set()
+    puestos_disp = sorted(list(pu_ef | pu_im))
+    
+    with f_pu:
+        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Puesto")
 
-with f_pu:
-    s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Puesto")
-
+# =========================================================================
 # APLICACIÓN DE FILTROS A DF FINALES
+# =========================================================================
 df_ef_f = df_ef.copy()
 df_im_f = df_im.copy()
 
@@ -346,7 +347,9 @@ else:
     if not df_salida.empty: df_plot_1 = df_salida
     else: df_plot_1 = df_ef_f.copy()
 
+# =========================================================================
 # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
+# =========================================================================
 tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
 tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
 
@@ -375,7 +378,9 @@ if not df_im_f.empty:
             filas_imp = [f"<div style='display:flex; justify-content:space-between; margin-top:4px; font-size:13px;'><span style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;' title='{p}'>{i}. {p}</span><strong style='color:#FFCDD2; font-size:14px;'>{v:.1f}</strong></div>" for i, (p, v) in enumerate(ag_imp_p.items(), 1)]
             top3_imp_html = "".join(filas_imp)
 
-# --- C. CARTELES KPI ---
+# =========================================================================
+# CARTELES KPI (Ya no son pegajosos, se desplazan para ver gráficos)
+# =========================================================================
 st.markdown(f"""
 <div class="kpi-grid">
     <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
