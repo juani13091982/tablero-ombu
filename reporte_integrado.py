@@ -19,7 +19,7 @@ st.markdown("""
     .block-container {padding-top: 1rem !important; padding-bottom: 1.5rem !important;}
     
     /* ==================================================================================== */
-    /* 1. LA CAJA MAGICA PEGAJOSA (MANTIENE HEADER Y FILTROS FIJOS SIEMPRE) */
+    /* 1. CAJA PEGAJOSA (MANTIENE HEADER Y FILTROS FIJOS AL BAJAR) */
     /* ==================================================================================== */
     div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
         position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
@@ -28,19 +28,30 @@ st.markdown("""
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
     
-    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
-    .kpi-costo { grid-row: span 2; }
-    .mobile-only { display: none !important; }
-    h3 { white-space: nowrap !important; }
-    
-    /* ESCONDE LAS ETIQUETAS DE TEXTO DE LOS FILTROS PARA AHORRAR ESPACIO */
-    div[data-testid="stMultiSelect"] label { display: none !important; }
+    /* Estilos de etiquetas de filtros en PC */
+    div[data-testid="stMultiSelect"] label p { font-size: 15px !important; font-weight: bold !important; color: #90CAF9 !important; margin-bottom: -5px !important; }
 
     /* ==================================================================================== */
-    /* --- REGLAS RESPONSIVAS BLINDADAS (MÓVIL VERTICAL Y HORIZONTAL HASTA 1024px) --- */
+    /* 2. GRILLA DE CARTELES (KPI) PARA PC: ALINEACIÓN EXACTA */
+    /* ==================================================================================== */
+    .kpi-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr 1.3fr; 
+        gap: 8px; 
+    }
+    .kpi-ef-real { grid-column: 1; grid-row: 1; }
+    .kpi-ef-prod { grid-column: 2; grid-row: 1; }
+    .kpi-costo { grid-column: 3; grid-row: 1 / span 2; }
+    .kpi-top-ef { grid-column: 1; grid-row: 2; height: 100%; }
+    .kpi-top-imp { grid-column: 2; grid-row: 2; height: 100%; }
+
+    h3 { white-space: nowrap !important; }
+
+    /* ==================================================================================== */
+    /* 3. REGLAS RESPONSIVAS BLINDADAS (MÓVIL VERTICAL Y HORIZONTAL HASTA 1024px) */
     /* ==================================================================================== */
     
-    /* REGLA EXCLUSIVA PARA EL LOGIN CENTRADO */
+    /* Login Centrado en Celular */
     div[data-testid="stHorizontalBlock"]:has(form) {
         display: flex !important; justify-content: center !important; width: 100% !important;
     }
@@ -53,12 +64,10 @@ st.markdown("""
     }
 
     @media (max-width: 1024px) {
-        .mobile-only { display: block !important; }
-        
         h3 { font-size: 18px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
         div[data-testid="stMarkdownContainer"] h2 { font-size: 17px !important; margin-top: 5px !important; margin-bottom: 0px !important; white-space: normal !important;}
 
-        /* --- 2. HEADER EN 1 FILA --- */
+        /* FORZAR HEADER EN UNA SOLA LÍNEA */
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) {
             display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 5px !important;
         }
@@ -66,19 +75,20 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 60% !important; min-width: 60% !important; margin-bottom: 0px !important;}
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { width: 20% !important; min-width: 20% !important; margin-bottom: 0px !important;}
 
-        /* --- 3. FILTROS EN 1 FILA EXACTA SIN DESBORDE MATEMÁTICO --- */
-        /* Eliminamos el texto desplegable de "Filtros Maestros" y las flechas para usar solo iconos */
-        div[data-testid="stHorizontalBlock"]:has(#filtro-mes) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2% !important; overflow: hidden !important; margin-top: 0px !important;
+        /* FILTROS EN 1 SOLA FILA HORIZONTAL CON 25% CADA UNO */
+        div[data-testid="stHorizontalBlock"]:has(#filtro-row) {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2px !important; overflow: hidden !important; margin-top: 0px !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(#filtro-mes) > div[data-testid="column"] {
-            width: 23% !important; min-width: 23% !important; flex: 1 1 23% !important; padding: 0 !important; margin-bottom: 0px !important;
+        div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] {
+            width: 25% !important; min-width: 25% !important; flex: 1 1 25% !important; padding: 0 !important; margin-bottom: 0px !important;
         }
+        
+        /* OCULTAR LETRAS DE FILTROS EN CELULAR (SOLO QUEDAN ICONOS) */
+        div[data-testid="stHorizontalBlock"]:has(#filtro-row) label { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 16px !important; padding: 0 !important; min-height: 40px !important; height: 40px !important; justify-content: center !important; overflow: hidden !important; border-radius: 8px !important;}
-        .stMultiSelect span[data-baseweb="icon"], .stMultiSelect div[role="button"] { display: none !important; }
+        .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 38px !important; height: 38px !important; overflow: hidden !important;}
 
-        /* --- 4. GRÁFICOS PROTEGIDOS AL ROTAR --- */
+        /* GRÁFICOS AL 100% DEL ANCHO (EVITA APLASTAMIENTO AL ROTAR) */
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) {
             display: flex !important; flex-direction: column !important; width: 100% !important;
         }
@@ -86,8 +96,10 @@ st.markdown("""
             width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important;
         }
 
-        /* --- 5. CARTELES KPI: GIGANTES PERO SIN AIRE --- */
+        /* CARTELES KPI: COLUMNA ÚNICA VERTICAL GIGANTE PERO SIN ESPACIOS VACÍOS */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; margin-top: 5px !important;}
+        .kpi-ef-real, .kpi-ef-prod, .kpi-costo, .kpi-top-ef, .kpi-top-imp { grid-column: auto; grid-row: auto; height: auto; }
+        
         .kpi-grid > div { padding: 8px 10px !important; }
         .kpi-grid h4 { font-size: 18px !important; margin: 0px !important; line-height: 1.1 !important; }
         .kpi-grid h2 { font-size: 42px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important; }
@@ -249,15 +261,15 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. BLOQUE PEGAJOSO (HEADER Y FILTROS JUNTOS SIEMPRE AL SCROLLEAR)
+# 5. BLOQUE PEGAJOSO (HEADER Y FILTROS FIJOS)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
     
     # --- FILA 1: HEADER ---
+    st.markdown("<span id='header-anchor'></span>", unsafe_allow_html=True)
     h_l, h_t, h_s = st.columns([0.8, 3.5, 0.7])
     with h_l:
-        st.markdown("<span id='header-anchor'></span>", unsafe_allow_html=True)
         try: st.image("LOGO OMBÚ.jpg", width=90)
         except: st.markdown("##### OMBÚ")
     with h_t: 
@@ -266,13 +278,13 @@ with st.container():
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
 
-    # --- FILA 2: FILTROS MAESTROS (En 4 columnas, forzado a 1 fila con CSS) ---
-    meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
+    # --- FILA 2: FILTROS MAESTROS (Con etiquetas en PC, ocultas en móvil) ---
+    st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
     
+    meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes:
-        st.markdown("<span id='filtro-mes'></span>", unsafe_allow_html=True)
-        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅")
+        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅 Mes")
         
     df_base_ef = df_ef.copy()
     df_base_im = df_im.copy()
@@ -287,7 +299,7 @@ with st.container():
     plantas_disp = sorted(list(pl_ef | pl_im))
     
     with f_pl:
-        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭")
+        s_pl = st.multiselect("Planta", plantas_disp, placeholder="🏭 Planta")
         
     if s_pl:
         norm_pl = normalizar_lista(s_pl)
@@ -301,7 +313,7 @@ with st.container():
     lineas_disp = sorted(list(li_ef | li_im))
     
     with f_li:
-        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️")
+        s_li = st.multiselect("Línea", lineas_disp, placeholder="⚙️ Línea")
         
     if s_li:
         norm_li = normalizar_lista(s_li)
@@ -315,7 +327,7 @@ with st.container():
     puestos_disp = sorted(list(pu_ef | pu_im))
     
     with f_pu:
-        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️")
+        s_pu = st.multiselect("Puesto", puestos_disp, placeholder="🛠️ Puesto")
 
 # =========================================================================
 # APLICACIÓN DE FILTROS A DF FINALES
@@ -386,30 +398,30 @@ if not df_im_f.empty:
             top3_imp_html = "".join(filas_imp)
 
 # =========================================================================
-# CARTELES KPI
+# CARTELES KPI (Estructura Grid Exacta para PC y Móvil)
 # =========================================================================
 st.markdown(f"""
 <div class="kpi-grid">
-    <div style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+    <div class="kpi-ef-real" style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
         <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4>
         <h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
     </div>
-    <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3);">
+    <div class="kpi-ef-prod" style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
         <h4 style="color: white;">EFICIENCIA PROD.</h4>
         <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
     </div>
-    <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4);">
+    <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4); padding: 10px;">
         <h4 style="color: white;">COSTO HH IMPROD.</h4>
-        <p style="color: #FFCDD2;">(Oportunidad Perdida)</p>
+        <p style="color: #FFCDD2; margin: 0; font-size: 14px;">(Oportunidad Perdida)</p>
         <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
         <h4 style="color: white;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
     </div>
-    <div class="mobile-only" style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
-        <h4 style="font-size:12px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">🏆 TOP EF. REAL (PUESTOS)</h4>
+    <div class="kpi-top-ef" style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
+        <h4 style="font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0 0 5px 0; padding-bottom:5px;">🏆 TOP EF. REAL</h4>
         {top3_m1_html}
     </div>
-    <div class="mobile-only" style="background: #B71C1C; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 5px 10px;">
-        <h4 style="font-size:12px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0;">⚠️ TOP MAYOR HH IMP.</h4>
+    <div class="kpi-top-imp" style="background: #B71C1C; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
+        <h4 style="font-size:14px; color:#FFCDD2; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0 0 5px 0; padding-bottom:5px;">⚠️ TOP HH IMP.</h4>
         {top3_imp_html}
     </div>
 </div>
