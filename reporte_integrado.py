@@ -22,42 +22,24 @@ st.markdown("""
         background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
         padding: 5px 10px 15px 10px !important; border-bottom: 2px solid #1E3A8A !important;
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
+        max-height: 50vh; 
+        overflow-y: auto;
     }
     [data-testid="stMultiSelect"] {margin-bottom: -15px !important;}
+    div[data-testid="stMultiSelect"] label p { font-size: 16px !important; font-weight: bold !important; color: #90CAF9 !important; }
 
-    /* --- REGLAS RESPONSIVAS PARA CELULARES --- */
-    .kpi-grid {
-        display: grid; 
-        grid-template-columns: 1fr 1fr 1.3fr; 
-        gap: 12px;
-    }
-    .kpi-costo {
-        grid-row: span 2;
-    }
-    
-    /* Clase exclusiva para tablas de celular */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
+    .kpi-costo { grid-row: span 2; }
     .mobile-only { display: none !important; }
     
     @media (max-width: 768px) {
         .mobile-only { display: block !important; }
-        
-        /* FUERZA A LAS COLUMNAS (GRAFICOS Y FILTROS) A APILARSE HACIA ABAJO */
-        [data-testid="stHorizontalBlock"] {
-            flex-direction: column !important;
-        }
-        [data-testid="stHorizontalBlock"] > div {
-            width: 100% !important;
-            min-width: 100% !important;
-        }
-        /* APILA LOS CARTELES KPI */
-        .kpi-grid {
-            grid-template-columns: 1fr !important;
-        }
-        .kpi-costo {
-            grid-row: span 1 !important;
-        }
-        .kpi-grid h2 { font-size: 32px !important; }
-        .kpi-grid h4 { font-size: 16px !important; }
+        [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
+        [data-testid="stHorizontalBlock"] > div { width: 100% !important; min-width: 100% !important; }
+        .kpi-grid { grid-template-columns: 1fr !important; }
+        .kpi-costo { grid-row: span 1 !important; }
+        .kpi-grid h2 { font-size: 28px !important; }
+        .kpi-grid h4 { font-size: 14px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -637,7 +619,7 @@ with col5:
     else: st.success("✅ ¡Felicitaciones! Cero horas improductivas en este periodo.")
 
 with col6:
-    st.header("6. EVOL EVOLUCIÓN INCIDENCIA %")
+    st.header("6. EVOLUCIÓN INCIDENCIA %")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
