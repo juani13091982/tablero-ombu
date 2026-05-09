@@ -267,7 +267,6 @@ else:
 col_prod_tot = 'HH_Productivas_C/GAP'
 for c in df_ef_f.columns:
     c_upper = str(c).upper()
-    # Buscamos la columna de totales, excluyendo cualquier columna que diga UNID o UNIT
     if 'PROD' in c_upper and 'GAP' in c_upper and 'UNID' not in c_upper and '/ U' not in c_upper:
         col_prod_tot = c
         break
@@ -655,21 +654,21 @@ if tot_disp_todas > 0 and len(fechas_previas) > 0:
     val_3 = val_1 / 130.0
 
     st.markdown(f"""
-    <div style="background: {bg_color}; padding: 20px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
+    <div style="background: {bg_color}; padding: 25px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
         <div style="text-align:center; min-width: 200px; margin: 10px;">
-            <h4 style="margin:0; color:{text_color}; font-size:16px;">{tit_1}</h4>
-            <h2 style="margin:0; font-size: 38px;">{val_1:,.0f} <span style="font-size:18px;">HH</span></h2>
-            <p style="margin:0; font-size:12px;">Incidencia pasó del {inc_hist*100:.1f}% al {inc_act*100:.1f}%</p>
+            <h4 style="margin:0; color:{text_color}; font-size:22px;">{tit_1}</h4>
+            <h2 style="margin:0; font-size: 55px; padding: 10px 0;">{val_1:,.0f} <span style="font-size:24px;">HH</span></h2>
+            <p style="margin:0; font-size:15px;">Incidencia pasó del {inc_hist*100:.1f}% al {inc_act*100:.1f}%</p>
         </div>
-        <div style="text-align:center; min-width: 200px; margin: 10px; border-left: 2px dashed rgba(255,255,255,0.3); padding-left: 20px;">
-            <h4 style="margin:0; color:{text_color}; font-size:16px;">{tit_2}</h4>
-            <h2 style="margin:0; font-size: 38px;">${val_2:,.0f}</h2>
-            <p style="margin:0; font-size:12px;">Costo base oportunidad</p>
+        <div style="text-align:center; min-width: 200px; margin: 10px; border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px;">
+            <h4 style="margin:0; color:{text_color}; font-size:22px;">{tit_2}</h4>
+            <h2 style="margin:0; font-size: 55px; padding: 10px 0;">${val_2:,.0f}</h2>
+            <p style="margin:0; font-size:15px;">Costo base oportunidad</p>
         </div>
-        <div style="text-align:center; min-width: 200px; margin: 10px; border-left: 2px dashed rgba(255,255,255,0.3); padding-left: 20px;">
-            <h4 style="margin:0; color:{text_color}; font-size:16px;">{tit_3}</h4>
-            <h2 style="margin:0; font-size: 38px;">{val_3:,.1f} <span style="font-size:18px;">CRV 26</span></h2>
-            <p style="margin:0; font-size:12px;">(A razón de 130 HH/Unidad)</p>
+        <div style="text-align:center; min-width: 200px; margin: 10px; border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px;">
+            <h4 style="margin:0; color:{text_color}; font-size:22px;">{tit_3}</h4>
+            <h2 style="margin:0; font-size: 55px; padding: 10px 0;">{val_3:,.1f} <span style="font-size:24px;">CRV 26</span></h2>
+            <p style="margin:0; font-size:15px;">(A razón de 130 HH/Unidad)</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -686,7 +685,6 @@ with col7:
     if not s_li and not s_pu:
         st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
     else:
-        # CÁLCULO DIRECTO Y PERFECTO SOBRE COLUMNA TOTAL, EXCLUYENDO POR COMPLETO LAS COLUMNAS YA DIVIDIDAS
         c_std_u = next((c for c in df_plot_1.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
         
         ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
@@ -701,7 +699,6 @@ with col7:
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
         
         if not ag8.empty:
-            # DIVISIÓN LIMPIA UNA SOLA VEZ SOBRE LOS TOTALES
             ag8['HH_Real_U'] = ag8[col_prod_tot] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
@@ -715,8 +712,12 @@ with col7:
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
             
+            # 5) ETIQUETAS MEJORADAS CON CANTIDAD PRODUCIDA
             for i in range(len(x_idx)): 
-                ax8.annotate(f"{ag8['HH_Real_U'].iloc[i]:.2f}h", (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,15), ha='center', fontweight='bold', bbox=caja_o, zorder=10)
+                cant_u = int(ag8['Cant._Prod._A1'].iloc[i])
+                label_r = f"{ag8['HH_Real_U'].iloc[i]:.2f}h\n({cant_u} Unid)"
+                
+                ax8.annotate(label_r, (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,20), ha='center', fontweight='bold', fontsize=11, bbox=caja_o, zorder=10)
                 ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.2f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="darkgreen", lw=1.5), zorder=10)
                 
                 ax8.plot([x_idx[i], x_idx[i]], [ag8['HH_Std_U'].iloc[i], ag8['HH_Real_U'].iloc[i]], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
@@ -724,7 +725,6 @@ with col7:
                 mid_y = (ag8['HH_Real_U'].iloc[i] + ag8['HH_Std_U'].iloc[i]) / 2
                 ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.05, mid_y), color='dodgerblue', fontweight='bold', fontsize=12, zorder=4)
 
-            # CÁLCULO EXACTO A PRUEBA DE BALAS DE UNIDADES GANADAS/PERDIDAS
             ag8['Unid_Desvio'] = np.where(ag8['HH_Std_U'] > 0, ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U'], 0)
             tot_desvio = ag8['Unid_Desvio'].sum()
             
