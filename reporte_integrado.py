@@ -64,6 +64,8 @@ st.markdown("""
     }
 
     @media (max-width: 1024px) {
+        .mobile-only { display: block !important; }
+        
         h3 { font-size: 18px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
         div[data-testid="stMarkdownContainer"] h2 { font-size: 17px !important; margin-top: 5px !important; margin-bottom: 0px !important; white-space: normal !important;}
 
@@ -75,7 +77,7 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 60% !important; min-width: 60% !important; margin-bottom: 0px !important;}
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { width: 20% !important; min-width: 20% !important; margin-bottom: 0px !important;}
 
-        /* FILTROS EN 1 SOLA FILA HORIZONTAL CON 25% CADA UNO */
+        /* FILTROS EN 1 SOLA FILA HORIZONTAL Y PEGADOS */
         div[data-testid="stHorizontalBlock"]:has(#filtro-row) {
             display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2px !important; overflow: hidden !important; margin-top: 0px !important;
         }
@@ -85,6 +87,7 @@ st.markdown("""
         
         /* OCULTAR LETRAS DE FILTROS EN CELULAR (SOLO QUEDAN ICONOS) */
         div[data-testid="stHorizontalBlock"]:has(#filtro-row) label { display: none !important; }
+        div[data-testid="stHorizontalBlock"]:has(#filtro-row) label p { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
         .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 38px !important; height: 38px !important; overflow: hidden !important;}
 
@@ -152,14 +155,6 @@ def dibujar_meses(ax, n_meses):
 def normalizar_lista(s_list):
     return [re.sub(r'[^A-Z0-9]', '', str(s).upper()) for s in s_list]
 
-def safe_match(s_list, val):
-    if pd.isna(val): return False
-    v_norm = re.sub(r'[^A-Z0-9]', '', str(val).upper())
-    for s in s_list:
-        s_norm = re.sub(r'[^A-Z0-9]', '', str(s).upper())
-        if s_norm == v_norm and s_norm != "": return True
-    return False
-
 def add_tendencia(ax, x, y):
     if len(x) > 1:
         z = np.polyfit(x, y.astype(float), 1); p = np.poly1d(z)
@@ -183,7 +178,7 @@ def generar_accion_sugerida(detalle):
     return "⚡ Investigar Causa"
 
 # =========================================================================
-# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS CACHEADA (SÚPER RÁPIDA)
+# 4. CARGA Y LIMPIEZA NUMÉRICA DE DATOS CACHEADA
 # =========================================================================
 @st.cache_data(ttl=300)
 def cargar_datos():
@@ -278,7 +273,7 @@ with st.container():
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
 
-    # --- FILA 2: FILTROS MAESTROS (Con etiquetas en PC, solo iconos en móvil) ---
+    # --- FILA 2: FILTROS MAESTROS ---
     st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
     
@@ -354,6 +349,7 @@ if s_mes and "🎯 Acumulado YTD" not in s_mes:
     df_ef_f = df_ef_f[df_ef_f['Mes_Str'].isin(s_mes)]
     if 'MES_STR' in df_im_f.columns: df_im_f = df_im_f[df_im_f['MES_STR'].isin(s_mes)]
 
+# df_plot_1 SIRVE EXCLUSIVAMENTE PARA EFICIENCIA DE LÍNEA (Usa 'Ultimo Puesto')
 warn_linea = False
 if s_pu: 
     df_plot_1 = df_ef_f.copy()
@@ -372,11 +368,12 @@ else:
 tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
 tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
 
+# EFICIENCIAS: Usan df_plot_1 (Solo ultimo puesto para no duplicar horas de la misma línea)
 tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
-tot_disp = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
+tot_disp_eficiencia = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
 tot_prod = df_plot_1['HH_Productivas_C/GAP'].sum() if ('HH_Productivas_C/GAP' in df_plot_1.columns and not df_plot_1.empty) else 0
 
-kpi_ef_real = (tot_std / tot_disp * 100) if tot_disp > 0 else 0
+kpi_ef_real = (tot_std / tot_disp_eficiencia * 100) if tot_disp_eficiencia > 0 else 0
 kpi_ef_prod = (tot_std / tot_prod * 100) if tot_prod > 0 else 0
 
 top3_m1_html = "<div style='font-size:14px; color:#aaa; text-align:center;'>S/D</div>"
@@ -616,7 +613,7 @@ with col4:
 st.markdown("---")
 
 # =========================================================================
-# 8. GRÁFICOS MÉTRICAS 5 Y 6
+# 8. GRÁFICOS MÉTRICAS 5 Y 6 (CON MEJORA DE ROTACIÓN DE TEXTOS EN PARETO)
 # =========================================================================
 col5, col6 = st.columns(2)
 with col5:
@@ -748,14 +745,18 @@ inc_hist = 0.0
 if len(fechas_previas) > 0:
     ef_prev = df_ef_h[df_ef_h['Fecha'].isin(fechas_previas)]
     im_prev = df_im_h[df_im_h['FECHA'].isin(fechas_previas)]
+    
+    # LA CORRECTA LÓGICA DE HORAS HOMBRE (SIN FILTRO DE ÚLTIMO PUESTO)
     disp_prev = ef_prev['HH_Disponibles'].sum()
     imp_prev = im_prev['HH_IMPRODUCTIVAS'].sum()
     if disp_prev > 0: inc_hist = imp_prev / disp_prev
 
-inc_act = (tot_hh_imp / tot_disp) if tot_disp > 0 else 0
+# LA CORRECTA LÓGICA DE HORAS HOMBRE (SIN FILTRO DE ÚLTIMO PUESTO) PARA EL MES ACTUAL
+tot_disp_todas = df_ef_f['HH_Disponibles'].sum() if not df_ef_f.empty else 0
+inc_act = (tot_hh_imp / tot_disp_todas) if tot_disp_todas > 0 else 0
 
-if inc_hist > inc_act and tot_disp > 0:
-    hh_ganadas = (inc_hist - inc_act) * tot_disp
+if inc_hist > inc_act and tot_disp_todas > 0:
+    hh_ganadas = (inc_hist - inc_act) * tot_disp_todas
     costo_hh = (tot_costo / tot_hh_imp) if tot_hh_imp > 0 else 15000
     ahorro = hh_ganadas * costo_hh
     tolvas = hh_ganadas / 130.0
