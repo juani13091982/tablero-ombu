@@ -139,9 +139,19 @@ def cargar_datos():
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    for col in ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']:
+    # Identificar la COLUMNA M (Índice 12 en arrays de 0) para "Tiempo Real / Unidad" con Horas Ocultas
+    col_m_name = df_ef.columns[12] if len(df_ef.columns) > 12 else None
+    
+    # Forzar conversión numérica de columnas clave
+    cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
+    if col_m_name and col_m_name not in cols_numericas: cols_numericas.append(col_m_name)
+
+    for col in cols_numericas:
         if col in df_ef.columns: df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
-            
+    
+    # Asignar explícitamente la columna M a una variable interna de uso seguro
+    df_ef['HH_REAL_COL_M'] = df_ef[col_m_name] if col_m_name else 0
+
     if 'TIPO_PARADA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c), df_im.columns[0]): 'TIPO_PARADA'}, inplace=True)
     if 'HH_IMPRODUCTIVAS' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'HH' in c and 'IMP' in c), df_im.columns[0]): 'HH_IMPRODUCTIVAS'}, inplace=True)
     if 'DETALLE' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'DETALLE' in c or 'OBS' in c), df_im.columns[0]): 'DETALLE'}, inplace=True)
@@ -616,18 +626,15 @@ if len(fechas_previas) > 0:
     imp_prev = im_prev['HH_IMPRODUCTIVAS'].sum()
     if disp_prev > 0: inc_hist = imp_prev / disp_prev
 
-# EL CALCULO EXACTO Y REAL CON TODAS LAS HH DISPONIBLES (Sin filtro de ultimo puesto)
 tot_disp_todas = df_ef_f['HH_Disponibles'].sum() if not df_ef_f.empty else 0
 inc_act = (tot_hh_imp / tot_disp_todas) if tot_disp_todas > 0 else 0
 
 if tot_disp_todas > 0 and len(fechas_previas) > 0:
     if inc_act <= inc_hist:
-        # AHORRO (Verde)
         bg_color, text_color = "linear-gradient(135deg, #1B5E20, #4CAF50)", "#C8E6C9"
         tit_1, tit_2, tit_3 = "✅ HH RECUPERADAS", "AHORRO ECONÓMICO", "EQUIVALENTE PROD."
         val_1 = (inc_hist - inc_act) * tot_disp_todas
     else:
-        # PÉRDIDA (Rojo)
         bg_color, text_color = "linear-gradient(135deg, #D32F2F, #E53935)", "#FFCDD2"
         tit_1, tit_2, tit_3 = "⚠️ HH PERDIDAS", "COSTO DEL DESVÍO", "PRODUCCIÓN PERDIDA"
         val_1 = (inc_act - inc_hist) * tot_disp_todas
@@ -668,13 +675,11 @@ with col7:
     if not s_li and not s_pu:
         st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
     else:
-        c_prod = 'HH_Productivas' if 'HH_Productivas' in df_plot_1.columns else 'HH_Productivas_C/GAP'
-        if c_prod not in df_plot_1.columns: c_prod = df_plot_1.columns[-1]
-        
-        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', c_prod:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+        # COLUMNA M DEL GOOGLE SHEETS PARA EL RATIO (Incluye horas ocultas)
+        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', 'HH_REAL_COL_M':'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
         if not ag8.empty:
-            ag8['HH_Real_U'] = ag8[c_prod] / ag8['Cant._Prod._A1']
+            ag8['HH_Real_U'] = ag8['HH_REAL_COL_M'] / ag8['Cant._Prod._A1']
             ag8['HH_Std_U'] = ag8['HH_STD_TOTAL'] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
