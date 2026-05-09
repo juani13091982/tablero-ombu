@@ -138,8 +138,8 @@ def generar_accion_sugerida(detalle):
 # =========================================================================
 @st.cache_data(ttl=300) # ESTO EVITA QUE DESCARGUE EL EXCEL DE GOOGLE DRIVE CADA VEZ
 def cargar_datos():
-    url_ef = "https://drive.google.com/uc?export=download&id=14kmjYqzkgRs0V2pFGMaEc6ebZc9tcK_V"
-    url_im = "https://drive.google.com/uc?export=download&id=1LdemtoOSyetVgXCxDrYsL7tNUZKqiK9P"
+    url_ef = "https://docs.google.com/spreadsheets/d/1_kO7GtjnlGHYgMnY7pkJGdRuFRAJB8xp8pGj8I0jq5E/export?format=xlsx"
+    url_im = "https://docs.google.com/spreadsheets/d/1GwshvXAotIShBPcX69vlE8_juO6w5aAFBCaXEsgSdCY/export?format=xlsx"
     df_ef = pd.read_excel(url_ef)
     df_im = pd.read_excel(url_im)
     df_ef.columns = df_ef.columns.str.strip()
@@ -637,7 +637,7 @@ with col5:
     else: st.success("✅ ¡Felicitaciones! Cero horas improductivas en este periodo.")
 
 with col6:
-    st.header("6. EVOLUCIÓN INCIDENCIA %")
+    st.header("6. EVOL EVOLUCIÓN INCIDENCIA %")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
