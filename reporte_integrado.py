@@ -18,7 +18,9 @@ st.markdown("""
     #MainMenu, footer, .stAppDeployButton, .viewerBadge_container {display: none !important; visibility: hidden !important;}
     .block-container {padding-top: 1rem !important; padding-bottom: 1.5rem !important;}
     
-    /* CAJA PEGAJOSA PARA EL HEADER Y LOS FILTROS */
+    /* ==================================================================================== */
+    /* 1. LA CAJA MAGICA PEGAJOSA (MANTIENE HEADER Y FILTROS FIJOS SIEMPRE) */
+    /* ==================================================================================== */
     div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
         position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
         background-color: rgba(14, 17, 23, 0.98) !important; z-index: 99999 !important;
@@ -30,6 +32,9 @@ st.markdown("""
     .kpi-costo { grid-row: span 2; }
     .mobile-only { display: none !important; }
     h3 { white-space: nowrap !important; }
+    
+    /* ESCONDE LAS ETIQUETAS DE TEXTO DE LOS FILTROS PARA AHORRAR ESPACIO */
+    div[data-testid="stMultiSelect"] label { display: none !important; }
 
     /* ==================================================================================== */
     /* --- REGLAS RESPONSIVAS BLINDADAS (MÓVIL VERTICAL Y HORIZONTAL HASTA 1024px) --- */
@@ -50,47 +55,47 @@ st.markdown("""
     @media (max-width: 1024px) {
         .mobile-only { display: block !important; }
         
-        h3 { font-size: 16px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
+        h3 { font-size: 18px !important; overflow: hidden !important; text-overflow: ellipsis !important; margin: 0px !important;}
         div[data-testid="stMarkdownContainer"] h2 { font-size: 17px !important; margin-top: 5px !important; margin-bottom: 0px !important; white-space: normal !important;}
 
-        /* --- 1. APILAR TODOS LOS BLOQUES HORIZONTALES PARA PROTEGER GRÁFICOS --- */
-        div[data-testid="stHorizontalBlock"] {
-            flex-direction: column !important;
+        /* --- 2. HEADER EN 1 FILA --- */
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 5px !important;
         }
-        div[data-testid="stHorizontalBlock"] > div {
-            width: 100% !important; min-width: 100% !important; margin-bottom: 5px !important;
-        }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { width: 20% !important; min-width: 20% !important; margin-bottom: 0px !important;}
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 60% !important; min-width: 60% !important; margin-bottom: 0px !important;}
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { width: 20% !important; min-width: 20% !important; margin-bottom: 0px !important;}
 
-        /* --- 2. EXCEPCIÓN A: HEADER PRINCIPAL (Se mantiene en fila) --- */
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) {
-            flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 0px !important;
+        /* --- 3. FILTROS EN 1 FILA EXACTA SIN DESBORDE MATEMÁTICO --- */
+        /* Eliminamos el texto desplegable de "Filtros Maestros" y las flechas para usar solo iconos */
+        div[data-testid="stHorizontalBlock"]:has(#filtro-mes) {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2% !important; overflow: hidden !important; margin-top: 0px !important;
         }
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div:nth-child(1) { width: 20% !important; min-width: 20% !important; margin-bottom: 0px !important;}
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div:nth-child(2) { width: 55% !important; min-width: 55% !important; margin-bottom: 0px !important;}
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(1) > div:nth-child(3) { width: 25% !important; min-width: 25% !important; margin-bottom: 0px !important;}
-
-        /* --- 3. EXCEPCIÓN B: FILTROS EN 1 FILA HORIZONTAL (Pegados y al 25% c/u) --- */
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(2) {
-            flex-direction: row !important; flex-wrap: nowrap !important; gap: 4px !important; margin-top: -5px !important; margin-bottom: 0px !important;
+        div[data-testid="stHorizontalBlock"]:has(#filtro-mes) > div[data-testid="column"] {
+            width: 23% !important; min-width: 23% !important; flex: 1 1 23% !important; padding: 0 !important; margin-bottom: 0px !important;
         }
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) div[data-testid="stHorizontalBlock"]:nth-of-type(2) > div {
-            width: 25% !important; min-width: 25% !important; flex: 1 1 25% !important; padding: 0 !important; margin-bottom: 0px !important;
-        }
-        /* Eliminar etiquetas extra de los filtros para compactar */
-        [data-testid="stMultiSelect"] label { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 11px !important; padding: 0 !important; min-height: 32px !important; height: 32px !important; overflow: hidden !important;}
+        .stMultiSelect div[data-baseweb="select"] { font-size: 16px !important; padding: 0 !important; min-height: 40px !important; height: 40px !important; justify-content: center !important; overflow: hidden !important; border-radius: 8px !important;}
+        .stMultiSelect span[data-baseweb="icon"], .stMultiSelect div[role="button"] { display: none !important; }
 
-        /* --- 4. CARTELES KPI: Ultra compactos y juntos --- */
-        .kpi-grid { display: flex !important; flex-direction: column !important; gap: 4px !important; margin-top: 5px !important;}
-        .kpi-grid > div { padding: 4px 8px !important; }
-        .kpi-grid h4 { font-size: 14px !important; margin: 0px !important; line-height: 1.1 !important; }
-        .kpi-grid h2 { font-size: 32px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important; }
+        /* --- 4. GRÁFICOS PROTEGIDOS AL ROTAR --- */
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) {
+            display: flex !important; flex-direction: column !important; width: 100% !important;
+        }
+        .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) > div[data-testid="column"] {
+            width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important;
+        }
+
+        /* --- 5. CARTELES KPI: GIGANTES PERO SIN AIRE --- */
+        .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; margin-top: 5px !important;}
+        .kpi-grid > div { padding: 8px 10px !important; }
+        .kpi-grid h4 { font-size: 18px !important; margin: 0px !important; line-height: 1.1 !important; }
+        .kpi-grid h2 { font-size: 42px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important; }
         
-        .kpi-costo { padding: 4px 8px !important; }
-        .kpi-costo h4 { font-size: 16px !important; margin: 0px !important; line-height: 1.1 !important;}
-        .kpi-costo p { font-size: 11px !important; margin: 0px !important; line-height: 1.1 !important;}
-        .kpi-costo h2 { font-size: 36px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important;}
+        .kpi-costo { padding: 8px 10px !important; }
+        .kpi-costo h4 { font-size: 20px !important; margin: 0px !important; line-height: 1.1 !important;}
+        .kpi-costo p { font-size: 13px !important; margin: 0px !important; line-height: 1.1 !important;}
+        .kpi-costo h2 { font-size: 46px !important; margin: 0px !important; line-height: 1.1 !important; white-space: nowrap !important;}
     }
 </style>
 """, unsafe_allow_html=True)
@@ -244,7 +249,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 5. BLOQUE PEGAJOSO (HEADER Y FILTROS JUNTOS SIEMPRE)
+# 5. BLOQUE PEGAJOSO (HEADER Y FILTROS JUNTOS SIEMPRE AL SCROLLEAR)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -252,6 +257,7 @@ with st.container():
     # --- FILA 1: HEADER ---
     h_l, h_t, h_s = st.columns([0.8, 3.5, 0.7])
     with h_l:
+        st.markdown("<span id='header-anchor'></span>", unsafe_allow_html=True)
         try: st.image("LOGO OMBÚ.jpg", width=90)
         except: st.markdown("##### OMBÚ")
     with h_t: 
@@ -260,12 +266,13 @@ with st.container():
         if st.button("🚪 Salir", use_container_width=True): 
             st.session_state['autenticado'] = False; st.rerun()
 
-    # --- FILA 2: FILTROS MAESTROS (En 4 columnas para garantizar la fila) ---
+    # --- FILA 2: FILTROS MAESTROS (En 4 columnas, forzado a 1 fila con CSS) ---
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     f_mes, f_pl, f_li, f_pu = st.columns(4)
     
     with f_mes:
-        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅 Mes")
+        st.markdown("<span id='filtro-mes'></span>", unsafe_allow_html=True)
+        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, label_visibility="collapsed", placeholder="📅")
         
     df_base_ef = df_ef.copy()
     df_base_im = df_im.copy()
@@ -280,7 +287,7 @@ with st.container():
     plantas_disp = sorted(list(pl_ef | pl_im))
     
     with f_pl:
-        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭 Planta")
+        s_pl = st.multiselect("Planta", plantas_disp, label_visibility="collapsed", placeholder="🏭")
         
     if s_pl:
         norm_pl = normalizar_lista(s_pl)
@@ -294,7 +301,7 @@ with st.container():
     lineas_disp = sorted(list(li_ef | li_im))
     
     with f_li:
-        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️ Línea")
+        s_li = st.multiselect("Línea", lineas_disp, label_visibility="collapsed", placeholder="⚙️")
         
     if s_li:
         norm_li = normalizar_lista(s_li)
@@ -308,7 +315,7 @@ with st.container():
     puestos_disp = sorted(list(pu_ef | pu_im))
     
     with f_pu:
-        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️ Puesto")
+        s_pu = st.multiselect("Puesto", puestos_disp, label_visibility="collapsed", placeholder="🛠️")
 
 # =========================================================================
 # APLICACIÓN DE FILTROS A DF FINALES
@@ -379,7 +386,7 @@ if not df_im_f.empty:
             top3_imp_html = "".join(filas_imp)
 
 # =========================================================================
-# CARTELES KPI (Ya no son pegajosos, se desplazan para ver gráficos)
+# CARTELES KPI
 # =========================================================================
 st.markdown(f"""
 <div class="kpi-grid">
