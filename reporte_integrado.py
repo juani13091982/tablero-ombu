@@ -72,8 +72,10 @@ st.markdown("""
 plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
 efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
 efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
-caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
+caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
+caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
 # 2. SEGURIDAD
@@ -91,9 +93,11 @@ def mostrar_login():
             except: st.markdown("<h2 style='text-align:center;'>OMBÚ</h2>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center;'><h2 style='color:#1E3A8A;'>GESTIÓN INDUSTRIAL PRODUCTIVA OMBÚ S.A.</h2><p>Acceso Restringido - Control de Gestión</p></div>", unsafe_allow_html=True)
         with st.form("form_login"):
-            u_in, p_in = st.text_input("Usuario Corporativo"), st.text_input("Contraseña", type="password")
+            u_in = st.text_input("Usuario Corporativo")
+            p_in = st.text_input("Contraseña", type="password")
             if st.form_submit_button("Ingresar al Sistema", use_container_width=True):
-                if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: st.session_state['autenticado'] = True; st.rerun()
+                if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: 
+                    st.session_state['autenticado'] = True; st.rerun()
                 else: st.error("❌ Credenciales incorrectas.")
 
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
@@ -136,19 +140,10 @@ def cargar_datos():
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    # Identificar la COLUMNA M (Índice 12 en arrays de 0) para "Tiempo Real / Unidad" con Horas Ocultas
-    col_m_name = df_ef.columns[12] if len(df_ef.columns) > 12 else None
-    
-    # Forzar conversión numérica de columnas clave
     cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
-    if col_m_name and col_m_name not in cols_numericas: cols_numericas.append(col_m_name)
-
     for col in cols_numericas:
         if col in df_ef.columns: df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
     
-    # Asignar explícitamente la columna M a una variable interna de uso seguro
-    df_ef['HH_REAL_COL_M'] = df_ef[col_m_name] if col_m_name else 0
-
     if 'TIPO_PARADA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c), df_im.columns[0]): 'TIPO_PARADA'}, inplace=True)
     if 'HH_IMPRODUCTIVAS' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'HH' in c and 'IMP' in c), df_im.columns[0]): 'HH_IMPRODUCTIVAS'}, inplace=True)
     if 'DETALLE' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'DETALLE' in c or 'OBS' in c), df_im.columns[0]): 'DETALLE'}, inplace=True)
@@ -302,7 +297,7 @@ if not df_im_f.empty:
             top3_imp_html = "".join(filas_imp)
 
 # =========================================================================
-# CARTELES KPI (Estructura Grid Exacta para PC y Móvil)
+# CARTELES KPI
 # =========================================================================
 st.markdown(f"""
 <div class="kpi-grid">
@@ -416,7 +411,7 @@ with col2:
 st.markdown("---")
 
 # =========================================================================
-# 7. GRÁFICOS MÉTRICAS 3 Y 4 (CON CARTELES ACUMULADOS)
+# 7. GRÁFICOS MÉTRICAS 3 Y 4
 # =========================================================================
 col3, col4 = st.columns(2)
 with col3:
@@ -518,7 +513,7 @@ with col5:
         x_idx = np.arange(len(ag5))
         bp = ax5.bar(x_idx, ag5['Prom_M'], color='maroon', edgecolor='white', zorder=2)
         
-        # AUMENTAMOS EL YLIM PARA DEJAR MUCHO AIRE ARRIBA PARA EL TEXTO VERTICAL
+        # Escala ajustada para evitar superposición
         set_escala_y(ax5, ag5['Prom_M'].max(), 3.5)
         ax5.bar_label(bp, padding=4, color='black', fontweight='bold', fmt='%.1f', zorder=4)
         
@@ -526,20 +521,18 @@ with col5:
         ax5_line.axhline(80, color='gray', linestyle='--', linewidth=2, zorder=1)
         ax5_line.set_ylim(0, 110); ax5_line.yaxis.set_major_formatter(mtick.PercentFormatter()) 
         
-        # ETIQUETAS DEL EJE X
         lbls = [textwrap.fill(str(t), 20) for t in ag5['TIPO_PARADA']]
         ax5.set_xticks(x_idx); ax5.set_xticklabels(lbls, rotation=45, ha='right', fontsize=11, fontweight='bold')
         
-        # ETIQUETAS DE LA LÍNEA ROJA
         for i, val in enumerate(ag5['Pct_Acu']): ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 6), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
         
-        # 1) CARTEL SUTIL (TOTAL HH IMP ACUMULADAS)
+        # CARTEL DE HH IMP ACUMULADAS EN EL TABLERO
         tot_imp_acum = df_im_f['HH_IMPRODUCTIVAS'].sum()
         ax5.text(0.98, 0.95, f"HH IMP. ACUMULADAS: {tot_imp_acum:,.1f}", transform=ax5.transAxes, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#f5f5f5", ec="gray", lw=1), fontsize=13, fontweight='bold', zorder=10)
         
-        # 2) TOP 1 RESPONSABLE EN LAS 3 PRIMERAS BARRAS (VERTICAL)
+        # TOP 1 RESPONSABLE POR MOTIVO EN LAS 3 PRIMERAS BARRAS
         agrup_col = orig_col_pu if orig_col_pu else 'OPERARIO'
-        if s_pu: agrup_col = 'OPERARIO' # Si filtró por puesto, mostramos el operario
+        if s_pu: agrup_col = 'OPERARIO'
         
         top3_causas = ag5['TIPO_PARADA'].head(3).tolist()
         for i, causa in enumerate(top3_causas):
@@ -547,7 +540,6 @@ with col5:
             if not df_c.empty and agrup_col in df_c.columns:
                 top_name = df_c.groupby(agrup_col)['HH_IMPRODUCTIVAS'].sum().idxmax()
                 top_val = df_c.groupby(agrup_col)['HH_IMPRODUCTIVAS'].sum().max()
-                # Imprimir texto vertical arriba de la barra
                 y_pos = ag5['Prom_M'].iloc[i] + (ag5['Prom_M'].max() * 0.1)
                 ax5.text(i, y_pos, f"🚨 {top_name}\n({top_val:.1f}h)", rotation=90, ha='center', va='bottom', color='darkred', fontsize=11, fontweight='bold', bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.8), zorder=15)
                 
@@ -573,7 +565,6 @@ with col6:
         df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
         
         fig6, ax6 = plt.subplots(figsize=(14, 10))
-        # 3) DEJAMOS MUCHO AIRE ARRIBA PARA QUE NADA SE SOLAPE
         fig6.subplots_adjust(top=0.60, bottom=0.15, left=0.06, right=0.94) 
         fig6.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
@@ -586,13 +577,11 @@ with col6:
                 lbls_stk = [f"{int(v)}" if v > 0 else "" for v in vals]
                 ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
                 base_st += vals
-            # LEYENDA A TODO LO ANCHO
             ax6.legend(loc='lower center', bbox_to_anchor=(0.5, 1.05), ncol=4, framealpha=0.9, fontsize=12)
         else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
             
         set_escala_y(ax6, df6['Suma_I'].max(), 3.0) 
         
-        # LÍNEA ROJA Y SUS ETIQUETAS (POR ENCIMA DE LA LÍNEA)
         ax6_line = ax6.twinx(); ax6_line.plot(x_idx, df6['Inc_%'], color='red', marker='o', markersize=12, linewidth=6, path_effects=efecto_b, label='% Incidencia', zorder=5)
         add_tendencia(ax6_line, x_idx, df6['Inc_%'])
         ax6_line.axhline(15, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
@@ -602,7 +591,6 @@ with col6:
             if df6['Suma_I'].iloc[i] > 0: 
                 ax6_line.annotate(f"{val:.1f}%", (x_idx[i], val), textcoords="offset points", xytext=(0, 20), color='red', ha='center', fontsize=16, fontweight='bold', path_effects=efecto_b, zorder=10)
         
-        # ETIQUETAS IMP/DISP FIJAS EN LA PARTE SUPERIOR (PARA NO PISAR LAS BARRAS NI LA LÍNEA ROJA)
         altura_fija_etiquetas = df6['Suma_I'].max() * 1.3
         for i in range(len(x_idx)):
             v_i, v_d = df6['Suma_I'].iloc[i], df6['HH_Disponibles'].iloc[i]
@@ -619,7 +607,7 @@ st.markdown("---")
 # 9. NUEVAS MÉTRICAS GERENCIALES (7, 8 Y 9)
 # =========================================================================
 
-# ---> MÉTRICA 7: CAPITALIZACIÓN DE MEJORAS BIDIRECCIONAL (VERDE O ROJO)
+# ---> MÉTRICA 7: CAPITALIZACIÓN DE MEJORAS
 st.header("7. CAPITALIZACIÓN DE MEJORAS / DESVÍOS (MESA DE COSTOS)")
 st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
 
@@ -697,11 +685,13 @@ with col7:
     if not s_li and not s_pu:
         st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
     else:
-        # COLUMNA M DEL GOOGLE SHEETS PARA EL RATIO (Incluye horas ocultas)
-        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', 'HH_REAL_COL_M':'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+        # CÁLCULO DIRECTO SOBRE HH PRODUCTIVAS C/GAP Y HH STD TOTAL
+        c_prod = next((c for c in df_plot_1.columns if 'GAP' in str(c).upper() and 'PROD' in str(c).upper()), 'HH_Productivas_C/GAP')
+        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', c_prod:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
+        
         if not ag8.empty:
-            ag8['HH_Real_U'] = ag8['HH_REAL_COL_M'] / ag8['Cant._Prod._A1']
+            ag8['HH_Real_U'] = ag8[c_prod] / ag8['Cant._Prod._A1']
             ag8['HH_Std_U'] = ag8['HH_STD_TOTAL'] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
@@ -709,27 +699,25 @@ with col7:
             fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
             
-            # 4) CAMBIO DE NOMBRE DE LA LEYENDA A 'HH. PRODUC._C/GAP / Unidad'
+            # LEYENDAS Y LÍNEAS
             ax8.plot(x_idx, ag8['HH_Real_U'], color='firebrick', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='HH. PRODUC._C/GAP / Unidad', zorder=5)
             ax8.plot(x_idx, ag8['HH_Std_U'], color='darkgreen', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
             
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
             
-            # 4) ETIQUETAS DE DATOS Y LÍNEAS VERTICALES DE DESVÍO
+            # ETIQUETAS Y LÍNEAS VERTICALES
             for i in range(len(x_idx)): 
                 ax8.annotate(f"{ag8['HH_Real_U'].iloc[i]:.1f}h", (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,15), ha='center', fontweight='bold', bbox=caja_o, zorder=10)
                 ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.1f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="darkgreen", lw=1.5), zorder=10)
                 
-                # Línea Vertical
+                # Línea de Diferencia
                 ax8.plot([x_idx[i], x_idx[i]], [ag8['HH_Std_U'].iloc[i], ag8['HH_Real_U'].iloc[i]], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
-                
-                # Diferencia flotante al lado de la línea
                 diff_val = ag8['HH_Real_U'].iloc[i] - ag8['HH_Std_U'].iloc[i]
                 mid_y = (ag8['HH_Real_U'].iloc[i] + ag8['HH_Std_U'].iloc[i]) / 2
                 ax8.annotate(f"{diff_val:+.1f}h", (x_idx[i] + 0.05, mid_y), color='dodgerblue', fontweight='bold', fontsize=12, zorder=4)
 
-            # 4) CÁLCULO DE UNIDADES GANADAS / PERDIDAS Y CARTEL CENTRAL
+            # CÁLCULO EXACTO DE UNIDADES GANADAS/PERDIDAS
             ag8['Unid_Desvio'] = ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U']
             tot_desvio = ag8['Unid_Desvio'].sum()
             
@@ -742,7 +730,6 @@ with col7:
                 
             ax8.text(0.5, 0.95, cartel_txt, transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=16, fontweight='bold', zorder=20)
             
-            # Ampliar la escala para que el cartel no pise la gráfica
             min_y = min(ag8['HH_Real_U'].min(), ag8['HH_Std_U'].min()) * 0.8
             max_y = max(ag8['HH_Real_U'].max(), ag8['HH_Std_U'].max()) * 1.3
             ax8.set_ylim(min_y, max_y)
