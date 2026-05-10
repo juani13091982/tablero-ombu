@@ -83,7 +83,7 @@ st.markdown("""
         .stMultiSelect div[data-baseweb="select"] div[role="button"] { padding: 0 !important; } 
 
         /* 4. Achicar Títulos de Métricas a 1 sola línea */
-        h2 { font-size: 17px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; margin-bottom: 0px !important; padding-bottom: 0px !important;}
+        h2 { font-size: 16px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; margin-bottom: 0px !important; padding-bottom: 0px !important; line-height: 1.2 !important;}
         hr { margin: 10px 0px !important; }
 
         /* 5. Carteles Gigantes (KPI) */
@@ -232,7 +232,9 @@ with st.container():
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
+    st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
+    
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅")
@@ -374,7 +376,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header("1. EFICIENCIA REAL")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     if warn_linea: st.warning("⚠️ Esta Línea NO registra un 'Último Puesto'. Seleccione un Puesto para análisis preciso.")
     
     if not df_plot_1.empty:
@@ -414,7 +416,7 @@ with col1:
 
 with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
     if not df_plot_1.empty:
         ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', col_prod_tot: 'sum'}).reset_index()
         ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[col_prod_tot]).replace([np.inf, -np.inf], 0).fillna(0) * 100
@@ -453,7 +455,7 @@ st.markdown("---")
 col3, col4 = st.columns(2)
 with col3:
     st.header("3. GAP HH GLOBAL")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
         ag3 = df_ef_f.groupby('Fecha').agg({col_prod_tot: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
@@ -494,7 +496,7 @@ with col3:
 
 with col4:
     st.header("4. TENDENCIA COSTOS IMPRODUCTIVOS")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Evolución de valorización económica de la ineficiencia</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Evolución de valorización económica de la ineficiencia</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
         ag4 = df_ef_f.groupby('Fecha').agg({'Costo_Improd._$': 'sum'}).reset_index()
@@ -534,7 +536,7 @@ st.markdown("---")
 col5, col6 = st.columns(2)
 with col5:
     st.header("5. PARETO DE CAUSAS")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
     if not df_im_f.empty:
         ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
         div = df_im_f['FECHA'].nunique() if df_im_f['FECHA'].nunique() > 0 else 1
@@ -561,7 +563,6 @@ with col5:
         for i, val in enumerate(ag5['Pct_Acu']): ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 6), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
         
         tot_imp_acum = df_im_f['HH_IMPRODUCTIVAS'].sum()
-        # ACÁ MOVI EL CARTEL AL LADO IZQUIERDO (x=0.02, ha='left')
         ax5.text(0.02, 0.95, f"HH IMP. ACUMULADAS: {tot_imp_acum:,.1f}", transform=ax5.transAxes, ha='left', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#f5f5f5", ec="gray", lw=1), fontsize=13, fontweight='bold', zorder=10)
         
         agrup_col = orig_col_pu if orig_col_pu else 'OPERARIO'
@@ -581,7 +582,7 @@ with col5:
 
 with col6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
     if not df_ef_f.empty:
         df_ef_f['K_Mes'] = df_ef_f['Fecha'].dt.strftime('%Y-%m')
         ag_disp = df_ef_f.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
@@ -642,7 +643,7 @@ st.markdown("---")
 
 # ---> MÉTRICA 7: CAPITALIZACIÓN DE MEJORAS
 st.header("7. CAPITALIZACIÓN DE MEJORAS / DESVÍOS (MESA DE COSTOS)")
-st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
+st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
 
 df_ef_h, df_im_h = df_ef.copy(), df_im.copy()
 if s_pl: 
@@ -714,7 +715,7 @@ col7, col8 = st.columns(2)
 
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
     if not s_li and not s_pu:
         st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
     else:
@@ -780,7 +781,7 @@ with col7:
 
 with col8:
     st.header("9. RANKING DE EFICIENCIA REAL")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Competencia Sectorial vs Meta 85%</i></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Competencia Sectorial vs Meta 85%</i></div>", unsafe_allow_html=True)
     agrupar_por = 'Puesto_Trabajo' if (s_li or s_pu) else 'Linea'
     if agrupar_por in df_ef_f.columns:
         ag9 = df_ef_f.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'}).reset_index()
@@ -812,7 +813,7 @@ st.markdown("---")
 # 10. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)
 # =========================================================================
 st.header("10. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)")
-st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Apertura de registros detallados con fecha, operario y motor de sugerencia de acciones</i></div>", unsafe_allow_html=True)
+st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Apertura de registros detallados con fecha, operario y motor de sugerencia de acciones</i></div>", unsafe_allow_html=True)
 
 if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
     motivos_disp = sorted(df_im_f['TIPO_PARADA'].dropna().unique())
