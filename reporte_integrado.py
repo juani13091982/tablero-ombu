@@ -37,29 +37,50 @@ st.markdown("""
 
     h3 { white-space: nowrap !important; }
 
+    /* ==================================================================== */
+    /* VISTA EXCLUSIVA PARA CELULARES (CIRUGÍA ESTÉTICA COMPACTA)           */
+    /* ==================================================================== */
     @media (max-width: 1024px) {
         div[data-testid="stHorizontalBlock"]:has(form) { display: flex !important; justify-content: center !important; width: 100% !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { width: 100% !important; max-width: 450px !important; }
 
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 5px !important; }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { width: 20% !important; }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 60% !important; }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { width: 20% !important; }
+        /* Ajuste de márgenes de la caja pegajosa para ahorrar espacio */
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
+            padding: 2px 5px 5px 5px !important;
+        }
 
-        div[data-testid="stHorizontalBlock"]:has(#filtro-row) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2px !important; margin-top: 0px !important; }
-        div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { width: 25% !important; flex: 1 1 25% !important; padding: 0 !important; }
+        /* 1. Fila de Encabezado (Logo y Título) */
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 2px !important; }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { width: 15% !important; }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 85% !important; }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { display: none !important; } /* Oculta botón Salir */
         
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) h3 { font-size: 16px !important; margin-top: 5px !important; margin-bottom: 0px !important; }
+
+        /* 2. Fila de 4 Filtros Maestros en 1 sola línea */
+        div[data-testid="stHorizontalBlock"]:has(#filtro-row) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2px !important; margin-top: 0px !important; }
+        div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { width: 25% !important; min-width: 25% !important; flex: 1 1 25% !important; padding: 0 !important; }
+        
+        /* 3. Compactar las cajas de filtros */
         div[data-testid="stMultiSelect"] label { display: none !important; }
         div[data-testid="stMultiSelect"] label p { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 14px !important; padding: 0 !important; min-height: 40px !important; height: 40px !important; }
+        .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 32px !important; height: auto !important; max-height: 36px !important; overflow: hidden !important; border-radius: 4px !important;}
+        .stMultiSelect div[data-baseweb="select"] span { font-size: 11px !important; padding: 0px 2px !important; }
+        .stMultiSelect div[data-baseweb="select"] div[role="button"] { padding: 0 !important; } /* Oculta cruz interna para ganar espacio */
 
+        /* 4. Achicar Títulos de Métricas a 1 sola línea */
+        h2 { font-size: 17px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; margin-bottom: 0px !important; padding-bottom: 0px !important;}
+        hr { margin: 10px 0px !important; }
+
+        /* 5. Carteles Gigantes (KPI) */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
-        .kpi-grid h2 { font-size: 48px !important; line-height: 1.0 !important; }
+        .kpi-grid h2 { font-size: 48px !important; line-height: 1.0 !important; white-space: normal !important; overflow: visible !important;}
         .kpi-grid h4 { font-size: 18px !important; margin-bottom: 0px !important; }
         .kpi-costo h2 { font-size: 52px !important; }
         
+        /* Gráficos al 100% */
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) { display: flex !important; flex-direction: column !important; width: 100% !important; }
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) > div[data-testid="column"] { width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important; }
     }
@@ -190,20 +211,21 @@ except Exception as e:
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
-    st.markdown("<span id='header-anchor'></span>", unsafe_allow_html=True)
     h_l, h_t, h_s = st.columns([0.8, 3.5, 0.7])
     with h_l:
+        st.markdown("<span id='header-anchor'></span>", unsafe_allow_html=True)
         try: st.image("LOGO OMBÚ.jpg", width=90)
         except: st.markdown("##### OMBÚ")
     with h_t: st.markdown("<h3 style='text-align:center;'>TABLERO INTEGRADO C.G.P.</h3>", unsafe_allow_html=True)
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
-    st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
-    
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
-    with f_mes: s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅 Mes")
+    with f_mes: 
+        st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
+        # Cambio de Placeholders a solo iconos para ahorrar espacio en celular
+        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅")
         
     df_base_ef, df_base_im = df_ef.copy(), df_im.copy()
     if s_mes and "🎯 Acumulado YTD" not in s_mes:
@@ -213,7 +235,7 @@ with st.container():
     pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
     pl_im = set(df_base_im[orig_col_pl].dropna().astype(str).unique()) if orig_col_pl and not df_base_im.empty else set()
     
-    with f_pl: s_pl = st.multiselect("Planta", sorted(list(pl_ef | pl_im)), placeholder="🏭 Planta")
+    with f_pl: s_pl = st.multiselect("Planta", sorted(list(pl_ef | pl_im)), placeholder="🏭")
         
     if s_pl:
         norm_pl = normalizar_lista(s_pl)
@@ -223,7 +245,7 @@ with st.container():
     li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
     li_im = set(df_base_im[orig_col_li].dropna().astype(str).unique()) if orig_col_li and not df_base_im.empty else set()
     
-    with f_li: s_li = st.multiselect("Línea", sorted(list(li_ef | li_im)), placeholder="⚙️ Línea")
+    with f_li: s_li = st.multiselect("Línea", sorted(list(li_ef | li_im)), placeholder="⚙️")
         
     if s_li:
         norm_li = normalizar_lista(s_li)
@@ -233,7 +255,7 @@ with st.container():
     pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
     pu_im = set(df_base_im[orig_col_pu].dropna().astype(str).unique()) if orig_col_pu and not df_base_im.empty else set()
     
-    with f_pu: s_pu = st.multiselect("Puesto", sorted(list(pu_ef | pu_im)), placeholder="🛠️ Puesto")
+    with f_pu: s_pu = st.multiselect("Puesto", sorted(list(pu_ef | pu_im)), placeholder="🛠️")
 
 # APLICACIÓN DE FILTROS A DF FINALES
 df_ef_f, df_im_f = df_ef.copy(), df_im.copy()
