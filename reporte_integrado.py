@@ -37,15 +37,7 @@ st.markdown("""
     .kpi-top-imp { grid-column: 2; grid-row: 2; }
 
     h3 { white-space: nowrap !important; }
-    
-    /* Clase para Subtítulos - Cero solapamientos */
-    .sub-title {
-        font-size: 14px;
-        color: #aaa;
-        margin-top: -5px;
-        margin-bottom: 15px;
-        display: block;
-    }
+    .sub-title { font-size: 14px; color: #aaa; margin-top: -5px; margin-bottom: 15px; display: block; }
 
     /* ==================================================================== */
     /* VISTA EXCLUSIVA PARA CELULARES (PERFECCIÓN ABSOLUTA 2x2)             */
@@ -96,10 +88,8 @@ st.markdown("""
 plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
 efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
 efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
-caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
-caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
-caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
 # 2. SEGURIDAD
@@ -309,6 +299,7 @@ for c in df_ef_f.columns:
 # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
 tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
 tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
+
 tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
 tot_disp_eficiencia = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
 tot_prod = df_plot_1[col_prod_tot].sum() if (col_prod_tot in df_plot_1.columns and not df_plot_1.empty) else 0
@@ -404,7 +395,6 @@ if tot_disp_todas_res > 0 and len(fechas_previas_res) > 0:
     costo_hh_res = (tot_costo / tot_hh_imp) if tot_hh_imp > 0 else 15000
     ahorro_usd_res = val_1_res * costo_hh_res
 
-# Convertimos desvío de ritmo a Máquinas CRV 26 (130 HH)
 ag8_res = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
 ag8_res = ag8_res[ag8_res['Cant._Prod._A1'] > 0]
 tot_gp_crv26 = 0
@@ -415,7 +405,6 @@ if not ag8_res.empty:
 res_color_econ = "#1B5E20" if ahorro_usd_res >= 0 else "#B71C1C"
 res_color_prod = "#1B5E20" if tot_gp_crv26 >= 0 else "#B71C1C"
 
-# ¡ACÁ ARREGLÉ EL TÍTULO DEL CELULAR CON EL <br>!
 st.markdown(f"""
 <div style="background: #111; padding: 20px; border-radius: 10px; border: 2px solid #555; margin-top: 15px; margin-bottom: 20px; box-shadow: 0px 10px 20px rgba(0,0,0,0.5);">
     <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 20px; white-space: normal; line-height: 1.3;">📊 BALANCE GERENCIAL<br><span style="font-size:14px; font-weight:normal; color:#ccc;">(EQUIVALENCIA MÁQUINAS CRV 26)</span></h3>
