@@ -36,6 +36,21 @@ st.markdown("""
     .kpi-top-imp { grid-column: 2; grid-row: 2; }
 
     h3 { white-space: nowrap !important; }
+    
+    /* Clase inteligente para Subtítulos (Evita solapamiento en celulares) */
+    .sub-title {
+        font-size: 14px;
+        color: #aaa;
+        margin-top: -15px;
+        margin-bottom: 10px;
+    }
+    
+    /* Clases para Métrica 7 adaptable */
+    .m7-title { font-size: 22px !important; }
+    .m7-value { font-size: 55px !important; padding: 10px 0px; }
+    .m7-sub { font-size: 15px !important; }
+    .m7-box { text-align:center; min-width: 200px; margin: 10px; flex: 1; }
+    .m7-box:not(:first-child) { border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px; }
 
     /* ==================================================================== */
     /* VISTA EXCLUSIVA PARA CELULARES (CIRUGÍA ESTÉTICA COMPACTA 2x2)       */
@@ -59,7 +74,7 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) h3 { font-size: 16px !important; margin-top: 5px !important; margin-bottom: 0px !important; }
 
         /* 2. Filtros Maestros en Grilla Perfecta de 2x2 (Mitad y Mitad) */
-        div[data-testid="stHorizontalBlock"]:has([data-testid="stMultiSelect"]) { 
+        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) { 
             display: flex !important; 
             flex-direction: row !important; 
             flex-wrap: wrap !important; 
@@ -67,10 +82,11 @@ st.markdown("""
             gap: 2px 0px !important; 
             margin-top: 0px !important;
         }
-        div[data-testid="stHorizontalBlock"]:has([data-testid="stMultiSelect"]) > div[data-testid="column"] { 
-            width: 49% !important; 
-            min-width: 49% !important; 
-            flex: 1 1 49% !important; 
+        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { 
+            width: 48% !important; 
+            min-width: 48% !important; 
+            max-width: 48% !important;
+            flex: 1 1 48% !important; 
             padding: 0px 2px !important; 
         }
         
@@ -82,16 +98,24 @@ st.markdown("""
         .stMultiSelect div[data-baseweb="select"] span { font-size: 11px !important; padding: 0px 2px !important; }
         .stMultiSelect div[data-baseweb="select"] div[role="button"] { padding: 0 !important; } 
 
-        /* 4. Achicar Títulos de Métricas a 1 sola línea */
-        h2 { font-size: 16px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; margin-bottom: 0px !important; padding-bottom: 0px !important; line-height: 1.2 !important;}
+        /* 4. Achicar Títulos de Métricas a 1 sola línea y separar subtítulos */
+        h2 { font-size: 16px !important; white-space: normal !important; margin-bottom: 2px !important; padding-bottom: 0px !important; line-height: 1.2 !important;}
         hr { margin: 10px 0px !important; }
+        .sub-title { margin-top: 0px !important; margin-bottom: 5px !important; font-size: 12px !important; }
 
         /* 5. Carteles Gigantes (KPI) */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
-        .kpi-grid h2 { font-size: 48px !important; line-height: 1.0 !important; white-space: normal !important; overflow: visible !important;}
+        .kpi-grid h2 { font-size: 40px !important; line-height: 1.0 !important; white-space: normal !important; overflow: visible !important;}
         .kpi-grid h4 { font-size: 18px !important; margin-bottom: 0px !important; }
-        .kpi-costo h2 { font-size: 52px !important; }
+        .kpi-costo h2 { font-size: 42px !important; }
         
+        /* 6. Métrica 7 en Celular (Adaptable) */
+        .m7-box { min-width: 100% !important; border-left: none !important; padding-left: 0 !important; border-bottom: 1px dashed rgba(255,255,255,0.4) !important; padding-bottom: 10px !important; margin-bottom: 10px !important; }
+        .m7-box:last-child { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
+        .m7-title { font-size: 16px !important; }
+        .m7-value { font-size: 40px !important; padding: 5px 0px !important; }
+        .m7-sub { font-size: 12px !important; }
+
         /* Gráficos al 100% */
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) { display: flex !important; flex-direction: column !important; width: 100% !important; }
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) > div[data-testid="column"] { width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important; }
@@ -232,11 +256,11 @@ with st.container():
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
-    st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
-    
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
+        # Etiqueta invisible en PC para alinear perfectamente
+        st.markdown("<div id='filtro-row' style='display:none;'></div>", unsafe_allow_html=True)
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅")
         
     df_base_ef, df_base_im = df_ef.copy(), df_im.copy()
@@ -376,7 +400,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header("1. EFICIENCIA REAL")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Fórmula: (∑ HH STD / ∑ HH DISPONIBLES)</i></div>", unsafe_allow_html=True)
     if warn_linea: st.warning("⚠️ Esta Línea NO registra un 'Último Puesto'. Seleccione un Puesto para análisis preciso.")
     
     if not df_plot_1.empty:
@@ -416,7 +440,7 @@ with col1:
 
 with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
     if not df_plot_1.empty:
         ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', col_prod_tot: 'sum'}).reset_index()
         ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[col_prod_tot]).replace([np.inf, -np.inf], 0).fillna(0) * 100
@@ -455,7 +479,7 @@ st.markdown("---")
 col3, col4 = st.columns(2)
 with col3:
     st.header("3. GAP HH GLOBAL")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Desvío entre Horas Disponibles y Declaradas Totales</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
         ag3 = df_ef_f.groupby('Fecha').agg({col_prod_tot: 'sum', 'HH_Disponibles': 'sum'}).reset_index()
@@ -496,7 +520,7 @@ with col3:
 
 with col4:
     st.header("4. TENDENCIA COSTOS IMPRODUCTIVOS")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Evolución de valorización económica de la ineficiencia</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Evolución de valorización económica de la ineficiencia</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
         ag4 = df_ef_f.groupby('Fecha').agg({'Costo_Improd._$': 'sum'}).reset_index()
@@ -536,7 +560,7 @@ st.markdown("---")
 col5, col6 = st.columns(2)
 with col5:
     st.header("5. PARETO DE CAUSAS")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Distribución de motivos de pérdida (80/20)</i></div>", unsafe_allow_html=True)
     if not df_im_f.empty:
         ag5 = df_im_f.groupby('TIPO_PARADA')['HH_IMPRODUCTIVAS'].sum().reset_index()
         div = df_im_f['FECHA'].nunique() if df_im_f['FECHA'].nunique() > 0 else 1
@@ -582,7 +606,7 @@ with col5:
 
 with col6:
     st.header("6. EVOLUCIÓN INCIDENCIA %")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Porcentaje histórico de HH Improductivas sobre Disponibles</i></div>", unsafe_allow_html=True)
     if not df_ef_f.empty:
         df_ef_f['K_Mes'] = df_ef_f['Fecha'].dt.strftime('%Y-%m')
         ag_disp = df_ef_f.groupby('K_Mes', as_index=False)['HH_Disponibles'].sum()
@@ -643,7 +667,7 @@ st.markdown("---")
 
 # ---> MÉTRICA 7: CAPITALIZACIÓN DE MEJORAS
 st.header("7. CAPITALIZACIÓN DE MEJORAS / DESVÍOS (MESA DE COSTOS)")
-st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-title'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
 
 df_ef_h, df_im_h = df_ef.copy(), df_im.copy()
 if s_pl: 
@@ -689,21 +713,21 @@ if tot_disp_todas > 0 and len(fechas_previas) > 0:
     val_3 = val_1 / 130.0
 
     st.markdown(f"""
-    <div style="background: {bg_color}; padding: 25px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
-        <div style="text-align:center; min-width: 200px; margin: 10px;">
-            <h4 style="margin:0; color:{text_color}; font-size:22px;">{tit_1}</h4>
-            <h2 style="margin:0; font-size: 55px; padding: 10px 0;">{val_1:,.0f} <span style="font-size:24px;">HH</span></h2>
-            <p style="margin:0; font-size:15px;">Incidencia pasó del {inc_hist*100:.1f}% al {inc_act*100:.1f}%</p>
+    <div style="background: {bg_color}; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
+        <div class="m7-box">
+            <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_1}</h4>
+            <div class="m7-value" style="margin:0; font-weight:bold;">{val_1:,.0f} <span style="font-size:18px;">HH</span></div>
+            <p class="m7-sub" style="margin:0;">Incidencia pasó del {inc_hist*100:.1f}% al {inc_act*100:.1f}%</p>
         </div>
-        <div style="text-align:center; min-width: 200px; margin: 10px; border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px;">
-            <h4 style="margin:0; color:{text_color}; font-size:22px;">{tit_2}</h4>
-            <h2 style="margin:0; font-size: 55px; padding: 10px 0;">${val_2:,.0f}</h2>
-            <p style="margin:0; font-size:15px;">Costo base oportunidad</p>
+        <div class="m7-box">
+            <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_2}</h4>
+            <div class="m7-value" style="margin:0; font-weight:bold;">${val_2:,.0f}</div>
+            <p class="m7-sub" style="margin:0;">Costo base oportunidad</p>
         </div>
-        <div style="text-align:center; min-width: 200px; margin: 10px; border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px;">
-            <h4 style="margin:0; color:{text_color}; font-size:22px;">{tit_3}</h4>
-            <h2 style="margin:0; font-size: 55px; padding: 10px 0;">{val_3:,.1f} <span style="font-size:24px;">CRV 26</span></h2>
-            <p style="margin:0; font-size:15px;">(A razón de 130 HH/Unidad)</p>
+        <div class="m7-box">
+            <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_3}</h4>
+            <div class="m7-value" style="margin:0; font-weight:bold;">{val_3:,.1f} <span style="font-size:18px;">CRV 26</span></div>
+            <p class="m7-sub" style="margin:0;">(A razón de 130 HH/Unidad)</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -715,7 +739,7 @@ col7, col8 = st.columns(2)
 
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
     if not s_li and not s_pu:
         st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
     else:
@@ -781,7 +805,7 @@ with col7:
 
 with col8:
     st.header("9. RANKING DE EFICIENCIA REAL")
-    st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Competencia Sectorial vs Meta 85%</i></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'><i>Competencia Sectorial vs Meta 85%</i></div>", unsafe_allow_html=True)
     agrupar_por = 'Puesto_Trabajo' if (s_li or s_pu) else 'Linea'
     if agrupar_por in df_ef_f.columns:
         ag9 = df_ef_f.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'}).reset_index()
@@ -812,8 +836,8 @@ st.markdown("---")
 # =========================================================================
 # 10. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)
 # =========================================================================
-st.header("10. DETALLES DE IMPRODUCTIVIDAD (MESA DE TRABAJO)")
-st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-2px; margin-bottom:10px;'><i>Apertura de registros detallados con fecha, operario y motor de sugerencia de acciones</i></div>", unsafe_allow_html=True)
+st.header("10. DETALLES DE IMPRODUCTIVIDAD")
+st.markdown("<div class='sub-title'><i>Apertura de registros detallados con fecha, operario y motor de sugerencia de acciones</i></div>", unsafe_allow_html=True)
 
 if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
     motivos_disp = sorted(df_im_f['TIPO_PARADA'].dropna().unique())
