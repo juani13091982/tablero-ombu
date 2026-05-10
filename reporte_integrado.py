@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -27,6 +26,7 @@ st.markdown("""
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
     
+    /* Etiquetas solo en PC */
     div[data-testid="stMultiSelect"] label p { font-size: 15px !important; font-weight: bold !important; color: #90CAF9 !important; margin-bottom: -5px !important; }
 
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
@@ -37,7 +37,21 @@ st.markdown("""
     .kpi-top-imp { grid-column: 2; grid-row: 2; }
 
     h3 { white-space: nowrap !important; }
-    .sub-title { font-size: 14px; color: #aaa; margin-top: -5px; margin-bottom: 15px; display: block; }
+    
+    /* Clase para Subtítulos - Cero solapamientos */
+    .sub-title {
+        font-size: 14px;
+        color: #aaa;
+        margin-top: -5px;
+        margin-bottom: 15px;
+        display: block;
+    }
+    
+    .m7-title { font-size: 22px !important; }
+    .m7-value { font-size: 55px !important; padding: 10px 0px; }
+    .m7-sub { font-size: 15px !important; }
+    .m7-box { text-align:center; min-width: 200px; margin: 10px; flex: 1; }
+    .m7-box:not(:first-child) { border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px; }
 
     /* ==================================================================== */
     /* VISTA EXCLUSIVA PARA CELULARES (PERFECCIÓN ABSOLUTA 2x2)             */
@@ -211,7 +225,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 4. FILTROS FIJOS (STICKY EN PC Y CELULAR)
+# 4. FILTROS FIJOS
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -357,7 +371,7 @@ st.markdown(f"""
 t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+'.join(s_li) if s_li else 'Todas'} | Puesto: {'+'.join(s_pu) if s_pu else 'Todos'}"
 
 # =========================================================================
-# 7. BALANCE GERENCIAL PARA EL DUEÑO (MÉTRICA 7 ADAPTADA)
+# 5. BALANCE GERENCIAL PARA EL DUEÑO (MÉTRICA 7 ADAPTADA)
 # =========================================================================
 df_ef_h_res, df_im_h_res = df_ef.copy(), df_im.copy()
 if s_pl: 
