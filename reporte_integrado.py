@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -26,7 +27,6 @@ st.markdown("""
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
     
-    /* Etiquetas solo en PC */
     div[data-testid="stMultiSelect"] label p { font-size: 15px !important; font-weight: bold !important; color: #90CAF9 !important; margin-bottom: -5px !important; }
 
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
@@ -37,31 +37,16 @@ st.markdown("""
     .kpi-top-imp { grid-column: 2; grid-row: 2; }
 
     h3 { white-space: nowrap !important; }
-    
-    /* Clase para Subtítulos - Cero solapamientos */
-    .sub-title {
-        font-size: 14px;
-        color: #aaa;
-        margin-top: -5px;
-        margin-bottom: 15px;
-        display: block;
-    }
-    
-    .m7-title { font-size: 22px !important; }
-    .m7-value { font-size: 55px !important; padding: 10px 0px; }
-    .m7-sub { font-size: 15px !important; }
-    .m7-box { text-align:center; min-width: 200px; margin: 10px; flex: 1; }
-    .m7-box:not(:first-child) { border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px; }
+    .sub-title { font-size: 14px; color: #aaa; margin-top: -5px; margin-bottom: 15px; display: block; }
 
     /* ==================================================================== */
-    /* VISTA EXCLUSIVA PARA CELULARES (PERFECCIÓN ABSOLUTA)                 */
+    /* VISTA EXCLUSIVA PARA CELULARES (PERFECCIÓN ABSOLUTA 2x2)             */
     /* ==================================================================== */
     @media (max-width: 1024px) {
         div[data-testid="stHorizontalBlock"]:has(form) { display: flex !important; justify-content: center !important; width: 100% !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { width: 100% !important; max-width: 450px !important; }
 
-        /* ¡STICKY FIJO GARANTIZADO Y ULTRA COMPACTO EN CELULAR! */
         div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
             position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
             padding: 5px 5px 5px 5px !important;
@@ -70,53 +55,30 @@ st.markdown("""
             z-index: 99999 !important;
         }
 
-        /* 1. TÍTULO CENTRADO PERFECTO: VOLAMOS LOGO Y BOTÓN SALIR EN CELULAR */
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) { 
-            display: flex !important; align-items: center !important; justify-content: center !important; margin-bottom: 5px !important; 
-        }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { display: none !important; } /* Adiós logo */
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) { display: flex !important; align-items: center !important; justify-content: center !important; margin-bottom: 5px !important; }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 100% !important; display: flex !important; justify-content: center !important; }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { display: none !important; } /* Adiós botón Salir */
-        
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) h3 { font-size: 18px !important; margin: 0px !important; text-align: center !important; width: 100% !important;}
 
-        /* 2. FILTROS MAESTROS EN GRILLA DE 2x2 (MITAD Y MITAD) */
-        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) { 
-            display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; 
-            width: 100% !important; gap: 4px 2% !important; margin-top: 0px !important;
-        }
-        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { 
-            width: 49% !important; min-width: 49% !important; max-width: 49% !important;
-            flex: 1 1 49% !important; padding: 0px !important; 
-        }
+        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; width: 100% !important; gap: 4px 2% !important; margin-top: 0px !important; }
+        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { width: 49% !important; min-width: 49% !important; max-width: 49% !important; flex: 1 1 49% !important; padding: 0px !important; }
 
-        /* 3. ASESINATO DE ETIQUETAS DE TEXTO SOBRE LOS FILTROS (ESPACIO 100% LIMPIO) */
         div[data-testid="stMultiSelect"] > label { display: none !important; height: 0px !important; margin: 0px !important; padding: 0px !important; visibility: hidden !important;}
-        [data-testid="stMultiSelect"] { margin-top: -12px !important; margin-bottom: 0px !important; } /* Sube la caja absorbiendo el vacío */
+        [data-testid="stMultiSelect"] { margin-top: -12px !important; margin-bottom: 0px !important; }
         
-        /* 4. ESTILIZADO DE LAS CAJITAS (Nombres y Emojis adentro) */
         .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 36px !important; height: 36px !important; border-radius: 6px !important; overflow: hidden !important;}
         .stMultiSelect div[data-baseweb="select"] span { font-size: 12px !important; padding: 0px 2px !important; }
 
-        /* Títulos de Métricas en 1 sola línea */
         h2 { font-size: 18px !important; white-space: normal !important; margin-bottom: 5px !important; padding-bottom: 0px !important; line-height: 1.2 !important;}
         .sub-title { margin-top: 5px !important; margin-bottom: 15px !important; font-size: 13px !important; display: block !important; }
         hr { margin: 10px 0px !important; }
 
-        /* Carteles KPI */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
         .kpi-grid h2 { font-size: 40px !important; line-height: 1.0 !important; white-space: normal !important; overflow: visible !important;}
         .kpi-grid h4 { font-size: 18px !important; margin-bottom: 0px !important; }
         .kpi-costo h2 { font-size: 42px !important; }
-        
-        /* Métrica 7 en Celular (Adaptable) */
-        .m7-box { min-width: 100% !important; border-left: none !important; padding-left: 0 !important; border-bottom: 1px dashed rgba(255,255,255,0.4) !important; padding-bottom: 10px !important; margin-bottom: 10px !important; }
-        .m7-box:last-child { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
-        .m7-title { font-size: 16px !important; }
-        .m7-value { font-size: 40px !important; padding: 5px 0px !important; }
-        .m7-sub { font-size: 12px !important; }
 
-        /* Gráficos al 100% */
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) { display: flex !important; flex-direction: column !important; width: 100% !important; }
         .block-container > div > div > div > div[data-testid="stHorizontalBlock"]:nth-of-type(n+3) > div[data-testid="column"] { width: 100% !important; min-width: 100% !important; margin-bottom: 15px !important; }
     }
@@ -126,8 +88,10 @@ st.markdown("""
 plt.rcParams.update({'font.size': 14, 'font.weight': 'bold', 'axes.labelweight': 'bold', 'axes.titleweight': 'bold', 'figure.titlesize': 18})
 efecto_b = [pe.withStroke(linewidth=3, foreground='white')]
 efecto_n = [pe.withStroke(linewidth=3, foreground='black')]
-caja_v, caja_g = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5), dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
-caja_o, caja_b = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5), dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
+caja_v = dict(boxstyle="round,pad=0.3", fc="darkgreen", ec="white", lw=1.5)
+caja_g = dict(boxstyle="round,pad=0.3", fc="dimgray", ec="white", lw=1.5)
+caja_o = dict(boxstyle="round,pad=0.4", fc="gold", ec="black", lw=1.5)
+caja_b = dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.5)
 
 # =========================================================================
 # 2. SEGURIDAD
@@ -145,10 +109,13 @@ def mostrar_login():
             except: st.markdown("<h2 style='text-align:center;'>OMBÚ</h2>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center;'><h2 style='color:#1E3A8A;'>GESTIÓN INDUSTRIAL PRODUCTIVA OMBÚ S.A.</h2><p>Acceso Restringido - Control de Gestión</p></div>", unsafe_allow_html=True)
         with st.form("form_login"):
-            u_in, p_in = st.text_input("Usuario Corporativo"), st.text_input("Contraseña", type="password")
+            u_in = st.text_input("Usuario Corporativo")
+            p_in = st.text_input("Contraseña", type="password")
             if st.form_submit_button("Ingresar al Sistema", use_container_width=True):
-                if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: st.session_state['autenticado'] = True; st.rerun()
-                else: st.error("❌ Credenciales incorrectas.")
+                if u_in in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[u_in] == p_in: 
+                    st.session_state['autenticado'] = True; st.rerun()
+                else: 
+                    st.error("❌ Credenciales incorrectas.")
 
 if not st.session_state['autenticado']: mostrar_login(); st.stop()
 
@@ -186,12 +153,13 @@ def generar_accion_sugerida(detalle):
 def cargar_datos():
     url_ef = "https://docs.google.com/spreadsheets/d/1_kO7GtjnlGHYgMnY7pkJGdRuFRAJB8xp8pGj8I0jq5E/export?format=xlsx"
     url_im = "https://docs.google.com/spreadsheets/d/1GwshvXAotIShBPcX69vlE8_juO6w5aAFBCaXEsgSdCY/export?format=xlsx"
-    df_ef, df_im = pd.read_excel(url_ef), pd.read_excel(url_im)
+    df_ef = pd.read_excel(url_ef)
+    df_im = pd.read_excel(url_im)
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
     cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
-    c_std_u_potencial = next((c for c in df_ef.columns if 'STD_UN' in str(c).upper() or ('STD' in str(c).upper() and 'UNID' in str(c).upper())), None)
+    c_std_u_potencial = next((c for c in df_ef.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or '/ U' in str(c).upper())), None)
     if c_std_u_potencial and c_std_u_potencial not in cols_numericas: cols_numericas.append(c_std_u_potencial)
 
     for col in cols_numericas:
@@ -243,7 +211,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 4. FILTROS FIJOS (STICKY EN PC Y CELULAR, TOTALMENTE ALINEADOS)
+# 4. FILTROS FIJOS (STICKY EN PC Y CELULAR)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -256,7 +224,6 @@ with st.container():
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
-    # ETIQUETA AFUERA PARA NO EMPUJAR NADA EN PC
     st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
     
@@ -323,9 +290,7 @@ else:
     if not df_salida.empty: df_plot_1 = df_salida
     else: df_plot_1 = df_ef_f.copy(); warn_linea = True if s_li else False
 
-# =========================================================================
 # BLINDAJE DE COLUMNA DE HH PRODUCTIVAS TOTALES
-# =========================================================================
 col_prod_tot = 'HH_Productivas_C/GAP'
 for c in df_ef_f.columns:
     c_upper = str(c).upper()
@@ -333,12 +298,9 @@ for c in df_ef_f.columns:
         col_prod_tot = c
         break
 
-# =========================================================================
 # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
-# =========================================================================
 tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
 tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
-
 tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
 tot_disp_eficiencia = df_plot_1['HH_Disponibles'].sum() if not df_plot_1.empty else 0
 tot_prod = df_plot_1[col_prod_tot].sum() if (col_prod_tot in df_plot_1.columns and not df_plot_1.empty) else 0
@@ -370,12 +332,10 @@ if not df_im_f.empty:
 st.markdown(f"""
 <div class="kpi-grid">
     <div class="kpi-ef-real" style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
-        <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4>
-        <h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
+        <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4><h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
     </div>
     <div class="kpi-ef-prod" style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
-        <h4 style="color: white;">EFICIENCIA PROD.</h4>
-        <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
+        <h4 style="color: white;">EFICIENCIA PROD.</h4><h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
     </div>
     <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4); padding: 10px;">
         <h4 style="color: white;">COSTO HH IMPROD.</h4>
@@ -397,7 +357,7 @@ st.markdown(f"""
 t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+'.join(s_li) if s_li else 'Todas'} | Puesto: {'+'.join(s_pu) if s_pu else 'Todos'}"
 
 # =========================================================================
-# 5. BALANCE GERENCIAL PARA EL DUEÑO
+# 7. BALANCE GERENCIAL PARA EL DUEÑO (MÉTRICA 7 ADAPTADA)
 # =========================================================================
 df_ef_h_res, df_im_h_res = df_ef.copy(), df_im.copy()
 if s_pl: 
@@ -434,48 +394,39 @@ if tot_disp_todas_res > 0 and len(fechas_previas_res) > 0:
     costo_hh_res = (tot_costo / tot_hh_imp) if tot_hh_imp > 0 else 15000
     ahorro_usd_res = val_1_res * costo_hh_res
 
-c_std_u_res = next((c for c in df_plot_1.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
+# Convertimos desvío de ritmo a Máquinas CRV 26 (130 HH)
 ag8_res = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
-if c_std_u_res:
-    ag_std_u_tmp = df_plot_1.groupby('Fecha')[c_std_u_res].mean().reset_index()
-    ag8_res = pd.merge(ag8_res, ag_std_u_tmp, on='Fecha', how='left')
-    ag8_res['HH_Std_U'] = ag8_res[c_std_u_res]
-else:
-    ag8_res['HH_Std_U'] = ag8_res['HH_STD_TOTAL'] / ag8_res['Cant._Prod._A1']
-
 ag8_res = ag8_res[ag8_res['Cant._Prod._A1'] > 0]
-tot_desvio_res = 0
+tot_gp_crv26 = 0
 if not ag8_res.empty:
-    ag8_res['HH_Real_U'] = ag8_res[col_prod_tot] / ag8_res['Cant._Prod._A1']
-    ag8_res['Unid_Desvio'] = np.where(ag8_res['HH_Std_U'] > 0, ((ag8_res['HH_Real_U'] - ag8_res['HH_Std_U']) * ag8_res['Cant._Prod._A1']) / ag8_res['HH_Std_U'], 0)
-    tot_desvio_res = ag8_res['Unid_Desvio'].sum()
+    ag8_res['Horas_Ritmo'] = (ag8_res['HH_STD_TOTAL'] - ag8_res[col_prod_tot])
+    tot_gp_crv26 = ag8_res['Horas_Ritmo'].sum() / 130.0
 
 res_color_econ = "#1B5E20" if ahorro_usd_res >= 0 else "#B71C1C"
-res_color_prod = "#1B5E20" if tot_desvio_res <= 0 else "#B71C1C"
+res_color_prod = "#1B5E20" if tot_gp_crv26 >= 0 else "#B71C1C"
 
 st.markdown(f"""
 <div style="background: #111; padding: 20px; border-radius: 10px; border: 2px solid #555; margin-top: 15px; margin-bottom: 20px; box-shadow: 0px 10px 20px rgba(0,0,0,0.5);">
-    <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 20px;">📊 BALANCE GERENCIAL DEL MES</h3>
+    <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 20px;">📊 BALANCE GERENCIAL (EQUIVALENCIA MÁQUINAS CRV 26)</h3>
     <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
         <div style="text-align:center; min-width: 250px; flex: 1;">
             <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">IMPACTO ECONÓMICO VS HISTORIA</p>
             <h2 style="color:{res_color_econ}; font-size:42px; margin:0; padding: 5px 0;">{"+" if ahorro_usd_res >= 0 else "-"}${abs(ahorro_usd_res):,.0f}</h2>
-            <p style="color:{res_color_econ}; font-size:13px; margin:0;">(Por variación de Ineficiencia)</p>
+            <p style="color:{res_color_econ}; font-size:13px; margin:0;">(Por gestión de ineficiencias)</p>
         </div>
         <div style="text-align:center; min-width: 250px; flex: 1; border-left: 1px dashed #444;">
-            <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">RESULTADO DE PRODUCCIÓN PURA</p>
-            <h2 style="color:{res_color_prod}; font-size:42px; margin:0; padding: 5px 0;">{abs(tot_desvio_res):.1f} Unid.</h2>
-            <p style="color:{res_color_prod}; font-size:13px; margin:0;">({'Ganadas' if tot_desvio_res <= 0 else 'Perdidas'} por Tiempos de Ciclo)</p>
+            <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">CAPACIDAD DE PRODUCCIÓN EXTRA</p>
+            <h2 style="color:{res_color_prod}; font-size:42px; margin:0; padding: 5px 0;">{abs(tot_gp_crv26):.1f} Máq.</h2>
+            <p style="color:{res_color_prod}; font-size:13px; margin:0;">({'Ganadas' if tot_gp_crv26 >= 0 else 'Perdidas'} por ritmo de trabajo)</p>
         </div>
     </div>
+    <p style="color: #666; font-size: 11px; text-align: center; margin-top: 10px;">* Cálculos de capacidad basados en estándar de 130 HH/Máquina CRV 26</p>
 </div>
 """, unsafe_allow_html=True)
-
 
 # =========================================================================
 # 6. GRÁFICOS MÉTRICAS 1 Y 2
 # =========================================================================
-st.markdown("<br>", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
 with col1:
@@ -741,80 +692,6 @@ with col6:
 
 st.markdown("---")
 
-# =========================================================================
-# 9. NUEVAS MÉTRICAS GERENCIALES (7, 8 Y 9)
-# =========================================================================
-
-# ---> MÉTRICA 7: CAPITALIZACIÓN DE MEJORAS
-st.header("7. MESA DE COSTOS: AHORRO / DESVÍOS")
-st.markdown("<div class='sub-title'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
-
-df_ef_h, df_im_h = df_ef.copy(), df_im.copy()
-if s_pl: 
-    df_ef_h = df_ef_h[df_ef_h['Planta'].isin(s_pl)]
-    if 'NORM_PLANTA' in df_im_h.columns: df_im_h = df_im_h[df_im_h['NORM_PLANTA'].isin(norm_pl)]
-if s_li: 
-    df_ef_h = df_ef_h[df_ef_h['Linea'].isin(s_li)]
-    if 'NORM_LINEA' in df_im_h.columns: df_im_h = df_im_h[df_im_h['NORM_LINEA'].isin(norm_li)]
-if s_pu: 
-    df_ef_h = df_ef_h[df_ef_h['Puesto_Trabajo'].isin(s_pu)]
-    if 'NORM_PUESTO' in df_im_h.columns: df_im_h = df_im_h[df_im_h['NORM_PUESTO'].isin(norm_pu)]
-
-fechas_ordenadas = sorted(df_ef_h['Fecha'].dropna().unique())
-meses_seleccionados = [m for m in s_mes if m != "🎯 Acumulado YTD"] if s_mes else []
-if meses_seleccionados: max_fecha = pd.to_datetime(meses_seleccionados, format="%b-%Y").max()
-else: max_fecha = fechas_ordenadas[-1] if len(fechas_ordenadas) > 0 else pd.Timestamp.now()
-
-fechas_previas = [f for f in fechas_ordenadas if f < max_fecha][-3:]
-
-inc_hist = 0.0
-if len(fechas_previas) > 0:
-    ef_prev = df_ef_h[df_ef_h['Fecha'].isin(fechas_previas)]
-    im_prev = df_im_h[df_im_h['FECHA'].isin(fechas_previas)]
-    disp_prev = ef_prev['HH_Disponibles'].sum()
-    imp_prev = im_prev['HH_IMPRODUCTIVAS'].sum()
-    if disp_prev > 0: inc_hist = imp_prev / disp_prev
-
-tot_disp_todas = df_ef_f['HH_Disponibles'].sum() if not df_ef_f.empty else 0
-inc_act = (tot_hh_imp / tot_disp_todas) if tot_disp_todas > 0 else 0
-
-if tot_disp_todas > 0 and len(fechas_previas) > 0:
-    if inc_act <= inc_hist:
-        bg_color, text_color = "linear-gradient(135deg, #1B5E20, #4CAF50)", "#C8E6C9"
-        tit_1, tit_2, tit_3 = "✅ HH RECUPERADAS", "AHORRO ECONÓMICO", "EQUIVALENTE PROD."
-        val_1 = (inc_hist - inc_act) * tot_disp_todas
-    else:
-        bg_color, text_color = "linear-gradient(135deg, #D32F2F, #E53935)", "#FFCDD2"
-        tit_1, tit_2, tit_3 = "⚠️ HH PERDIDAS", "COSTO DEL DESVÍO", "PRODUCCIÓN PERDIDA"
-        val_1 = (inc_act - inc_hist) * tot_disp_todas
-        
-    costo_hh = (tot_costo / tot_hh_imp) if tot_hh_imp > 0 else 15000
-    val_2 = val_1 * costo_hh
-    val_3 = val_1 / 130.0
-
-    st.markdown(f"""
-    <div style="background: {bg_color}; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
-        <div class="m7-box">
-            <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_1}</h4>
-            <div class="m7-value" style="margin:0; font-weight:bold;">{val_1:,.0f} <span style="font-size:18px;">HH</span></div>
-            <p class="m7-sub" style="margin:0;">Incidencia pasó del {inc_hist*100:.1f}% al {inc_act*100:.1f}%</p>
-        </div>
-        <div class="m7-box">
-            <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_2}</h4>
-            <div class="m7-value" style="margin:0; font-weight:bold;">${val_2:,.0f}</div>
-            <p class="m7-sub" style="margin:0;">Costo base oportunidad</p>
-        </div>
-        <div class="m7-box">
-            <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_3}</h4>
-            <div class="m7-value" style="margin:0; font-weight:bold;">{val_3:,.1f} <span style="font-size:18px;">CRV 26</span></div>
-            <p class="m7-sub" style="margin:0;">(A razón de 130 HH/Unidad)</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.info("⏳ Seleccione un mes con historia previa para habilitar el cálculo de variación de costos.")
-
-st.markdown("<br>", unsafe_allow_html=True)
 col7, col8 = st.columns(2)
 
 with col7:
