@@ -37,15 +37,15 @@ st.markdown("""
 
     h3 { white-space: nowrap !important; }
     
-    /* Clase inteligente para Subtítulos (Evita solapamiento en celulares) */
+    /* Clase para Subtítulos - Cero solapamientos */
     .sub-title {
         font-size: 14px;
         color: #aaa;
-        margin-top: -15px;
-        margin-bottom: 10px;
+        margin-top: -5px;
+        margin-bottom: 15px;
+        display: block;
     }
     
-    /* Clases para Métrica 7 adaptable */
     .m7-title { font-size: 22px !important; }
     .m7-value { font-size: 55px !important; padding: 10px 0px; }
     .m7-sub { font-size: 15px !important; }
@@ -53,16 +53,19 @@ st.markdown("""
     .m7-box:not(:first-child) { border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px; }
 
     /* ==================================================================== */
-    /* VISTA EXCLUSIVA PARA CELULARES (CIRUGÍA ESTÉTICA COMPACTA 2x2)       */
+    /* VISTA EXCLUSIVA PARA CELULARES                                       */
     /* ==================================================================== */
     @media (max-width: 1024px) {
         div[data-testid="stHorizontalBlock"]:has(form) { display: flex !important; justify-content: center !important; width: 100% !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { width: 100% !important; max-width: 450px !important; }
 
-        /* Ajuste de márgenes ultra compactos para la caja pegajosa */
+        /* ¡LA MAGIA!: DESACTIVO EL STICKY EN EL CELULAR PARA NO TAPAR EL 60% DE LA PANTALLA */
         div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
+            position: relative !important;
             padding: 2px 5px 5px 5px !important;
+            box-shadow: none !important;
+            border-bottom: 1px solid #1E3A8A !important;
         }
 
         /* 1. Fila de Encabezado (Logo y Título) */
@@ -73,35 +76,14 @@ st.markdown("""
         
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) h3 { font-size: 16px !important; margin-top: 5px !important; margin-bottom: 0px !important; }
 
-        /* 2. Filtros Maestros en Grilla Perfecta de 2x2 (Mitad y Mitad) */
-        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) { 
-            display: flex !important; 
-            flex-direction: row !important; 
-            flex-wrap: wrap !important; 
-            width: 100% !important; 
-            gap: 2px 0px !important; 
-            margin-top: 0px !important;
-        }
-        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { 
-            width: 48% !important; 
-            min-width: 48% !important; 
-            max-width: 48% !important;
-            flex: 1 1 48% !important; 
-            padding: 0px 2px !important; 
-        }
+        /* Ajuste de cajas de filtros para que no queden tan altas */
+        [data-testid="stMultiSelect"] { margin-bottom: -10px !important; }
+        .stMultiSelect div[data-baseweb="select"] { font-size: 14px !important; padding: 0 !important; min-height: 38px !important;}
         
-        /* 3. Ocultar textos sobrantes y estilizar cajas */
-        div[data-testid="stMultiSelect"] label { display: none !important; }
-        div[data-testid="stMultiSelect"] label p { display: none !important; }
-        [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 34px !important; height: auto !important; max-height: 34px !important; overflow: hidden !important; border-radius: 4px !important;}
-        .stMultiSelect div[data-baseweb="select"] span { font-size: 11px !important; padding: 0px 2px !important; }
-        .stMultiSelect div[data-baseweb="select"] div[role="button"] { padding: 0 !important; } 
-
-        /* 4. Achicar Títulos de Métricas a 1 sola línea y separar subtítulos */
-        h2 { font-size: 16px !important; white-space: normal !important; margin-bottom: 2px !important; padding-bottom: 0px !important; line-height: 1.2 !important;}
+        /* Asegurar que Título y Subtítulo jamás se toquen */
+        h2 { font-size: 18px !important; white-space: normal !important; margin-bottom: 5px !important; padding-bottom: 0px !important; line-height: 1.2 !important;}
+        .sub-title { margin-top: 5px !important; margin-bottom: 15px !important; font-size: 13px !important; display: block !important; }
         hr { margin: 10px 0px !important; }
-        .sub-title { margin-top: 0px !important; margin-bottom: 5px !important; font-size: 12px !important; }
 
         /* 5. Carteles Gigantes (KPI) */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
@@ -243,7 +225,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 4. FILTROS FIJOS (STICKY)
+# 4. FILTROS FIJOS (STICKY EN PC, NORMALES EN CELULAR)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -256,12 +238,13 @@ with st.container():
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
+    # ETIQUETA AFUERA PARA NO DESALINEAR EN PC
+    st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
+    
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
-        # Etiqueta invisible en PC para alinear perfectamente
-        st.markdown("<div id='filtro-row' style='display:none;'></div>", unsafe_allow_html=True)
-        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅")
+        s_mes = st.multiselect("📅 Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="Seleccionar...")
         
     df_base_ef, df_base_im = df_ef.copy(), df_im.copy()
     if s_mes and "🎯 Acumulado YTD" not in s_mes:
@@ -271,7 +254,8 @@ with st.container():
     pl_ef = set(df_base_ef['Planta'].dropna().astype(str).unique())
     pl_im = set(df_base_im[orig_col_pl].dropna().astype(str).unique()) if orig_col_pl and not df_base_im.empty else set()
     
-    with f_pl: s_pl = st.multiselect("Planta", sorted(list(pl_ef | pl_im)), placeholder="🏭")
+    with f_pl: 
+        s_pl = st.multiselect("🏭 Planta", sorted(list(pl_ef | pl_im)), placeholder="Seleccionar...")
         
     if s_pl:
         norm_pl = normalizar_lista(s_pl)
@@ -281,7 +265,8 @@ with st.container():
     li_ef = set(df_base_ef['Linea'].dropna().astype(str).unique())
     li_im = set(df_base_im[orig_col_li].dropna().astype(str).unique()) if orig_col_li and not df_base_im.empty else set()
     
-    with f_li: s_li = st.multiselect("Línea", sorted(list(li_ef | li_im)), placeholder="⚙️")
+    with f_li: 
+        s_li = st.multiselect("⚙️ Línea", sorted(list(li_ef | li_im)), placeholder="Seleccionar...")
         
     if s_li:
         norm_li = normalizar_lista(s_li)
@@ -291,7 +276,8 @@ with st.container():
     pu_ef = set(df_base_ef['Puesto_Trabajo'].dropna().astype(str).unique())
     pu_im = set(df_base_im[orig_col_pu].dropna().astype(str).unique()) if orig_col_pu and not df_base_im.empty else set()
     
-    with f_pu: s_pu = st.multiselect("Puesto", sorted(list(pu_ef | pu_im)), placeholder="🛠️")
+    with f_pu: 
+        s_pu = st.multiselect("🛠️ Puesto", sorted(list(pu_ef | pu_im)), placeholder="Seleccionar...")
 
 # APLICACIÓN DE FILTROS A DF FINALES
 df_ef_f, df_im_f = df_ef.copy(), df_im.copy()
@@ -666,7 +652,7 @@ st.markdown("---")
 # =========================================================================
 
 # ---> MÉTRICA 7: CAPITALIZACIÓN DE MEJORAS
-st.header("7. CAPITALIZACIÓN DE MEJORAS / DESVÍOS (MESA DE COSTOS)")
+st.header("7. CAPITALIZACIÓN DE MEJORAS / DESVÍOS")
 st.markdown("<div class='sub-title'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
 
 df_ef_h, df_im_h = df_ef.copy(), df_im.copy()
@@ -713,7 +699,7 @@ if tot_disp_todas > 0 and len(fechas_previas) > 0:
     val_3 = val_1 / 130.0
 
     st.markdown(f"""
-    <div style="background: {bg_color}; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
+    <div style="background: {bg_color}; padding: 25px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
         <div class="m7-box">
             <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_1}</h4>
             <div class="m7-value" style="margin:0; font-weight:bold;">{val_1:,.0f} <span style="font-size:18px;">HH</span></div>
