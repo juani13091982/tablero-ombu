@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.subplots as plt_subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -624,7 +623,6 @@ if s_pu:
     if 'NORM_PUESTO' in df_im_h.columns: df_im_h = df_im_h[df_im_h['NORM_PUESTO'].isin(norm_pu)]
 
 fechas_ordenadas = sorted(df_ef_h['Fecha'].dropna().unique())
-# BLINDAJE DE MAX FECHA PARA QUE NO FALLE CON EL ORDEN DEL FILTRO
 meses_seleccionados = [m for m in s_mes if m != "🎯 Acumulado YTD"] if s_mes else []
 if meses_seleccionados: max_fecha = pd.to_datetime(meses_seleccionados, format="%b-%Y").max()
 else: max_fecha = fechas_ordenadas[-1] if len(fechas_ordenadas) > 0 else pd.Timestamp.now()
@@ -682,7 +680,6 @@ st.markdown("<br>", unsafe_allow_html=True)
 col7, col8 = st.columns(2)
 
 with col7:
-    # ---> MÉTRICA 8: ESTABILIDAD DEL PROCESO Y CHASIS PERDIDOS
     st.header("8. ESTABILIDAD DEL PROCESO")
     st.markdown("<div style='font-size:14px; color:#aaa; margin-top:-15px; margin-bottom:10px;'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
     if not s_li and not s_pu:
