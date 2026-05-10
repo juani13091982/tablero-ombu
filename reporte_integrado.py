@@ -26,6 +26,7 @@ st.markdown("""
         box-shadow: 0px 5px 15px rgba(0,0,0,0.5);
     }
     
+    /* Etiquetas solo en PC */
     div[data-testid="stMultiSelect"] label p { font-size: 15px !important; font-weight: bold !important; color: #90CAF9 !important; margin-bottom: -5px !important; }
 
     .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
@@ -53,45 +54,62 @@ st.markdown("""
     .m7-box:not(:first-child) { border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px; }
 
     /* ==================================================================== */
-    /* VISTA EXCLUSIVA PARA CELULARES                                       */
+    /* VISTA EXCLUSIVA PARA CELULARES (PERFECCIÓN ABSOLUTA)                 */
     /* ==================================================================== */
     @media (max-width: 1024px) {
         div[data-testid="stHorizontalBlock"]:has(form) { display: flex !important; justify-content: center !important; width: 100% !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { width: 100% !important; max-width: 450px !important; }
 
-        /* ¡LA MAGIA!: DESACTIVO EL STICKY EN EL CELULAR PARA NO TAPAR EL 60% DE LA PANTALLA */
+        /* ¡STICKY FIJO GARANTIZADO Y ULTRA COMPACTO EN CELULAR! */
         div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
-            position: relative !important;
-            padding: 2px 5px 5px 5px !important;
-            box-shadow: none !important;
-            border-bottom: 1px solid #1E3A8A !important;
+            position: -webkit-sticky !important; position: sticky !important; top: 0px !important;
+            padding: 5px 5px 5px 5px !important;
+            border-bottom: 2px solid #1E3A8A !important;
+            box-shadow: 0px 5px 15px rgba(0,0,0,0.5) !important;
+            z-index: 99999 !important;
         }
 
-        /* 1. Fila de Encabezado (Logo y Título) */
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; margin-bottom: 2px !important; }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { width: 15% !important; }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 85% !important; }
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { display: none !important; } /* Oculta botón Salir */
+        /* 1. TÍTULO CENTRADO PERFECTO: VOLAMOS LOGO Y BOTÓN SALIR EN CELULAR */
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) { 
+            display: flex !important; align-items: center !important; justify-content: center !important; margin-bottom: 5px !important; 
+        }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(1) { display: none !important; } /* Adiós logo */
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(2) { width: 100% !important; display: flex !important; justify-content: center !important; }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) > div:nth-child(3) { display: none !important; } /* Adiós botón Salir */
         
-        div[data-testid="stHorizontalBlock"]:has(#header-anchor) h3 { font-size: 16px !important; margin-top: 5px !important; margin-bottom: 0px !important; }
+        div[data-testid="stHorizontalBlock"]:has(#header-anchor) h3 { font-size: 18px !important; margin: 0px !important; text-align: center !important; width: 100% !important;}
 
-        /* Ajuste de cajas de filtros para que no queden tan altas */
-        [data-testid="stMultiSelect"] { margin-bottom: -10px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 14px !important; padding: 0 !important; min-height: 38px !important;}
+        /* 2. FILTROS MAESTROS EN GRILLA DE 2x2 (MITAD Y MITAD) */
+        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) { 
+            display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; 
+            width: 100% !important; gap: 4px 2% !important; margin-top: 0px !important;
+        }
+        html body div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { 
+            width: 49% !important; min-width: 49% !important; max-width: 49% !important;
+            flex: 1 1 49% !important; padding: 0px !important; 
+        }
+
+        /* 3. ASESINATO DE ETIQUETAS DE TEXTO SOBRE LOS FILTROS (ESPACIO 100% LIMPIO) */
+        div[data-testid="stMultiSelect"] > label { display: none !important; height: 0px !important; margin: 0px !important; padding: 0px !important; visibility: hidden !important;}
+        [data-testid="stMultiSelect"] { margin-top: -12px !important; margin-bottom: 0px !important; } /* Sube la caja absorbiendo el vacío */
         
-        /* Asegurar que Título y Subtítulo jamás se toquen */
+        /* 4. ESTILIZADO DE LAS CAJITAS (Nombres y Emojis adentro) */
+        .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 36px !important; height: 36px !important; border-radius: 6px !important; overflow: hidden !important;}
+        .stMultiSelect div[data-baseweb="select"] span { font-size: 12px !important; padding: 0px 2px !important; }
+
+        /* Títulos de Métricas en 1 sola línea */
         h2 { font-size: 18px !important; white-space: normal !important; margin-bottom: 5px !important; padding-bottom: 0px !important; line-height: 1.2 !important;}
         .sub-title { margin-top: 5px !important; margin-bottom: 15px !important; font-size: 13px !important; display: block !important; }
         hr { margin: 10px 0px !important; }
 
-        /* 5. Carteles Gigantes (KPI) */
+        /* Carteles KPI */
         .kpi-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
         .kpi-grid h2 { font-size: 40px !important; line-height: 1.0 !important; white-space: normal !important; overflow: visible !important;}
         .kpi-grid h4 { font-size: 18px !important; margin-bottom: 0px !important; }
         .kpi-costo h2 { font-size: 42px !important; }
         
-        /* 6. Métrica 7 en Celular (Adaptable) */
+        /* Métrica 7 en Celular (Adaptable) */
         .m7-box { min-width: 100% !important; border-left: none !important; padding-left: 0 !important; border-bottom: 1px dashed rgba(255,255,255,0.4) !important; padding-bottom: 10px !important; margin-bottom: 10px !important; }
         .m7-box:last-child { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
         .m7-title { font-size: 16px !important; }
@@ -225,7 +243,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 4. FILTROS FIJOS (STICKY EN PC, NORMALES EN CELULAR)
+# 4. FILTROS FIJOS (STICKY)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -238,13 +256,13 @@ with st.container():
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
-    # ETIQUETA AFUERA PARA NO DESALINEAR EN PC
+    # ETIQUETA AFUERA PARA NO EMPUJAR NADA EN PC
     st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
     
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
-        s_mes = st.multiselect("📅 Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="Seleccionar...")
+        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅 Mes")
         
     df_base_ef, df_base_im = df_ef.copy(), df_im.copy()
     if s_mes and "🎯 Acumulado YTD" not in s_mes:
@@ -255,7 +273,7 @@ with st.container():
     pl_im = set(df_base_im[orig_col_pl].dropna().astype(str).unique()) if orig_col_pl and not df_base_im.empty else set()
     
     with f_pl: 
-        s_pl = st.multiselect("🏭 Planta", sorted(list(pl_ef | pl_im)), placeholder="Seleccionar...")
+        s_pl = st.multiselect("Planta", sorted(list(pl_ef | pl_im)), placeholder="🏭 Planta")
         
     if s_pl:
         norm_pl = normalizar_lista(s_pl)
@@ -266,7 +284,7 @@ with st.container():
     li_im = set(df_base_im[orig_col_li].dropna().astype(str).unique()) if orig_col_li and not df_base_im.empty else set()
     
     with f_li: 
-        s_li = st.multiselect("⚙️ Línea", sorted(list(li_ef | li_im)), placeholder="Seleccionar...")
+        s_li = st.multiselect("Línea", sorted(list(li_ef | li_im)), placeholder="⚙️ Línea")
         
     if s_li:
         norm_li = normalizar_lista(s_li)
@@ -277,7 +295,7 @@ with st.container():
     pu_im = set(df_base_im[orig_col_pu].dropna().astype(str).unique()) if orig_col_pu and not df_base_im.empty else set()
     
     with f_pu: 
-        s_pu = st.multiselect("🛠️ Puesto", sorted(list(pu_ef | pu_im)), placeholder="Seleccionar...")
+        s_pu = st.multiselect("Puesto", sorted(list(pu_ef | pu_im)), placeholder="🛠️ Puesto")
 
 # APLICACIÓN DE FILTROS A DF FINALES
 df_ef_f, df_im_f = df_ef.copy(), df_im.copy()
@@ -699,7 +717,7 @@ if tot_disp_todas > 0 and len(fechas_previas) > 0:
     val_3 = val_1 / 130.0
 
     st.markdown(f"""
-    <div style="background: {bg_color}; padding: 25px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
+    <div style="background: {bg_color}; padding: 15px; border-radius: 8px; color: white; box-shadow: 2px 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px;">
         <div class="m7-box">
             <h4 class="m7-title" style="margin:0; color:{text_color};">{tit_1}</h4>
             <div class="m7-value" style="margin:0; font-weight:bold;">{val_1:,.0f} <span style="font-size:18px;">HH</span></div>
