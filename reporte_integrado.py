@@ -220,11 +220,11 @@ with st.container():
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
+    st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
+    
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
-        st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
-        # Cambio de Placeholders a solo iconos para ahorrar espacio en celular
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅")
         
     df_base_ef, df_base_im = df_ef.copy(), df_im.copy()
