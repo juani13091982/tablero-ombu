@@ -243,7 +243,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 4. FILTROS FIJOS (STICKY)
+# 4. FILTROS FIJOS (STICKY EN PC Y CELULAR, TOTALMENTE ALINEADOS)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -262,7 +262,7 @@ with st.container():
     
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
-        s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅 Mes")
+        s_mes = st.multiselect("📅 Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="Seleccionar...")
         
     df_base_ef, df_base_im = df_ef.copy(), df_im.copy()
     if s_mes and "🎯 Acumulado YTD" not in s_mes:
@@ -273,7 +273,7 @@ with st.container():
     pl_im = set(df_base_im[orig_col_pl].dropna().astype(str).unique()) if orig_col_pl and not df_base_im.empty else set()
     
     with f_pl: 
-        s_pl = st.multiselect("Planta", sorted(list(pl_ef | pl_im)), placeholder="🏭 Planta")
+        s_pl = st.multiselect("🏭 Planta", sorted(list(pl_ef | pl_im)), placeholder="Seleccionar...")
         
     if s_pl:
         norm_pl = normalizar_lista(s_pl)
@@ -284,7 +284,7 @@ with st.container():
     li_im = set(df_base_im[orig_col_li].dropna().astype(str).unique()) if orig_col_li and not df_base_im.empty else set()
     
     with f_li: 
-        s_li = st.multiselect("Línea", sorted(list(li_ef | li_im)), placeholder="⚙️ Línea")
+        s_li = st.multiselect("⚙️ Línea", sorted(list(li_ef | li_im)), placeholder="Seleccionar...")
         
     if s_li:
         norm_li = normalizar_lista(s_li)
@@ -295,7 +295,7 @@ with st.container():
     pu_im = set(df_base_im[orig_col_pu].dropna().astype(str).unique()) if orig_col_pu and not df_base_im.empty else set()
     
     with f_pu: 
-        s_pu = st.multiselect("Puesto", sorted(list(pu_ef | pu_im)), placeholder="🛠️ Puesto")
+        s_pu = st.multiselect("🛠️ Puesto", sorted(list(pu_ef | pu_im)), placeholder="Seleccionar...")
 
 # APLICACIÓN DE FILTROS A DF FINALES
 df_ef_f, df_im_f = df_ef.copy(), df_im.copy()
@@ -768,8 +768,8 @@ with col7:
             fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
             
-            ax8.plot(x_idx, ag8['HH_Real_U'], color='firebrick', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='HH. PRODUC._C/GAP / Unidad', zorder=5)
-            ax8.plot(x_idx, ag8['HH_Std_U'], color='darkgreen', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
+            ax8.plot(x_idx, ag8['HH_Real_U'], color='darkgreen', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='HH. PRODUC._C/GAP / Unidad', zorder=5)
+            ax8.plot(x_idx, ag8['HH_Std_U'], color='midnightblue', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
             
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
@@ -779,7 +779,7 @@ with col7:
                 label_r = f"{ag8['HH_Real_U'].iloc[i]:.2f}h\n({cant_u} Unid)"
                 
                 ax8.annotate(label_r, (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,20), ha='center', fontweight='bold', fontsize=11, bbox=caja_o, zorder=10)
-                ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.2f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="darkgreen", lw=1.5), zorder=10)
+                ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.2f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="midnightblue", lw=1.5), zorder=10)
                 
                 ax8.plot([x_idx[i], x_idx[i]], [ag8['HH_Std_U'].iloc[i], ag8['HH_Real_U'].iloc[i]], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
                 diff_val = ag8['HH_Real_U'].iloc[i] - ag8['HH_Std_U'].iloc[i]
