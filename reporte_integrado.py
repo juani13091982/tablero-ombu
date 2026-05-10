@@ -46,12 +46,6 @@ st.markdown("""
         margin-bottom: 15px;
         display: block;
     }
-    
-    .m7-title { font-size: 22px !important; }
-    .m7-value { font-size: 55px !important; padding: 10px 0px; }
-    .m7-sub { font-size: 15px !important; }
-    .m7-box { text-align:center; min-width: 200px; margin: 10px; flex: 1; }
-    .m7-box:not(:first-child) { border-left: 2px dashed rgba(255,255,255,0.4); padding-left: 20px; }
 
     /* ==================================================================== */
     /* VISTA EXCLUSIVA PARA CELULARES (PERFECCIÓN ABSOLUTA 2x2)             */
@@ -225,7 +219,7 @@ except Exception as e:
     st.error(f"Error crítico cargando datos: {e}"); st.stop()
 
 # =========================================================================
-# 4. FILTROS FIJOS
+# 4. FILTROS FIJOS (STICKY EN PC Y CELULAR)
 # =========================================================================
 with st.container():
     st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
@@ -346,10 +340,12 @@ if not df_im_f.empty:
 st.markdown(f"""
 <div class="kpi-grid">
     <div class="kpi-ef-real" style="background: linear-gradient(135deg, #e0e0e0, #f5f5f5); border: 1px solid #aaa; border-left: 6px solid #1E3A8A; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
-        <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4><h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
+        <h4 style="color: #1E3A8A;">EFICIENCIA REAL</h4>
+        <h2 style="color: #111;">{kpi_ef_real:.1f}%</h2>
     </div>
     <div class="kpi-ef-prod" style="background: linear-gradient(135deg, #2E7D32, #4CAF50); border: 1px solid #1B5E20; border-left: 6px solid #A5D6A7; border-radius: 6px; text-align:center; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
-        <h4 style="color: white;">EFICIENCIA PROD.</h4><h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
+        <h4 style="color: white;">EFICIENCIA PROD.</h4>
+        <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
     </div>
     <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4); padding: 10px;">
         <h4 style="color: white;">COSTO HH IMPROD.</h4>
@@ -419,9 +415,10 @@ if not ag8_res.empty:
 res_color_econ = "#1B5E20" if ahorro_usd_res >= 0 else "#B71C1C"
 res_color_prod = "#1B5E20" if tot_gp_crv26 >= 0 else "#B71C1C"
 
+# ¡ACÁ ARREGLÉ EL TÍTULO DEL CELULAR CON EL <br>!
 st.markdown(f"""
 <div style="background: #111; padding: 20px; border-radius: 10px; border: 2px solid #555; margin-top: 15px; margin-bottom: 20px; box-shadow: 0px 10px 20px rgba(0,0,0,0.5);">
-    <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 20px;">📊 BALANCE GERENCIAL (EQUIVALENCIA MÁQUINAS CRV 26)</h3>
+    <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 20px; white-space: normal; line-height: 1.3;">📊 BALANCE GERENCIAL<br><span style="font-size:14px; font-weight:normal; color:#ccc;">(EQUIVALENCIA MÁQUINAS CRV 26)</span></h3>
     <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
         <div style="text-align:center; min-width: 250px; flex: 1;">
             <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">IMPACTO ECONÓMICO VS HISTORIA</p>
