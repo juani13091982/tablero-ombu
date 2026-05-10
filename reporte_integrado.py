@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.subplots as plt_subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -623,7 +624,9 @@ if s_pu:
     if 'NORM_PUESTO' in df_im_h.columns: df_im_h = df_im_h[df_im_h['NORM_PUESTO'].isin(norm_pu)]
 
 fechas_ordenadas = sorted(df_ef_h['Fecha'].dropna().unique())
-if s_mes and "🎯 Acumulado YTD" not in s_mes: max_fecha = pd.to_datetime(s_mes[0], format="%b-%Y")
+# BLINDAJE DE MAX FECHA PARA QUE NO FALLE CON EL ORDEN DEL FILTRO
+meses_seleccionados = [m for m in s_mes if m != "🎯 Acumulado YTD"] if s_mes else []
+if meses_seleccionados: max_fecha = pd.to_datetime(meses_seleccionados, format="%b-%Y").max()
 else: max_fecha = fechas_ordenadas[-1] if len(fechas_ordenadas) > 0 else pd.Timestamp.now()
 
 fechas_previas = [f for f in fechas_ordenadas if f < max_fecha][-3:]
@@ -712,7 +715,6 @@ with col7:
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
             
-            # 5) ETIQUETAS MEJORADAS CON CANTIDAD PRODUCIDA
             for i in range(len(x_idx)): 
                 cant_u = int(ag8['Cant._Prod._A1'].iloc[i])
                 label_r = f"{ag8['HH_Real_U'].iloc[i]:.2f}h\n({cant_u} Unid)"
