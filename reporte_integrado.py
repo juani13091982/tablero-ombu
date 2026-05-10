@@ -262,7 +262,7 @@ with st.container():
     
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
-        s_mes = st.multiselect("📅 Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="Seleccionar...")
+        s_mes = st.multiselect("📅 Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅 Mes...")
         
     df_base_ef, df_base_im = df_ef.copy(), df_im.copy()
     if s_mes and "🎯 Acumulado YTD" not in s_mes:
@@ -273,7 +273,7 @@ with st.container():
     pl_im = set(df_base_im[orig_col_pl].dropna().astype(str).unique()) if orig_col_pl and not df_base_im.empty else set()
     
     with f_pl: 
-        s_pl = st.multiselect("🏭 Planta", sorted(list(pl_ef | pl_im)), placeholder="Seleccionar...")
+        s_pl = st.multiselect("🏭 Planta", sorted(list(pl_ef | pl_im)), placeholder="🏭 Planta...")
         
     if s_pl:
         norm_pl = normalizar_lista(s_pl)
@@ -284,7 +284,7 @@ with st.container():
     li_im = set(df_base_im[orig_col_li].dropna().astype(str).unique()) if orig_col_li and not df_base_im.empty else set()
     
     with f_li: 
-        s_li = st.multiselect("⚙️ Línea", sorted(list(li_ef | li_im)), placeholder="Seleccionar...")
+        s_li = st.multiselect("⚙️ Línea", sorted(list(li_ef | li_im)), placeholder="⚙️ Línea...")
         
     if s_li:
         norm_li = normalizar_lista(s_li)
@@ -295,7 +295,7 @@ with st.container():
     pu_im = set(df_base_im[orig_col_pu].dropna().astype(str).unique()) if orig_col_pu and not df_base_im.empty else set()
     
     with f_pu: 
-        s_pu = st.multiselect("🛠️ Puesto", sorted(list(pu_ef | pu_im)), placeholder="Seleccionar...")
+        s_pu = st.multiselect("🛠️ Puesto", sorted(list(pu_ef | pu_im)), placeholder="🛠️ Puesto...")
 
 # APLICACIÓN DE FILTROS A DF FINALES
 df_ef_f, df_im_f = df_ef.copy(), df_im.copy()
@@ -395,6 +395,82 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 t_enc = f"Filtros >> Planta: {'+'.join(s_pl) if s_pl else 'Todas'} | Línea: {'+'.join(s_li) if s_li else 'Todas'} | Puesto: {'+'.join(s_pu) if s_pu else 'Todos'}"
+
+# =========================================================================
+# 5. BALANCE GERENCIAL PARA EL DUEÑO
+# =========================================================================
+df_ef_h_res, df_im_h_res = df_ef.copy(), df_im.copy()
+if s_pl: 
+    df_ef_h_res = df_ef_h_res[df_ef_h_res['Planta'].isin(s_pl)]
+    if 'NORM_PLANTA' in df_im_h_res.columns: df_im_h_res = df_im_h_res[df_im_h_res['NORM_PLANTA'].isin(norm_pl)]
+if s_li: 
+    df_ef_h_res = df_ef_h_res[df_ef_h_res['Linea'].isin(s_li)]
+    if 'NORM_LINEA' in df_im_h_res.columns: df_im_h_res = df_im_h_res[df_im_h_res['NORM_LINEA'].isin(norm_li)]
+if s_pu: 
+    df_ef_h_res = df_ef_h_res[df_ef_h_res['Puesto_Trabajo'].isin(s_pu)]
+    if 'NORM_PUESTO' in df_im_h_res.columns: df_im_h_res = df_im_h_res[df_im_h_res['NORM_PUESTO'].isin(norm_pu)]
+
+fechas_ordenadas_res = sorted(df_ef_h_res['Fecha'].dropna().unique())
+meses_seleccionados_res = [m for m in s_mes if m != "🎯 Acumulado YTD"] if s_mes else []
+if meses_seleccionados_res: max_fecha_res = pd.to_datetime(meses_seleccionados_res, format="%b-%Y").max()
+else: max_fecha_res = fechas_ordenadas_res[-1] if len(fechas_ordenadas_res) > 0 else pd.Timestamp.now()
+
+fechas_previas_res = [f for f in fechas_ordenadas_res if f < max_fecha_res][-3:]
+
+inc_hist_res = 0.0
+if len(fechas_previas_res) > 0:
+    ef_prev_res = df_ef_h_res[df_ef_h_res['Fecha'].isin(fechas_previas_res)]
+    im_prev_res = df_im_h_res[df_im_h_res['FECHA'].isin(fechas_previas_res)]
+    disp_prev_res = ef_prev_res['HH_Disponibles'].sum()
+    imp_prev_res = im_prev_res['HH_IMPRODUCTIVAS'].sum()
+    if disp_prev_res > 0: inc_hist_res = imp_prev_res / disp_prev_res
+
+tot_disp_todas_res = df_ef_f['HH_Disponibles'].sum() if not df_ef_f.empty else 0
+inc_act_res = (tot_hh_imp / tot_disp_todas_res) if tot_disp_todas_res > 0 else 0
+
+ahorro_usd_res = 0
+if tot_disp_todas_res > 0 and len(fechas_previas_res) > 0:
+    val_1_res = (inc_hist_res - inc_act_res) * tot_disp_todas_res
+    costo_hh_res = (tot_costo / tot_hh_imp) if tot_hh_imp > 0 else 15000
+    ahorro_usd_res = val_1_res * costo_hh_res
+
+c_std_u_res = next((c for c in df_plot_1.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
+ag8_res = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+if c_std_u_res:
+    ag_std_u_tmp = df_plot_1.groupby('Fecha')[c_std_u_res].mean().reset_index()
+    ag8_res = pd.merge(ag8_res, ag_std_u_tmp, on='Fecha', how='left')
+    ag8_res['HH_Std_U'] = ag8_res[c_std_u_res]
+else:
+    ag8_res['HH_Std_U'] = ag8_res['HH_STD_TOTAL'] / ag8_res['Cant._Prod._A1']
+
+ag8_res = ag8_res[ag8_res['Cant._Prod._A1'] > 0]
+tot_desvio_res = 0
+if not ag8_res.empty:
+    ag8_res['HH_Real_U'] = ag8_res[col_prod_tot] / ag8_res['Cant._Prod._A1']
+    ag8_res['Unid_Desvio'] = np.where(ag8_res['HH_Std_U'] > 0, ((ag8_res['HH_Real_U'] - ag8_res['HH_Std_U']) * ag8_res['Cant._Prod._A1']) / ag8_res['HH_Std_U'], 0)
+    tot_desvio_res = ag8_res['Unid_Desvio'].sum()
+
+res_color_econ = "#1B5E20" if ahorro_usd_res >= 0 else "#B71C1C"
+res_color_prod = "#1B5E20" if tot_desvio_res <= 0 else "#B71C1C"
+
+st.markdown(f"""
+<div style="background: #111; padding: 20px; border-radius: 10px; border: 2px solid #555; margin-top: 15px; margin-bottom: 20px; box-shadow: 0px 10px 20px rgba(0,0,0,0.5);">
+    <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 20px;">📊 BALANCE GERENCIAL DEL MES</h3>
+    <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
+        <div style="text-align:center; min-width: 250px; flex: 1;">
+            <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">IMPACTO ECONÓMICO VS HISTORIA</p>
+            <h2 style="color:{res_color_econ}; font-size:42px; margin:0; padding: 5px 0;">{"+" if ahorro_usd_res >= 0 else "-"}${abs(ahorro_usd_res):,.0f}</h2>
+            <p style="color:{res_color_econ}; font-size:13px; margin:0;">(Por variación de Ineficiencia)</p>
+        </div>
+        <div style="text-align:center; min-width: 250px; flex: 1; border-left: 1px dashed #444;">
+            <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">RESULTADO DE PRODUCCIÓN PURA</p>
+            <h2 style="color:{res_color_prod}; font-size:42px; margin:0; padding: 5px 0;">{abs(tot_desvio_res):.1f} Unid.</h2>
+            <p style="color:{res_color_prod}; font-size:13px; margin:0;">({'Ganadas' if tot_desvio_res <= 0 else 'Perdidas'} por Tiempos de Ciclo)</p>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 
 # =========================================================================
 # 6. GRÁFICOS MÉTRICAS 1 Y 2
@@ -670,7 +746,7 @@ st.markdown("---")
 # =========================================================================
 
 # ---> MÉTRICA 7: CAPITALIZACIÓN DE MEJORAS
-st.header("7. CAPITALIZACIÓN DE MEJORAS / DESVÍOS")
+st.header("7. MESA DE COSTOS: AHORRO / DESVÍOS")
 st.markdown("<div class='sub-title'><i>Variación de Incidencia Real vs Promedio Móvil Histórico (últimos 3 meses previos al período seleccionado)</i></div>", unsafe_allow_html=True)
 
 df_ef_h, df_im_h = df_ef.copy(), df_im.copy()
