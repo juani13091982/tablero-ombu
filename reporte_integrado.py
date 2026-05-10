@@ -38,14 +38,14 @@ st.markdown("""
     h3 { white-space: nowrap !important; }
 
     /* ==================================================================== */
-    /* VISTA EXCLUSIVA PARA CELULARES (CIRUGÍA ESTÉTICA COMPACTA)           */
+    /* VISTA EXCLUSIVA PARA CELULARES (CIRUGÍA ESTÉTICA COMPACTA 2x2)       */
     /* ==================================================================== */
     @media (max-width: 1024px) {
         div[data-testid="stHorizontalBlock"]:has(form) { display: flex !important; justify-content: center !important; width: 100% !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:not(:has(form)) { display: none !important; }
         div[data-testid="stHorizontalBlock"]:has(form) > div:has(form) { width: 100% !important; max-width: 450px !important; }
 
-        /* Ajuste de márgenes de la caja pegajosa para ahorrar espacio */
+        /* Ajuste de márgenes ultra compactos para la caja pegajosa */
         div[data-testid="stVerticalBlock"] > div:has(#sticky-header) {
             padding: 2px 5px 5px 5px !important;
         }
@@ -58,17 +58,29 @@ st.markdown("""
         
         div[data-testid="stHorizontalBlock"]:has(#header-anchor) h3 { font-size: 16px !important; margin-top: 5px !important; margin-bottom: 0px !important; }
 
-        /* 2. Fila de 4 Filtros Maestros en 1 sola línea */
-        div[data-testid="stHorizontalBlock"]:has(#filtro-row) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; gap: 2px !important; margin-top: 0px !important; }
-        div[data-testid="stHorizontalBlock"]:has(#filtro-row) > div[data-testid="column"] { width: 25% !important; min-width: 25% !important; flex: 1 1 25% !important; padding: 0 !important; }
+        /* 2. Filtros Maestros en Grilla Perfecta de 2x2 (Mitad y Mitad) */
+        div[data-testid="stHorizontalBlock"]:has([data-testid="stMultiSelect"]) { 
+            display: flex !important; 
+            flex-direction: row !important; 
+            flex-wrap: wrap !important; 
+            width: 100% !important; 
+            gap: 2px 0px !important; 
+            margin-top: 0px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has([data-testid="stMultiSelect"]) > div[data-testid="column"] { 
+            width: 49% !important; 
+            min-width: 49% !important; 
+            flex: 1 1 49% !important; 
+            padding: 0px 2px !important; 
+        }
         
-        /* 3. Compactar las cajas de filtros */
+        /* 3. Ocultar textos sobrantes y estilizar cajas */
         div[data-testid="stMultiSelect"] label { display: none !important; }
         div[data-testid="stMultiSelect"] label p { display: none !important; }
         [data-testid="stMultiSelect"] { margin-bottom: 0px !important; }
-        .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 32px !important; height: auto !important; max-height: 36px !important; overflow: hidden !important; border-radius: 4px !important;}
+        .stMultiSelect div[data-baseweb="select"] { font-size: 13px !important; padding: 0 !important; min-height: 34px !important; height: auto !important; max-height: 34px !important; overflow: hidden !important; border-radius: 4px !important;}
         .stMultiSelect div[data-baseweb="select"] span { font-size: 11px !important; padding: 0px 2px !important; }
-        .stMultiSelect div[data-baseweb="select"] div[role="button"] { padding: 0 !important; } /* Oculta cruz interna para ganar espacio */
+        .stMultiSelect div[data-baseweb="select"] div[role="button"] { padding: 0 !important; } 
 
         /* 4. Achicar Títulos de Métricas a 1 sola línea */
         h2 { font-size: 17px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; margin-bottom: 0px !important; padding-bottom: 0px !important;}
@@ -220,9 +232,7 @@ with st.container():
     with h_s: 
         if st.button("🚪 Salir", use_container_width=True): st.session_state['autenticado'] = False; st.rerun()
 
-    st.markdown("<span id='filtro-row'></span>", unsafe_allow_html=True)
     f_mes, f_pl, f_li, f_pu = st.columns(4)
-    
     meses_disp = sorted(list(set(df_ef['Mes_Str'].dropna().unique()) | set(df_im['MES_STR'].dropna().unique())))
     with f_mes: 
         s_mes = st.multiselect("Mes", ["🎯 Acumulado YTD"] + meses_disp, placeholder="📅")
@@ -551,7 +561,8 @@ with col5:
         for i, val in enumerate(ag5['Pct_Acu']): ax5_line.annotate(f"{val:.1f}%", (x_idx[i], val + 6), color='white', bbox=caja_g, ha='center', va='bottom', fontsize=11, rotation=45, zorder=10)
         
         tot_imp_acum = df_im_f['HH_IMPRODUCTIVAS'].sum()
-        ax5.text(0.98, 0.95, f"HH IMP. ACUMULADAS: {tot_imp_acum:,.1f}", transform=ax5.transAxes, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#f5f5f5", ec="gray", lw=1), fontsize=13, fontweight='bold', zorder=10)
+        # ACÁ MOVI EL CARTEL AL LADO IZQUIERDO (x=0.02, ha='left')
+        ax5.text(0.02, 0.95, f"HH IMP. ACUMULADAS: {tot_imp_acum:,.1f}", transform=ax5.transAxes, ha='left', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#f5f5f5", ec="gray", lw=1), fontsize=13, fontweight='bold', zorder=10)
         
         agrup_col = orig_col_pu if orig_col_pu else 'OPERARIO'
         if s_pu: agrup_col = 'OPERARIO'
