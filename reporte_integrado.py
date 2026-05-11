@@ -767,7 +767,8 @@ with col8:
     st.markdown("<div class='sub-title'><i>Competencia Sectorial vs Meta 85%</i></div>", unsafe_allow_html=True)
     agrupar_por = 'Puesto_Trabajo' if (s_li or s_pu) else 'Linea'
     if agrupar_por in df_ef_f.columns:
-        ag9 = df_ef_f.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'}).reset_index()
+        df_ranking = df_plot_1 if agrupar_por == 'Linea' else df_ef_f
+        ag9 = df_ranking.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'}).reset_index()
         ag9 = ag9[ag9['HH_Disponibles'] > 0]
         ag9['Ef'] = (ag9['HH_STD_TOTAL'] / ag9['HH_Disponibles']) * 100
         ag9 = ag9.sort_values('Ef', ascending=True)
