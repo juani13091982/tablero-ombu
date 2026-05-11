@@ -390,10 +390,11 @@ tot_disp_todas_res = df_ef_f['HH_Disponibles'].sum() if not df_ef_f.empty else 0
 inc_act_res = (tot_hh_imp / tot_disp_todas_res) if tot_disp_todas_res > 0 else 0
 
 ahorro_usd_res = 0
+ahorro_hh = 0
 if tot_disp_todas_res > 0 and len(fechas_previas_res) > 0:
-    val_1_res = (inc_hist_res - inc_act_res) * tot_disp_todas_res
+    ahorro_hh = (inc_hist_res - inc_act_res) * tot_disp_todas_res
     costo_hh_res = (tot_costo / tot_hh_imp) if tot_hh_imp > 0 else 15000
-    ahorro_usd_res = val_1_res * costo_hh_res
+    ahorro_usd_res = ahorro_hh * costo_hh_res
 
 ag8_res = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
 ag8_res = ag8_res[ag8_res['Cant._Prod._A1'] > 0]
@@ -412,12 +413,13 @@ st.markdown(f"""
         <div style="text-align:center; min-width: 250px; flex: 1;">
             <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">IMPACTO ECONÓMICO VS HISTORIA</p>
             <h2 style="color:{res_color_econ}; font-size:42px; margin:0; padding: 5px 0;">{"+" if ahorro_usd_res >= 0 else "-"}${abs(ahorro_usd_res):,.0f}</h2>
-            <p style="color:{res_color_econ}; font-size:13px; margin:0;">(Por gestión de ineficiencias)</p>
+            <h4 style="color:{res_color_econ}; margin:0; font-size:18px;">{abs(ahorro_hh):,.0f} HH {'Recuperadas' if ahorro_hh >= 0 else 'Perdidas'}</h4>
+            <p style="color:{res_color_econ}; font-size:13px; margin:0; padding-top:5px;">(Por gestión de ineficiencias)</p>
         </div>
         <div style="text-align:center; min-width: 250px; flex: 1; border-left: 1px dashed #444;">
             <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">CAPACIDAD DE PRODUCCIÓN EXTRA</p>
             <h2 style="color:{res_color_prod}; font-size:42px; margin:0; padding: 5px 0;">{abs(tot_gp_crv26):.1f} Máq.</h2>
-            <p style="color:{res_color_prod}; font-size:13px; margin:0;">({'Ganadas' if tot_gp_crv26 >= 0 else 'Perdidas'} por ritmo de trabajo)</p>
+            <p style="color:{res_color_prod}; font-size:13px; margin:0; padding-top:28px;">({'Ganadas' if tot_gp_crv26 >= 0 else 'Perdidas'} por ritmo de trabajo)</p>
         </div>
     </div>
     <p style="color: #666; font-size: 11px; text-align: center; margin-top: 10px;">* Cálculos de capacidad basados en estándar de 130 HH/Máquina CRV 26</p>
