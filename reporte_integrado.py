@@ -698,12 +698,53 @@ col7, col8 = st.columns(2)
 
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
-    st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
-    if not s_li and not s_pu:
-        st.info("🔒 Seleccione una **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis de Estabilidad.")
-    else:
-        c_std_u = next((c for c in df_plot_1.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
+    
+    # Lógica Inteligente para Cuello de Botella vs Estabilidad
+    if not s_pl and not s_li and not s_pu:
+        st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
+        st.info("🔒 Seleccione una **Planta**, **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis.")
+    
+    elif s_pl and not s_li and not s_pu:
+        st.markdown("<div class='sub-title'><i>Comparativa de Cuello de Botella (Unidades Ganadas/Perdidas por Línea)</i></div>", unsafe_allow_html=True)
+        ag8_linea = df_plot_1.groupby('Linea').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+        ag8_linea = ag8_linea[ag8_linea['Cant._Prod._A1'] > 0]
         
+        if not ag8_linea.empty:
+            ag8_linea['HH_Std_U'] = ag8_linea['HH_STD_TOTAL'] / ag8_linea['Cant._Prod._A1']
+            ag8_linea['Horas_Desvio'] = ag8_linea[col_prod_tot] - ag8_linea['HH_STD_TOTAL']
+            ag8_linea['Unid_Balance'] = -(ag8_linea['Horas_Desvio'] / ag8_linea['HH_Std_U']) # Negativo = Perdidas
+            
+            ag8_linea = ag8_linea.sort_values('Unid_Balance', ascending=True)
+            
+            fig8, ax8 = plt.subplots(figsize=(14, 10))
+            fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
+            fig8.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+            
+            colors = ['firebrick' if val < 0 else 'darkgreen' for val in ag8_linea['Unid_Balance']]
+            bars = ax8.barh(ag8_linea['Linea'], ag8_linea['Unid_Balance'], color=colors, edgecolor='white', height=0.6)
+            
+            ax8.bar_label(bars, fmt='%+.1f U', padding=5, color='black', fontweight='bold', path_effects=efecto_b)
+            ax8.axvline(0, color='black', linewidth=2, zorder=1)
+            
+            ax8.set_yticklabels([textwrap.fill(str(t), 20) for t in ag8_linea['Linea']], fontsize=12, fontweight='bold')
+            
+            peor_linea = ag8_linea.iloc[0]['Linea']
+            peor_val = ag8_linea.iloc[0]['Unid_Balance']
+            if peor_val < 0:
+                ax8.text(0.5, 0.95, f"⚠️ CUELLO DE BOTELLA: {peor_linea} ({peor_val:.1f} Unid)", transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#B71C1C", ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
+            else:
+                ax8.text(0.5, 0.95, f"✅ TODAS LAS LÍNEAS EN VERDE", transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#1B5E20", ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
+
+            max_abs = max(abs(ag8_linea['Unid_Balance'].min()), abs(ag8_linea['Unid_Balance'].max())) * 1.3
+            if max_abs > 0: ax8.set_xlim(-max_abs, max_abs)
+            
+            agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
+        else:
+            st.warning("⚠️ Sin datos de producción para comparar líneas.")
+            
+    else:
+        st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
+        c_std_u = next((c for c in df_plot_1.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
         ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         
         if c_std_u:
@@ -763,14 +804,30 @@ with col7:
         else: st.warning("⚠️ Sin datos de producción (Cant. Producida) para esta selección.")
 
 with col8:
-    st.header("9. RANKING DE EFICIENCIA REAL")
-    st.markdown("<div class='sub-title'><i>Competencia Sectorial vs Meta 85%</i></div>", unsafe_allow_html=True)
+    st.header("9. RANKING DE EFICIENCIA")
+    
+    # Switch/Toggle selector de tipo de métrica
+    tipo_ranking = st.radio("Selector:", ["Eficiencia Real", "Eficiencia Productiva"], horizontal=True, label_visibility="collapsed")
+    
+    sub_txt = "Competencia Sectorial vs Meta 85%" if tipo_ranking == "Eficiencia Real" else "Competencia Sectorial vs Meta 100%"
+    st.markdown(f"<div class='sub-title'><i>{sub_txt}</i></div>", unsafe_allow_html=True)
+    
     agrupar_por = 'Puesto_Trabajo' if (s_li or s_pu) else 'Linea'
     if agrupar_por in df_ef_f.columns:
         df_ranking = df_plot_1 if agrupar_por == 'Linea' else df_ef_f
-        ag9 = df_ranking.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum'}).reset_index()
-        ag9 = ag9[ag9['HH_Disponibles'] > 0]
-        ag9['Ef'] = (ag9['HH_STD_TOTAL'] / ag9['HH_Disponibles']) * 100
+        ag9 = df_ranking.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', col_prod_tot:'sum'}).reset_index()
+        
+        if tipo_ranking == "Eficiencia Real":
+            ag9 = ag9[ag9['HH_Disponibles'] > 0]
+            ag9['Ef'] = (ag9['HH_STD_TOTAL'] / ag9['HH_Disponibles']) * 100
+            meta_val = 85
+            colors = ['firebrick' if val < 60 else 'gold' if val < 70 else 'lightgreen' if val < 85 else 'darkgreen' for val in ag9['Ef']]
+        else:
+            ag9 = ag9[ag9[col_prod_tot] > 0]
+            ag9['Ef'] = (ag9['HH_STD_TOTAL'] / ag9[col_prod_tot]) * 100
+            meta_val = 100
+            colors = ['firebrick' if val < 80 else 'gold' if val < 90 else 'lightgreen' if val < 100 else 'darkgreen' for val in ag9['Ef']]
+            
         ag9 = ag9.sort_values('Ef', ascending=True)
         
         if not ag9.empty:
@@ -778,12 +835,11 @@ with col8:
             fig9.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
             fig9.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             
-            colors = ['firebrick' if val < 60 else 'gold' if val < 70 else 'lightgreen' if val < 85 else 'darkgreen' for val in ag9['Ef']]
             bars = ax9.barh(ag9[agrupar_por], ag9['Ef'], color=colors, edgecolor='white', height=0.6)
             
             ax9.bar_label(bars, fmt='%.1f%%', padding=5, color='black', fontweight='bold', path_effects=efecto_b)
-            ax9.axvline(85, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
-            ax9.text(85, len(ag9)-0.5, 'META 85%', color='darkgreen', fontweight='bold', ha='left', va='bottom', rotation=90)
+            ax9.axvline(meta_val, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
+            ax9.text(meta_val, len(ag9)-0.5, f'META {meta_val}%', color='darkgreen', fontweight='bold', ha='left', va='bottom', rotation=90)
             
             ax9.set_xlim(0, max(110, ag9['Ef'].max()*1.1)); ax9.xaxis.set_major_formatter(mtick.PercentFormatter())
             ax9.set_yticklabels([textwrap.fill(str(t), 20) for t in ag9[agrupar_por]], fontsize=12, fontweight='bold')
