@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -699,19 +700,15 @@ col7, col8 = st.columns(2)
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
     
-    # INTELIGENCIA CUELLO DE BOTELLA: Solo se activa si eligieron una Planta y NINGUNA línea ni puesto.
+    # Lógica Inteligente para Cuello de Botella vs Estabilidad
     if not s_pl and not s_li and not s_pu:
         st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
         st.info("🔒 Seleccione una **Planta**, **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis.")
     
     elif s_pl and not s_li and not s_pu:
-        st.markdown("<div class='sub-title'><i>Comparativa de Cuello de Botella (Unidades Ganadas/Perdidas por Línea)</i></div>", unsafe_allow_html=True)
+        st.markdown("<div class='sub-title'><i>Comparativa de Cuello de Botella (Tiempos de Ciclo por Línea)</i></div>", unsafe_allow_html=True)
         
-        # --- ACÁ ESTÁ LA MAGIA ---
-        # Usamos df_ef_f (en lugar de df_plot_1) para medir TODO el universo de líneas en la planta, 
-        # sin importar si tienen el tilde de "Último Puesto" o no. Ninguna línea se esconde.
         c_std_u = next((c for c in df_ef_f.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
-        
         ag8_linea = df_ef_f.groupby('Linea').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         
         if c_std_u:
@@ -724,32 +721,30 @@ with col7:
         ag8_linea = ag8_linea[ag8_linea['Cant._Prod._A1'] > 0]
         
         if not ag8_linea.empty:
-            ag8_linea['Horas_Desvio'] = ag8_linea[col_prod_tot] - ag8_linea['HH_STD_TOTAL']
-            ag8_linea['Unid_Balance'] = -(ag8_linea['Horas_Desvio'] / ag8_linea['HH_Std_U']) # Negativo = Perdidas
+            ag8_linea['HH_Real_U'] = ag8_linea[col_prod_tot] / ag8_linea['Cant._Prod._A1']
             
-            ag8_linea = ag8_linea.sort_values('Unid_Balance', ascending=True)
+            # ORDENAMOS POR EL MAYOR TIEMPO REAL POR UNIDAD (El verdadero cuello de botella)
+            ag8_linea = ag8_linea.sort_values('HH_Real_U', ascending=True)
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
             fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
             fig8.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             
-            colors = ['firebrick' if val < 0 else 'darkgreen' for val in ag8_linea['Unid_Balance']]
-            bars = ax8.barh(ag8_linea['Linea'], ag8_linea['Unid_Balance'], color=colors, edgecolor='white', height=0.6)
+            colors = ['firebrick' if r > s else 'darkgreen' for r, s in zip(ag8_linea['HH_Real_U'], ag8_linea['HH_Std_U'])]
+            bars = ax8.barh(ag8_linea['Linea'], ag8_linea['HH_Real_U'], color=colors, edgecolor='white', height=0.6, label='Tiempo REAL / Unid')
             
-            ax8.bar_label(bars, fmt='%+.1f U', padding=5, color='black', fontweight='bold', path_effects=efecto_b)
-            ax8.axvline(0, color='black', linewidth=2, zorder=1)
+            ax8.plot(ag8_linea['HH_Std_U'], ag8_linea['Linea'], 'D', color='gold', markersize=12, path_effects=efecto_n, label='Tiempo STD / Unid')
+            
+            ax8.bar_label(bars, fmt='%.1f h/U', padding=5, color='black', fontweight='bold', path_effects=efecto_b)
             
             ax8.set_yticklabels([textwrap.fill(str(t), 20) for t in ag8_linea['Linea']], fontsize=12, fontweight='bold')
             
-            peor_linea = ag8_linea.iloc[0]['Linea']
-            peor_val = ag8_linea.iloc[0]['Unid_Balance']
-            if peor_val < 0:
-                ax8.text(0.5, 0.95, f"⚠️ CUELLO DE BOTELLA: {peor_linea} ({peor_val:.1f} Unid)", transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#B71C1C", ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
-            else:
-                ax8.text(0.5, 0.95, f"✅ TODAS LAS LÍNEAS EN VERDE", transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#1B5E20", ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
+            peor_linea = ag8_linea.iloc[-1]['Linea']
+            peor_val = ag8_linea.iloc[-1]['HH_Real_U']
+            
+            ax8.text(0.5, 0.95, f"⚠️ CUELLO DE BOTELLA: {peor_linea} ({peor_val:.1f} HH/Unid)", transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#B71C1C", ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
 
-            max_abs = max(abs(ag8_linea['Unid_Balance'].min()), abs(ag8_linea['Unid_Balance'].max())) * 1.3
-            if max_abs > 0: ax8.set_xlim(-max_abs, max_abs)
+            ax8.legend(loc='lower right', framealpha=0.9)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else:
