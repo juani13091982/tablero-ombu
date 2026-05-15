@@ -699,18 +699,31 @@ col7, col8 = st.columns(2)
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
     
-    # Lógica Inteligente para Cuello de Botella vs Estabilidad
+    # INTELIGENCIA CUELLO DE BOTELLA: Solo se activa si eligieron una Planta y NINGUNA línea ni puesto.
     if not s_pl and not s_li and not s_pu:
         st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
         st.info("🔒 Seleccione una **Planta**, **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis.")
     
     elif s_pl and not s_li and not s_pu:
         st.markdown("<div class='sub-title'><i>Comparativa de Cuello de Botella (Unidades Ganadas/Perdidas por Línea)</i></div>", unsafe_allow_html=True)
-        ag8_linea = df_plot_1.groupby('Linea').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+        
+        # --- ACÁ ESTÁ LA MAGIA ---
+        # Usamos df_ef_f (en lugar de df_plot_1) para medir TODO el universo de líneas en la planta, 
+        # sin importar si tienen el tilde de "Último Puesto" o no. Ninguna línea se esconde.
+        c_std_u = next((c for c in df_ef_f.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
+        
+        ag8_linea = df_ef_f.groupby('Linea').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+        
+        if c_std_u:
+            ag_std_u = df_ef_f.groupby('Linea')[c_std_u].mean().reset_index()
+            ag8_linea = pd.merge(ag8_linea, ag_std_u, on='Linea', how='left')
+            ag8_linea['HH_Std_U'] = ag8_linea[c_std_u]
+        else:
+            ag8_linea['HH_Std_U'] = ag8_linea['HH_STD_TOTAL'] / ag8_linea['Cant._Prod._A1']
+            
         ag8_linea = ag8_linea[ag8_linea['Cant._Prod._A1'] > 0]
         
         if not ag8_linea.empty:
-            ag8_linea['HH_Std_U'] = ag8_linea['HH_STD_TOTAL'] / ag8_linea['Cant._Prod._A1']
             ag8_linea['Horas_Desvio'] = ag8_linea[col_prod_tot] - ag8_linea['HH_STD_TOTAL']
             ag8_linea['Unid_Balance'] = -(ag8_linea['Horas_Desvio'] / ag8_linea['HH_Std_U']) # Negativo = Perdidas
             
