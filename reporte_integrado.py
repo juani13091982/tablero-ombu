@@ -475,7 +475,7 @@ with col2:
     st.header("2. EFICIENCIA PRODUCTIVA")
     st.markdown("<div class='sub-title'><i>Fórmula: (∑ HH STD / ∑ HH PRODUCTIVAS)</i></div>", unsafe_allow_html=True)
     if not df_plot_1.empty:
-        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', col_prod_tot: 'sum'}).reset_index()
+        ag2 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL': 'sum', col_prod_tot: 'sum', 'Cant._Prod._A1': 'sum'}).reset_index()
         ag2['Ef_Prod'] = (ag2['HH_STD_TOTAL'] / ag2[col_prod_tot]).replace([np.inf, -np.inf], 0).fillna(0) * 100
         
         fig2, ax2 = plt.subplots(figsize=(14, 10)); ax2_line = ax2.twinx()
@@ -490,6 +490,11 @@ with col2:
         ax2.bar_label(bs, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         ax2.bar_label(bp, padding=4, color='black', fontweight='bold', path_effects=efecto_b, fmt='%.0f', zorder=3)
         dibujar_meses(ax2, len(x_idx))
+        
+        for i, bar in enumerate(bs):
+            val_prod = ag2['Cant._Prod._A1'].iloc[i]
+            vu = int(float(val_prod)) if pd.notna(val_prod) else 0 
+            if vu > 0: ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height()*0.05, f"{vu} UND", rotation=90, color='white', ha='center', va='bottom', fontsize=18, fontweight='bold', path_effects=efecto_n, zorder=4)
         
         ax2_line.plot(x_idx, ag2['Ef_Prod'], color='dimgray', marker='s', markersize=12, linewidth=4, path_effects=efecto_b, label='% Efic. Prod.', zorder=5)
         add_tendencia(ax2_line, x_idx, ag2['Ef_Prod'])
@@ -757,14 +762,11 @@ with col7:
                 full_txt = f"{txt_a}\n{txt_b}\n{txt_c}"
                 
                 ha_align = 'left' if dif >= 0 else 'right'
-                
-                # Volvemos a colocar el texto en el extremo de la barra (offset_x=10).
-                # Eliminamos el error de ponerlo en dif/2 que aplastaba el grafico contra el eje Y.
-                offset_x = 10 if dif >= 0 else -10
+                offset_x = 15 if dif >= 0 else -15
                 
                 ax8.annotate(full_txt, 
                              xy=(dif, i), xytext=(offset_x, 0), textcoords="offset points", 
-                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=11, 
+                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=10, 
                              path_effects=efecto_n, bbox=dict(boxstyle="round,pad=0.5", fc="black", ec="gold", lw=1.5, alpha=0.85), zorder=10)
 
             # Eje Y con Nombres y Cantidad en el extremo izquierdo
@@ -780,11 +782,9 @@ with col7:
             
             ax8.set_title(f"⚠️ CUELLO DE BOTELLA: {peor_linea_cb} (C: {peor_cb_val:.1f})", color="firebrick", fontweight="bold", fontsize=18, pad=20)
             
-            # ESCALA SIMÉTRICA OBLIGATORIA (EVITA QUE SE APLASTE EL GRÁFICO)
-            # Asegura al menos +/- 50 para que el texto enorme siempre entre sin problemas
             max_abs = ag8_linea['Dif_pct'].abs().max()
-            limit = max(max_abs * 1.5, 60)
-            ax8.set_xlim(-limit - 20, limit + 20)
+            if max_abs == 0: max_abs = 10
+            ax8.set_xlim(-max_abs*1.8 - 15, max_abs*1.8 + 15)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else:
@@ -805,7 +805,6 @@ with col7:
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
         
         if not ag8.empty:
-            ag8['HH_Prod_U'] = ag8[col_prod_tot] / ag8['Cant._Prod._A1']
             ag8['HH_Disp_U'] = ag8['HH_Disponibles'] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
@@ -813,33 +812,32 @@ with col7:
             fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
             
-            # GRAFICAMOS LAS 3 LÍNEAS DE LA VERDAD
-            ax8.plot(x_idx, ag8['HH_Prod_U'], color='darkgreen', marker='o', markersize=10, linewidth=4, path_effects=efecto_b, label='Tiempo PROD / Unidad', zorder=6)
-            ax8.plot(x_idx, ag8['HH_Disp_U'], color='firebrick', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, label='Tiempo DISP / Unidad (Real Global)', zorder=5)
-            ax8.plot(x_idx, ag8['HH_Std_U'], color='midnightblue', linestyle='--', linewidth=3, label='Tiempo STD / Unidad (Meta)', zorder=4)
+            # GRAFICAMOS SÓLO LAS 2 LÍNEAS PEDIDAS (DISPONIBLES Y ESTÁNDAR)
+            ax8.plot(x_idx, ag8['HH_Disp_U'], color='darkgreen', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='Tiempo DISP / Unidad (Real Global)', zorder=6)
+            ax8.plot(x_idx, ag8['HH_Std_U'], color='midnightblue', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
             
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Disp_U'], where=(ag8['HH_Disp_U'] > ag8['HH_Std_U']), color='red', alpha=0.15, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Disp_U'], where=(ag8['HH_Disp_U'] <= ag8['HH_Std_U']), color='green', alpha=0.15, interpolate=True)
             
             # MOTOR ANTI-COLISIONES DE ETIQUETAS Y FÓRMULAS
             for i in range(len(x_idx)): 
-                val_p = ag8['HH_Prod_U'].iloc[i]
                 val_d = ag8['HH_Disp_U'].iloc[i]
                 val_s = ag8['HH_Std_U'].iloc[i]
                 cant_u = int(ag8['Cant._Prod._A1'].iloc[i])
                 
-                # Lógica para separar etiquetas si están muy juntas (Ajustado para no volar muy lejos)
-                if val_d >= val_p:
-                    off_d = 20; off_p = -20
+                # Lógica para separar etiquetas si están muy juntas
+                if val_d >= val_s:
+                    off_d = 20; off_s = -25
                 else:
-                    off_d = -20; off_p = 20
+                    off_d = -25; off_s = 20
                     
-                ax8.annotate(f"{val_d:.2f}h\n({cant_u} Unid)", (x_idx[i], val_d), textcoords="offset points", xytext=(0,off_d), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="firebrick", lw=1.5), zorder=10)
-                ax8.annotate(f"{val_p:.2f}h", (x_idx[i], val_p), textcoords="offset points", xytext=(0,off_p), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="darkgreen", lw=1.5), zorder=10)
+                ax8.annotate(f"{val_d:.2f}h\n({cant_u} Unid)", (x_idx[i], val_d), textcoords="offset points", xytext=(0,off_d), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="darkgreen", lw=1.5), zorder=10)
+                ax8.annotate(f"{val_s:.2f}h", (x_idx[i], val_s), textcoords="offset points", xytext=(0,off_s), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="midnightblue", lw=1.5), zorder=10)
                 
-                # Diferencia (B - A) graficada a un lado
+                # Diferencia graficada a un lado
                 diff_val = val_d - val_s
                 mid_y = (val_d + val_s) / 2
+                ax8.plot([x_idx[i], x_idx[i]], [val_s, val_d], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
                 ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.08, mid_y), color='dodgerblue', fontweight='bold', fontsize=11, path_effects=efecto_b, zorder=4)
 
             # CÁLCULO DEL CARTEL EXACTAMENTE IGUAL QUE LA FÓRMULA DE PLANTA (FACTOR C)
@@ -859,8 +857,8 @@ with col7:
                 
             ax8.text(0.5, 0.95, cartel_txt, transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
             
-            min_y = min(ag8['HH_Prod_U'].min(), ag8['HH_Std_U'].min(), ag8['HH_Disp_U'].min()) * 0.7
-            max_y = max(ag8['HH_Prod_U'].max(), ag8['HH_Std_U'].max(), ag8['HH_Disp_U'].max()) * 1.3
+            min_y = min(ag8['HH_Std_U'].min(), ag8['HH_Disp_U'].min()) * 0.7
+            max_y = max(ag8['HH_Std_U'].max(), ag8['HH_Disp_U'].max()) * 1.3
             ax8.set_ylim(min_y, max_y)
 
             ax8.set_xticks(x_idx); ax8.set_xticklabels(ag8['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
