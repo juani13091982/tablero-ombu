@@ -753,13 +753,18 @@ with col7:
                 # Caja de texto DIVIDIDA EN MÚLTIPLES LÍNEAS PARA NO DESARMAR EL GRÁFICO
                 txt_a = f"[A] HH STD / HH DISP: {ef_a:.1f}%"
                 txt_b = f"[B] HH STD / HH PROD: {ef_b:.1f}%"
-                txt_c = f"DIFERENCIA (C):\n{c_100:.1f} U. {estado_c} AL 100% EF. REAL\n{c_85:.1f} U. {estado_c} AL 85% EF. REAL"
+                txt_c = f"DIFERENCIA (C):\n➤ {c_100:.1f} U. {estado_c} AL 100% EF. REAL\n➤ {c_85:.1f} U. {estado_c} AL 85% EF. REAL"
                 full_txt = f"{txt_a}\n{txt_b}\n{txt_c}"
                 
-                # Posición en el centro de la barra para evitar estiramientos horizontales extremos
+                ha_align = 'left' if dif >= 0 else 'right'
+                
+                # Volvemos a colocar el texto en el extremo de la barra (offset_x=10).
+                # Eliminamos el error de ponerlo en dif/2 que aplastaba el grafico contra el eje Y.
+                offset_x = 10 if dif >= 0 else -10
+                
                 ax8.annotate(full_txt, 
-                             xy=(dif/2, i), 
-                             va='center', ha='center', color='gold', fontweight='bold', fontsize=10, 
+                             xy=(dif, i), xytext=(offset_x, 0), textcoords="offset points", 
+                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=11, 
                              path_effects=efecto_n, bbox=dict(boxstyle="round,pad=0.5", fc="black", ec="gold", lw=1.5, alpha=0.85), zorder=10)
 
             # Eje Y con Nombres y Cantidad en el extremo izquierdo
@@ -775,9 +780,11 @@ with col7:
             
             ax8.set_title(f"⚠️ CUELLO DE BOTELLA: {peor_linea_cb} (C: {peor_cb_val:.1f})", color="firebrick", fontweight="bold", fontsize=18, pad=20)
             
+            # ESCALA SIMÉTRICA OBLIGATORIA (EVITA QUE SE APLASTE EL GRÁFICO)
+            # Asegura al menos +/- 50 para que el texto enorme siempre entre sin problemas
             max_abs = ag8_linea['Dif_pct'].abs().max()
-            if max_abs == 0: max_abs = 10
-            ax8.set_xlim(-max_abs*1.3 - 10, max_abs*1.3 + 10)
+            limit = max(max_abs * 1.5, 60)
+            ax8.set_xlim(-limit - 20, limit + 20)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else:
@@ -821,11 +828,11 @@ with col7:
                 val_s = ag8['HH_Std_U'].iloc[i]
                 cant_u = int(ag8['Cant._Prod._A1'].iloc[i])
                 
-                # Lógica para separar etiquetas si están muy juntas
+                # Lógica para separar etiquetas si están muy juntas (Ajustado para no volar muy lejos)
                 if val_d >= val_p:
-                    off_d = 20; off_p = -25
+                    off_d = 20; off_p = -20
                 else:
-                    off_d = -25; off_p = 20
+                    off_d = -20; off_p = 20
                     
                 ax8.annotate(f"{val_d:.2f}h\n({cant_u} Unid)", (x_idx[i], val_d), textcoords="offset points", xytext=(0,off_d), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="firebrick", lw=1.5), zorder=10)
                 ax8.annotate(f"{val_p:.2f}h", (x_idx[i], val_p), textcoords="offset points", xytext=(0,off_p), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="darkgreen", lw=1.5), zorder=10)
