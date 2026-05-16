@@ -722,9 +722,9 @@ with col7:
             ag8_linea['A_val'] = np.where(ag8_linea['HH_Disponibles'] > 0, ag8_linea['HH_STD_TOTAL'] / ag8_linea['HH_Disponibles'], 0)
             # B: Ef Prod (en decimales)
             ag8_linea['B_val'] = np.where(ag8_linea[col_prod_tot] > 0, ag8_linea['HH_STD_TOTAL'] / ag8_linea[col_prod_tot], 0)
-            # Diferencia % para pintar la barra
+            # Diferencia % para pintar la barra (B - A)
             ag8_linea['Dif_pct'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * 100
-            # Factor C (Diferencia multiplicada por cantidad, la matemática pedida)
+            # Factor C (Diferencia multiplicada por cantidad)
             ag8_linea['C_val'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * ag8_linea['Cant._Prod._A1']
             
             # ORDENAR PURAMENTE POR FACTOR C (El mayor C arriba de todo -> sort_values ascending=True)
@@ -744,7 +744,7 @@ with col7:
                 c_val = row['C_val']
                 dif = row['Dif_pct']
                 
-                # Caja de texto (A, B y C)
+                # Caja de texto (A, B y C) a la derecha o izquierda de la barra
                 txt_a = f"[A] HH STD / HH DISP: {ef_a:.1f}%"
                 txt_b = f"[B] HH STD / HH PROD: {ef_b:.1f}%"
                 txt_c = f"DIFERENCIA (C): {c_val:.1f}"
