@@ -724,7 +724,7 @@ with col7:
             ag8_linea['B_val'] = np.where(ag8_linea[col_prod_tot] > 0, ag8_linea['HH_STD_TOTAL'] / ag8_linea[col_prod_tot], 0)
             # Diferencia % para pintar la barra (B - A)
             ag8_linea['Dif_pct'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * 100
-            # Factor C (Diferencia multiplicada por cantidad)
+            # Factor C (Diferencia multiplicada por cantidad, la matemática pedida)
             ag8_linea['C_val'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * ag8_linea['Cant._Prod._A1']
             
             # ORDENAR PURAMENTE POR FACTOR C (El mayor C arriba de todo -> sort_values ascending=True)
@@ -851,23 +851,33 @@ with col8:
     
     agrupar_por = 'Puesto_Trabajo' if (s_li or s_pu) else 'Linea'
     if agrupar_por in df_ef_f.columns:
-        df_ranking = df_plot_1 if agrupar_por == 'Linea' else df_ef_f
+        if agrupar_por == 'Linea':
+            lineas_con_si = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']['Linea'].unique()
+            m1 = df_ef_f['Linea'].isin(lineas_con_si) & (df_ef_f['Es_Ultimo_Puesto'] == 'SI')
+            m2 = ~df_ef_f['Linea'].isin(lineas_con_si)
+            df_ranking = df_ef_f[m1 | m2]
+        else:
+            df_ranking = df_ef_f
+            
         ag9 = df_ranking.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', col_prod_tot:'sum'}).reset_index()
         
         if tipo_ranking == "Eficiencia Real":
             ag9 = ag9[ag9['HH_Disponibles'] > 0]
             ag9['Ef'] = (ag9['HH_STD_TOTAL'] / ag9['HH_Disponibles']) * 100
             meta_val = 85
-            colors = ['firebrick' if val < 60 else 'gold' if val < 70 else 'lightgreen' if val < 85 else 'darkgreen' for val in ag9['Ef']]
         else:
             ag9 = ag9[ag9[col_prod_tot] > 0]
             ag9['Ef'] = (ag9['HH_STD_TOTAL'] / ag9[col_prod_tot]) * 100
             meta_val = 100
-            colors = ['firebrick' if val < 80 else 'gold' if val < 90 else 'lightgreen' if val < 100 else 'darkgreen' for val in ag9['Ef']]
             
-        ag9 = ag9.sort_values('Ef', ascending=True)
+        ag9 = ag9.sort_values('Ef', ascending=True).reset_index(drop=True)
         
         if not ag9.empty:
+            if tipo_ranking == "Eficiencia Real":
+                colors = ['firebrick' if val < 60 else 'gold' if val < 70 else 'lightgreen' if val < 85 else 'darkgreen' for val in ag9['Ef']]
+            else:
+                colors = ['firebrick' if val < 80 else 'gold' if val < 90 else 'lightgreen' if val < 100 else 'darkgreen' for val in ag9['Ef']]
+                
             fig9, ax9 = plt.subplots(figsize=(14, 10))
             fig9.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
             fig9.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
