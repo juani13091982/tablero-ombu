@@ -156,12 +156,25 @@ def cargar_datos():
     df_ef.columns = df_ef.columns.str.strip()
     df_im.columns = [str(c).strip().upper() for c in df_im.columns]
     
-    cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$']
+    # Motor buscador de columnas de costos
+    c_mo = next((c for c in df_ef.columns if 'COSTO' in str(c).upper() and 'IMPROD' in str(c).upper()), 'Costo_Improd._$')
+    c_lucro = next((c for c in df_ef.columns if 'LUCRO' in str(c).upper()), 'LUCRO_CESANTE_$')
+    c_impacto = next((c for c in df_ef.columns if 'IMPACTO' in str(c).upper()), 'IMPACTO_TOTAL_$')
+    
+    if c_mo not in df_ef.columns: df_ef[c_mo] = 0
+    if c_lucro not in df_ef.columns: df_ef[c_lucro] = 0
+    if c_impacto not in df_ef.columns: df_ef[c_impacto] = 0
+    
+    df_ef.rename(columns={c_mo: 'Costo_Improd._$', c_lucro: 'LUCRO_CESANTE_$', c_impacto: 'IMPACTO_TOTAL_$'}, inplace=True)
+    
+    cols_numericas = ['HH_STD_TOTAL', 'HH_Disponibles', 'Cant._Prod._A1', 'HH_Productivas_C/GAP', 'Costo_Improd._$', 'LUCRO_CESANTE_$', 'IMPACTO_TOTAL_$']
     c_std_u_potencial = next((c for c in df_ef.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or '/ U' in str(c).upper())), None)
     if c_std_u_potencial and c_std_u_potencial not in cols_numericas: cols_numericas.append(c_std_u_potencial)
 
     for col in cols_numericas:
         if col in df_ef.columns: df_ef[col] = pd.to_numeric(df_ef[col], errors='coerce').fillna(0)
+        
+    df_ef['IMPACTO_TOTAL_$'] = df_ef['Costo_Improd._$'] + df_ef['LUCRO_CESANTE_$']
     
     if 'TIPO_PARADA' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'TIPO' in c or 'MOTIVO' in c), df_im.columns[0]): 'TIPO_PARADA'}, inplace=True)
     if 'HH_IMPRODUCTIVAS' not in df_im.columns: df_im.rename(columns={next((c for c in df_im.columns if 'HH' in c and 'IMP' in c), df_im.columns[0]): 'HH_IMPRODUCTIVAS'}, inplace=True)
@@ -297,7 +310,7 @@ for c in df_ef_f.columns:
         break
 
 # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
-tot_costo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
+tot_costo = df_ef_f['IMPACTO_TOTAL_$'].sum() if not df_ef_f.empty else 0
 tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
 
 tot_std = df_plot_1['HH_STD_TOTAL'].sum() if not df_plot_1.empty else 0
@@ -339,7 +352,7 @@ st.markdown(f"""
         <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
     </div>
     <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4); padding: 10px;">
-        <h4 style="color: white;">COSTO HH IMPROD.</h4>
+        <h4 style="color: white;">DAÑO PATRIMONIAL EN $</h4>
         <p style="color: #FFCDD2; margin: 0; font-size: 14px;">(Oportunidad Perdida)</p>
         <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
         <h4 style="color: white;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
@@ -557,36 +570,68 @@ with col3:
     else: st.warning("⚠️ Sin datos para GAP.")
 
 with col4:
-    st.header("4. TENDENCIA COSTOS IMPRODUCTIVOS")
-    st.markdown("<div class='sub-title'><i>Evolución de valorización económica de la ineficiencia</i></div>", unsafe_allow_html=True)
+    st.header("4. IMPACTO EN $ EN EL DAÑO PATRIMONIAL")
+    st.markdown("<div class='sub-title'><i>Evolución de valorización económica de la ineficiencia (Costo Directo + Lucro Cesante)</i></div>", unsafe_allow_html=True)
     
     if not df_ef_f.empty:
-        ag4 = df_ef_f.groupby('Fecha').agg({'Costo_Improd._$': 'sum'}).reset_index()
+        ag4 = df_ef_f.groupby('Fecha').agg({
+            'Costo_Improd._$': 'sum', 
+            'LUCRO_CESANTE_$': 'sum', 
+            'IMPACTO_TOTAL_$': 'sum'
+        }).reset_index()
+        
         if not df_im_f.empty:
             ag_im = df_im_f.groupby('FECHA')['HH_IMPRODUCTIVAS'].sum().reset_index().rename(columns={'FECHA':'Fecha', 'HH_IMPRODUCTIVAS':'HH_Imp'})
             ag4 = pd.merge(ag4, ag_im, on='Fecha', how='left').fillna(0)
         else: ag4['HH_Imp'] = 0
 
-        fig4, ax4 = plt.subplots(figsize=(14, 10)); ax4_line = ax4.twinx()
-        fig4.subplots_adjust(top=0.82, bottom=0.15, left=0.06, right=0.94)
+        fig4, ax4 = plt.subplots(figsize=(14, 10))
+        fig4.subplots_adjust(top=0.82, bottom=0.15, left=0.1, right=0.95)
         fig4.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
         x_idx = np.arange(len(ag4))
-        bi = ax4.bar(x_idx, ag4['HH_Imp'], color='darkred', edgecolor='white', label='HH IMPRODUCTIVAS', zorder=2)
-        ax4.bar_label(bi, padding=4, color='black', fontweight='bold', path_effects=efecto_b, zorder=4)
-        set_escala_y(ax4, ag4['HH_Imp'].max(), 1.6) 
         
-        ax4_line.plot(x_idx, ag4['Costo_Improd._$'], color='maroon', marker='s', markersize=12, linewidth=5, path_effects=efecto_b, label='COSTO ARS', zorder=5)
-        add_tendencia(ax4_line, x_idx, ag4['Costo_Improd._$'])
-        ax4_line.set_ylim(0, max(1000, ag4['Costo_Improd._$'].max() * 1.3)); ax4_line.set_yticklabels([f'${int(x/1000000)}M' for x in ax4_line.get_yticks()], fontweight='bold')
+        # BARRAS APILADAS PARA COSTO DIRECTO Y LUCRO CESANTE
+        b_mo = ax4.bar(x_idx, ag4['Costo_Improd._$'], color='darkred', edgecolor='white', width=0.45, label='COSTO DIRECTO M.O.', zorder=2)
+        b_lc = ax4.bar(x_idx, ag4['LUCRO_CESANTE_$'], bottom=ag4['Costo_Improd._$'], color='darkorange', edgecolor='white', width=0.45, label='LUCRO CESANTE', zorder=2)
+        
+        # LÍNEA TOTAL DEL DAÑO PATRIMONIAL
+        ax4.plot(x_idx, ag4['IMPACTO_TOTAL_$'], color='black', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, label='DAÑO PATRIMONIAL TOTAL', zorder=5)
+        add_tendencia(ax4, x_idx, ag4['IMPACTO_TOTAL_$'])
+        
+        # ESCALA DE EJES EN MILLONES O MILES
+        max_y = ag4['IMPACTO_TOTAL_$'].max()
+        ax4.set_ylim(0, max_y * 1.5 if max_y > 0 else 100)
+        ax4.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, pos: f'${x/1e6:.1f}M' if x>=1e6 else f'${x/1e3:.0f}K'))
 
-        tot_imp, tot_cost = ag4['HH_Imp'].sum(), ag4['Costo_Improd._$'].sum()
-        ax4.text(0.01, 0.98, f" HH IMPROD. ACUM.: {tot_imp:,.1f} HH  |  COSTO ACUM.: ${tot_cost:,.0f} ", transform=ax4.transAxes, fontsize=14, color='maroon', bbox=dict(boxstyle="round,pad=0.4", fc="#FFEBEE", ec="maroon", lw=2), fontweight='bold', zorder=20, va='top', ha='left')
+        for i in range(len(x_idx)):
+            mo = ag4['Costo_Improd._$'].iloc[i]
+            lc = ag4['LUCRO_CESANTE_$'].iloc[i]
+            tot = ag4['IMPACTO_TOTAL_$'].iloc[i]
+            hh = ag4['HH_Imp'].iloc[i]
+            
+            # ETIQUETAS DE BARRAS APILADAS (CENTRADAS)
+            if mo > 0:
+                lbl_mo = f"${mo/1e6:.1f}M" if mo>=1e6 else f"${mo/1e3:.0f}K"
+                ax4.text(x_idx[i], mo/2, lbl_mo, ha='center', va='center', color='white', fontweight='bold', fontsize=11, path_effects=efecto_n, zorder=3)
+            
+            if lc > 0:
+                lbl_lc = f"${lc/1e6:.1f}M" if lc>=1e6 else f"${lc/1e3:.0f}K"
+                ax4.text(x_idx[i], mo + (lc/2), lbl_lc, ha='center', va='center', color='black', fontweight='bold', fontsize=11, path_effects=efecto_b, zorder=3)
+            
+            # ETIQUETA TOTAL 
+            if tot > 0:
+                ax4.annotate(f"${tot:,.0f}", (x_idx[i], tot), textcoords="offset points", xytext=(0, 12), ha='center', color='black', fontweight='bold', fontsize=12, bbox=caja_o, zorder=10)
+            
+            # ETIQUETA HORAS IMPRODUCTIVAS (ARRIBA, DESFASADA PARA NO SOLAPAR)
+            if hh > 0:
+                ax4.annotate(f"⏱️ {hh:.1f} HH Imp.", (x_idx[i], tot), textcoords="offset points", xytext=(0, 40), ha='center', color='firebrick', fontweight='bold', fontsize=11, bbox=dict(boxstyle="round,pad=0.3", fc="#FFEBEE", ec="firebrick", lw=1.5), zorder=10)
 
-        for i, val in enumerate(ag4['Costo_Improd._$']): ax4_line.annotate(f"${val:,.0f}", (x_idx[i], val + (ax4_line.get_ylim()[1]*0.04)), color='white', bbox=caja_g, ha='center', fontweight='bold', zorder=10)
+        tot_imp, tot_impacto = ag4['HH_Imp'].sum(), ag4['IMPACTO_TOTAL_$'].sum()
+        ax4.text(0.01, 0.98, f" HH IMPROD. ACUM.: {tot_imp:,.1f} HH  |  DAÑO PATRIMONIAL ACUM.: ${tot_impacto:,.0f} ", transform=ax4.transAxes, fontsize=14, color='black', bbox=dict(boxstyle="round,pad=0.4", fc="#FFF9C4", ec="black", lw=2), fontweight='bold', zorder=20, va='top', ha='left')
 
         ax4.set_xticks(x_idx); ax4.set_xticklabels(ag4['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-        ax4.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True); ax4_line.legend(loc='lower right', bbox_to_anchor=(1, 1.05), frameon=True)
+        ax4.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=3, frameon=True)
         agregar_sello_agua(fig4); st.pyplot(fig4, use_container_width=True)
     else: st.warning("⚠️ No hay datos económicos.")
 
