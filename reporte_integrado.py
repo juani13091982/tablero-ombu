@@ -310,6 +310,8 @@ for c in df_ef_f.columns:
         break
 
 # CÁLCULOS PONDERADOS UNIVERSALES PARA CARTELES
+tot_costo_mo = df_ef_f['Costo_Improd._$'].sum() if not df_ef_f.empty else 0
+tot_lucro = df_ef_f['LUCRO_CESANTE_$'].sum() if not df_ef_f.empty else 0
 tot_costo = df_ef_f['IMPACTO_TOTAL_$'].sum() if not df_ef_f.empty else 0
 tot_hh_imp = df_im_f['HH_IMPRODUCTIVAS'].sum() if not df_im_f.empty else 0
 
@@ -351,11 +353,21 @@ st.markdown(f"""
         <h4 style="color: white;">EFICIENCIA PROD.</h4>
         <h2 style="color: white;">{kpi_ef_prod:.1f}%</h2>
     </div>
-    <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4); padding: 10px;">
-        <h4 style="color: white;">DAÑO PATRIMONIAL EN $</h4>
-        <p style="color: #FFCDD2; margin: 0; font-size: 14px;">(Oportunidad Perdida)</p>
-        <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${tot_costo:,.0f}</h2>
-        <h4 style="color: white;">{tot_hh_imp:,.1f} <span style="font-size:16px; font-weight:normal;">HH</span></h4>
+    <div class="kpi-costo" style="background: linear-gradient(135deg, #D32F2F, #E53935); border: 1px solid #B71C1C; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align:center; box-shadow: 2px 4px 15px rgba(211,47,47,0.4); padding: 15px 10px;">
+        <h4 style="color: white; margin: 0; font-size: 16px;">DAÑO PATRIMONIAL TOTAL</h4>
+        <h2 style="color: #FFEB3B; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); margin: 5px 0 10px 0; font-size: 38px;">${tot_costo:,.0f}</h2>
+        <div style="display: flex; justify-content: space-between; background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; margin-bottom: 10px;">
+            <div style="width: 48%;">
+                <p style="color: #FFCDD2; margin: 0; font-size: 11px; font-weight: bold; text-transform: uppercase;">Costo Directo M.O.</p>
+                <h4 style="color: white; margin: 0; font-size: 16px;">${tot_costo_mo:,.0f}</h4>
+            </div>
+            <div style="border-left: 1px solid rgba(255,255,255,0.3); width: 4%;"></div>
+            <div style="width: 48%;">
+                <p style="color: #FFCDD2; margin: 0; font-size: 11px; font-weight: bold; text-transform: uppercase;">Lucro Cesante</p>
+                <h4 style="color: white; margin: 0; font-size: 16px;">${tot_lucro:,.0f}</h4>
+            </div>
+        </div>
+        <h4 style="color: white; margin: 0;">{tot_hh_imp:,.1f} <span style="font-size:14px; font-weight:normal;">HH Improductivas</span></h4>
     </div>
     <div class="kpi-top-ef" style="background: #0D47A1; color: white; border-radius: 6px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); padding: 10px;">
         <h4 style="font-size:14px; color:#BBDEFB; text-align:center; border-bottom: 1px solid rgba(255,255,255,0.2); margin:0 0 5px 0; padding-bottom:5px;">🏆 TOP EF. REAL</h4>
