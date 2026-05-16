@@ -139,8 +139,13 @@ def cargar_datos():
     else: df_im['OPERARIO'] = "S/D"
     df_im['OPERARIO'] = df_im['OPERARIO'].str.strip().replace('', 'S/D')
 
-    c_fec = next((c for c in df_im.columns if 'A3' in str(c).upper() or 'INICIO' in str(c).upper() or 'FECHA' in str(c).upper()), None)
-    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce', dayfirst=True) if c_fec else pd.NaT
+    # CORRECCIÓN DE FECHA EXACTA: OBLIGAMOS A TOMAR LA COLUMNA B
+    col_b_im = df_im.columns[1] if len(df_im.columns) > 1 else df_im.columns[0]
+    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[col_b_im], errors='coerce', dayfirst=True)
+    if df_im['FECHA_EXACTA'].isna().all():
+        c_fec = next((c for c in df_im.columns if 'A3' in str(c).upper() or 'INICIO' in str(c).upper() or 'FECHA' in str(c).upper()), None)
+        df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce', dayfirst=True) if c_fec else pd.NaT
+
     if 'FECHA' in df_im.columns: df_im['FECHA'] = pd.to_datetime(df_im['FECHA'], errors='coerce', dayfirst=True).dt.to_period('M').dt.to_timestamp()
     else: df_im['FECHA'] = df_im['FECHA_EXACTA'].dt.to_period('M').dt.to_timestamp()
     
@@ -556,7 +561,6 @@ with col6:
         df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
         
         fig6, ax6 = plt.subplots(figsize=(14, 10))
-        # V19: EXPANDIR GRAFICO HACIA ARRIBA Y MOVER LEYENDA ABAJO
         fig6.subplots_adjust(top=0.90, bottom=0.35, left=0.06, right=0.94) 
         fig6.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
@@ -569,7 +573,6 @@ with col6:
                 lbls_stk = [f"{int(v)}" if v > 0 else "" for v in vals]
                 ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
                 base_st += vals
-            # Leyenda horizontal en la parte inferior
             ax6.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=5, framealpha=0.9, fontsize=10)
         else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
             
@@ -613,19 +616,9 @@ with col7:
             ag8_linea['Dif_pct'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * 100
             ag8_linea['C_val'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * ag8_linea['Cant._Prod._A1']
             ag8_linea['HH_Real_U'] = np.where(ag8_linea['Cant._Prod._A1'] > 0, ag8_linea[col_prod_tot] / ag8_linea['Cant._Prod._A1'], 0)
-            if 'PINTURA' in str(s_pl[0]).upper():
-                def obtener_orden(linea):
-                    l = linea.upper()
-                    if 'LIMPIEZA' in l: return 5
-                    if 'LAVADO' in l: return 4
-                    if 'PREPARAC' in l: return 3
-                    if 'CABINA' in l: return 2
-                    if 'TERMINAC' in l: return 1
-                    return 0
-                ag8_linea['Orden'] = ag8_linea['Linea'].apply(obtener_orden)
-                ag8_linea = ag8_linea.sort_values('Orden', ascending=True).reset_index(drop=True)
-            else:
-                ag8_linea = ag8_linea.sort_values('C_val', ascending=True).reset_index(drop=True)
+            
+            # ORDENAMIENTO ESTRICTO POR FACTOR C
+            ag8_linea = ag8_linea.sort_values('C_val', ascending=True).reset_index(drop=True)
                 
             fig8, ax8 = plt.subplots(figsize=(14, 10))
             fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
@@ -666,14 +659,25 @@ with col7:
             fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.08, right=0.92)
             fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
+            
+            # DETERMINACIÓN LÓGICA DEL CÁLCULO
+            tot_std, tot_cant, tot_disp, tot_prod = ag8['HH_STD_TOTAL'].sum(), ag8['Cant._Prod._A1'].sum(), ag8['HH_Disponibles'].sum(), ag8[col_prod_tot].sum()
+            std_u = tot_std / tot_cant if tot_cant > 0 else 1
+            
             if "Disp" in tipo_comp_8:
-                y_real, real_color, real_lbl, tot_real_horas = ag8['HH_Disp_U'], 'black', 'Tiempo DISP / Unidad (Real Global)', ag8['HH_Disponibles'].sum()
+                y_real, real_color, real_lbl = ag8['HH_Disp_U'], 'black', 'Tiempo DISP / Unidad (Real Global)'
+                c_val = (tot_disp - tot_std) / std_u
+                lbl_real = "EF. REAL"
             else:
-                y_real, real_color, real_lbl, tot_real_horas = ag8['HH_Prod_U'], 'darkgreen', 'Tiempo PROD / Unidad (Trabajo Puro)', ag8[col_prod_tot].sum()
+                y_real, real_color, real_lbl = ag8['HH_Prod_U'], 'darkgreen', 'Tiempo PROD / Unidad (Trabajo Puro)'
+                c_val = (tot_prod - tot_std) / std_u
+                lbl_real = "EF. PROD"
+                
             ax8.plot(x_idx, y_real, color=real_color, marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label=real_lbl, zorder=6)
             ax8.plot(x_idx, ag8['HH_Std_U'], color='midnightblue', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], y_real, where=(y_real > ag8['HH_Std_U']), color='red', alpha=0.15, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], y_real, where=(y_real <= ag8['HH_Std_U']), color='green', alpha=0.15, interpolate=True)
+            
             for i in range(len(x_idx)): 
                 val_r, val_s, cant_u = y_real.iloc[i], ag8['HH_Std_U'].iloc[i], int(ag8['Cant._Prod._A1'].iloc[i])
                 off_r, off_s = (20, -25) if val_r >= val_s else (-25, 20)
@@ -681,13 +685,7 @@ with col7:
                 ax8.annotate(f"{val_s:.2f}h", (x_idx[i], val_s), textcoords="offset points", xytext=(0,off_s), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="midnightblue", lw=1.5), zorder=10)
                 ax8.plot([x_idx[i], x_idx[i]], [val_s, val_r], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
                 ax8.annotate(f"{val_r - val_s:+.2f}h", (x_idx[i] + 0.08, (val_r + val_s) / 2), color='dodgerblue', fontweight='bold', fontsize=11, path_effects=efecto_b, zorder=4)
-            tot_std, tot_cant, tot_disp, tot_prod = ag8['HH_STD_TOTAL'].sum(), ag8['Cant._Prod._A1'].sum(), ag8['HH_Disponibles'].sum(), ag8[col_prod_tot].sum()
-            if "Disp" in tipo_comp_8:
-                c_val = ((tot_std/tot_prod if tot_prod>0 else 0) - (tot_std/tot_disp if tot_disp>0 else 0)) * tot_cant
-                lbl_real = "EF. REAL"
-            else:
-                c_val = (tot_prod - tot_std) / (tot_std/tot_cant if tot_cant>0 else 1)
-                lbl_real = "EF. PROD"
+            
             estado_c, cartel_col = ("PERDIDAS", "#B71C1C") if c_val >= 0 else ("GANADAS", "#1B5E20")
             ax8.text(0.5, 0.95, f"⚠️ DIFERENCIA (C): {abs(c_val):.1f} U. {estado_c} AL 100% {lbl_real} / {abs(c_val*0.85):.1f} U. {estado_c} AL 85% {lbl_real}", transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
             ax8.set_ylim(min(y_real.min(), ag8['HH_Std_U'].min()) * 0.7, max(y_real.max(), ag8['HH_Std_U'].max()) * 1.3)
