@@ -699,55 +699,84 @@ col7, col8 = st.columns(2)
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
     
-    # INTELIGENCIA CUELLO DE BOTELLA: Solo se activa si eligieron una Planta y NINGUNA línea ni puesto.
+    # INTELIGENCIA CUELLO DE BOTELLA: Se activa si eligieron una Planta y NINGUNA línea ni puesto.
     if not s_pl and not s_li and not s_pu:
         st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
         st.info("🔒 Seleccione una **Planta**, **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis.")
     
     elif s_pl and not s_li and not s_pu:
-        st.markdown("<div class='sub-title'><i>Comparativa de Cuello de Botella (Tiempos de Ciclo por Línea)</i></div>", unsafe_allow_html=True)
+        st.markdown("<div class='sub-title'><i>Análisis de Flujo y Cuello de Botella por Línea</i></div>", unsafe_allow_html=True)
         
-        # --- ACÁ ESTÁ LA MAGIA ---
-        # Usamos df_ef_f (en lugar de df_plot_1) para medir TODO el universo de líneas en la planta, 
-        # sin importar si tienen el tilde de "Último Puesto" o no. Ninguna línea se esconde.
-        c_std_u = next((c for c in df_ef_f.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
+        # Agrupamos TODO el universo de la Planta, ignorando el filtro de "Último Puesto"
+        ag8_linea = df_ef_f.groupby('Linea').agg({
+            'HH_STD_TOTAL':'sum', 
+            col_prod_tot:'sum', 
+            'HH_Disponibles':'sum',
+            'Cant._Prod._A1':'sum'
+        }).reset_index()
         
-        ag8_linea = df_ef_f.groupby('Linea').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
-        
-        if c_std_u:
-            ag_std_u = df_ef_f.groupby('Linea')[c_std_u].mean().reset_index()
-            ag8_linea = pd.merge(ag8_linea, ag_std_u, on='Linea', how='left')
-            ag8_linea['HH_Std_U'] = ag8_linea[c_std_u]
-        else:
-            ag8_linea['HH_Std_U'] = ag8_linea['HH_STD_TOTAL'] / ag8_linea['Cant._Prod._A1']
-            
-        ag8_linea = ag8_linea[ag8_linea['Cant._Prod._A1'] > 0]
+        ag8_linea = ag8_linea[ag8_linea['HH_Disponibles'] > 0]
         
         if not ag8_linea.empty:
-            ag8_linea['HH_Real_U'] = ag8_linea[col_prod_tot] / ag8_linea['Cant._Prod._A1']
+            # A: Ef Real (en decimales)
+            ag8_linea['A_val'] = np.where(ag8_linea['HH_Disponibles'] > 0, ag8_linea['HH_STD_TOTAL'] / ag8_linea['HH_Disponibles'], 0)
+            # B: Ef Prod (en decimales)
+            ag8_linea['B_val'] = np.where(ag8_linea[col_prod_tot] > 0, ag8_linea['HH_STD_TOTAL'] / ag8_linea[col_prod_tot], 0)
+            # Factor C (Diferencia multiplicada por cantidad, la matemática pedida)
+            ag8_linea['C_val'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * ag8_linea['Cant._Prod._A1']
             
-            # ORDENAMOS POR EL MAYOR TIEMPO REAL POR UNIDAD (El verdadero cuello de botella)
-            ag8_linea = ag8_linea.sort_values('HH_Real_U', ascending=True)
-            
+            # ORDENAMIENTO INALTERABLE PARA PINTURA (De Limpieza a Terminación)
+            if 'PINTURA' in str(s_pl[0]).upper():
+                def obtener_orden(linea):
+                    l = linea.upper()
+                    if 'LIMPIEZA' in l: return 6
+                    if 'LAVADO' in l: return 5
+                    if 'PREPARAC' in l: return 4
+                    if 'CABINA' in l: return 3
+                    if 'ANEXO' in l: return 2
+                    if 'TERMINAC' in l: return 1
+                    return 0
+                ag8_linea['Orden'] = ag8_linea['Linea'].apply(obtener_orden)
+                # Ordenar ascendente coloca a Limpieza (6) arriba de todo en el gráfico de barras horizontales
+                ag8_linea = ag8_linea.sort_values('Orden', ascending=True)
+            else:
+                # Para otras plantas, se ordenan por el Factor C de mayor a menor (mayor C queda arriba)
+                ag8_linea = ag8_linea.sort_values('C_val', ascending=True)
+                
             fig8, ax8 = plt.subplots(figsize=(14, 10))
-            fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
-            fig8.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+            fig8.subplots_adjust(top=0.90, bottom=0.05, left=0.25, right=0.95)
             
-            colors = ['firebrick' if r > s else 'darkgreen' for r, s in zip(ag8_linea['HH_Real_U'], ag8_linea['HH_Std_U'])]
-            bars = ax8.barh(ag8_linea['Linea'], ag8_linea['HH_Real_U'], color=colors, edgecolor='white', height=0.6, label='Tiempo REAL / Unid')
+            # Barras de tamaño fijo para simular el tubo perfecto del proceso (Gantt style)
+            bars = ax8.barh(ag8_linea['Linea'], [1]*len(ag8_linea), color='midnightblue', edgecolor='white', height=0.65)
             
-            ax8.plot(ag8_linea['HH_Std_U'], ag8_linea['Linea'], 'D', color='gold', markersize=12, path_effects=efecto_n, label='Tiempo STD / Unid')
-            
-            ax8.bar_label(bars, fmt='%.1f h/U', padding=5, color='black', fontweight='bold', path_effects=efecto_b)
-            
-            ax8.set_yticklabels([textwrap.fill(str(t), 20) for t in ag8_linea['Linea']], fontsize=12, fontweight='bold')
-            
-            peor_linea = ag8_linea.iloc[-1]['Linea']
-            peor_val = ag8_linea.iloc[-1]['HH_Real_U']
-            
-            ax8.text(0.5, 0.95, f"⚠️ CUELLO DE BOTELLA: {peor_linea} ({peor_val:.1f} HH/Unid)", transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc="#B71C1C", ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
+            for i, (idx, row) in enumerate(ag8_linea.iterrows()):
+                cant = int(row['Cant._Prod._A1'])
+                ef_a = row['A_val'] * 100
+                ef_b = row['B_val'] * 100
+                c_val = row['C_val']
+                
+                # 1. EXTREMO IZQUIERDO: Cantidad Producida
+                ax8.text(0.02, i, f"Cant: {cant} U", va='center', color='white', fontweight='bold', fontsize=18, path_effects=efecto_n)
+                
+                # 2. CENTRO: Las 3 etiquetas pedidas (A, B y C)
+                txt_a = f"[A] HH STD / HH DISP: {ef_a:.1f}%"
+                txt_b = f"[B] HH STD / HH PROD: {ef_b:.1f}%"
+                txt_c = f"DIFERENCIA (C): {c_val:.1f}"
+                full_txt = f"{txt_a}\n{txt_b}\n{txt_c}"
+                
+                ax8.text(0.5, i, full_txt, va='center', ha='center', color='gold', fontweight='bold', fontsize=15, path_effects=efecto_n, bbox=dict(boxstyle="round,pad=0.4", fc="black", ec="gold", lw=2, alpha=0.75))
 
-            ax8.legend(loc='lower right', framealpha=0.9)
+            # Limpiamos el Eje X para que parezca un flujo de proceso real
+            ax8.set_xlim(0, 1)
+            ax8.get_xaxis().set_visible(False)
+            ax8.set_yticklabels([textwrap.fill(str(t), 20) for t in ag8_linea['Linea']], fontsize=14, fontweight='bold')
+            
+            # Detectar al cuello de botella matemático (el de mayor "C")
+            idx_max_c = ag8_linea['C_val'].idxmax()
+            peor_linea_c = ag8_linea.loc[idx_max_c, 'Linea']
+            peor_c_val = ag8_linea.loc[idx_max_c, 'C_val']
+            
+            ax8.set_title(f"⚠️ CUELLO DE BOTELLA SEGÚN 'C': {peor_linea_c} (C = {peor_c_val:.1f})", color="firebrick", fontweight="bold", fontsize=18)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else:
