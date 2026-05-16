@@ -918,25 +918,31 @@ with col7:
                 ax8.plot([x_idx[i], x_idx[i]], [val_s, val_r], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
                 ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.08, mid_y), color='dodgerblue', fontweight='bold', fontsize=11, path_effects=efecto_b, zorder=4)
 
-            # CÁLCULO INTELIGENTE DEL CARTEL SEGÚN EL SELECTOR
+            # CÁLCULO INTELIGENTE DEL CARTEL PARA QUE COINCIDA EXACTO CON LA VISTA DE PLANTA
             tot_std = ag8['HH_STD_TOTAL'].sum()
+            tot_disp = ag8['HH_Disponibles'].sum()
+            tot_prod = ag8[col_prod_tot].sum()
             tot_cant = ag8['Cant._Prod._A1'].sum()
-            std_u = tot_std / tot_cant if tot_cant > 0 else 0
+
+            a_val = tot_std / tot_disp if tot_disp > 0 else 0
+            b_val = tot_std / tot_prod if tot_prod > 0 else 0
             
-            if std_u > 0:
-                c_val = (tot_real_horas - tot_std) / std_u
+            if "Disp" in tipo_comp_8:
+                # FACTOR C EXACTO (B - A) * Cant -> Mide la ineficiencia por paradas (Match con planta)
+                c_val = (b_val - a_val) * tot_cant
+                lbl_real = "EF. REAL"
             else:
-                c_val = 0
-                
+                # Para la productiva, evaluamos el ritmo (Tiempo Prod vs Std)
+                std_u = tot_std / tot_cant if tot_cant > 0 else 0
+                c_val = (tot_prod - tot_std) / std_u if std_u > 0 else 0
+                lbl_real = "EF. PROD"
+
             c_85 = c_val * 0.85
 
             estado_c = "PERDIDAS" if c_val >= 0 else "GANADAS"
             cartel_col = "#B71C1C" if c_val >= 0 else "#1B5E20"
             
-            if "Disp" in tipo_comp_8:
-                cartel_txt = f"⚠️ DIFERENCIA (EF. REAL): {abs(c_val):.1f} U. {estado_c} AL 100% / {abs(c_85):.1f} U. {estado_c} AL 85%"
-            else:
-                cartel_txt = f"⚠️ DIFERENCIA (EF. PROD): {abs(c_val):.1f} U. {estado_c} AL 100% / {abs(c_85):.1f} U. {estado_c} AL 85%"
+            cartel_txt = f"⚠️ DIFERENCIA (C): {abs(c_val):.1f} U. {estado_c} AL 100% {lbl_real} / {abs(c_85):.1f} U. {estado_c} AL 85% {lbl_real}"
                 
             ax8.text(0.5, 0.95, cartel_txt, transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
             
