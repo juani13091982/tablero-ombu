@@ -727,26 +727,8 @@ with col7:
             # Factor C (Diferencia multiplicada por cantidad, la matemática pedida)
             ag8_linea['C_val'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * ag8_linea['Cant._Prod._A1']
             
-            # Buscamos el verdadero Cuello de Botella Físico (El proceso más lento: Mayor HH_Prod/Unidad)
-            ag8_linea['HH_Real_U'] = np.where(ag8_linea['Cant._Prod._A1'] > 0, ag8_linea[col_prod_tot] / ag8_linea['Cant._Prod._A1'], 0)
-            
-            # ORDENAMIENTO DE BARRAS
-            if 'PINTURA' in str(s_pl[0]).upper():
-                # SI ES PINTURA: Orden inalterable de flujo físico (Limpieza arriba -> Terminación abajo)
-                def obtener_orden(linea):
-                    l = linea.upper()
-                    if 'LIMPIEZA' in l: return 6
-                    if 'LAVADO' in l: return 5
-                    if 'PREPARAC' in l: return 4
-                    if 'CABINA' in l: return 3
-                    if 'ANEXO' in l: return 2
-                    if 'TERMINAC' in l: return 1
-                    return 0
-                ag8_linea['Orden'] = ag8_linea['Linea'].apply(obtener_orden)
-                ag8_linea = ag8_linea.sort_values('Orden', ascending=True).reset_index(drop=True)
-            else:
-                # OTRAS PLANTAS: Orden descendente por Factor C (Mayor C arriba de todo)
-                ag8_linea = ag8_linea.sort_values('C_val', ascending=True).reset_index(drop=True)
+            # ORDENAR PURAMENTE POR FACTOR C (El mayor C arriba de todo -> sort_values ascending=True)
+            ag8_linea = ag8_linea.sort_values('C_val', ascending=True).reset_index(drop=True)
                 
             fig8, ax8 = plt.subplots(figsize=(14, 10))
             fig8.subplots_adjust(top=0.85, bottom=0.10, left=0.25, right=0.95)
@@ -782,14 +764,15 @@ with col7:
             ax8.set_yticklabels(yticklabels, fontsize=12, fontweight='bold')
             ax8.xaxis.set_major_formatter(mtick.PercentFormatter())
             
-            # Detectar al CUELLO DE BOTELLA FÍSICO REAL (El proceso más lento de toda la planta)
-            idx_max_cb = ag8_linea['HH_Real_U'].idxmax()
+            # Detectar al CUELLO DE BOTELLA SEGÚN FÓRMULA C
+            idx_max_cb = ag8_linea['C_val'].idxmax()
             peor_linea_cb = ag8_linea.loc[idx_max_cb, 'Linea']
-            peor_cb_val = ag8_linea.loc[idx_max_cb, 'HH_Real_U']
+            peor_cb_val = ag8_linea.loc[idx_max_cb, 'C_val']
             
-            ax8.set_title(f"⚠️ CUELLO DE BOTELLA FÍSICO: {peor_linea_cb} ({peor_cb_val:.1f} HH/Unid)", color="firebrick", fontweight="bold", fontsize=18, pad=20)
+            ax8.set_title(f"⚠️ CUELLO DE BOTELLA: {peor_linea_cb} (C: {peor_cb_val:.1f})", color="firebrick", fontweight="bold", fontsize=18, pad=20)
             
             max_abs = ag8_linea['Dif_pct'].abs().max()
+            if max_abs == 0: max_abs = 10
             ax8.set_xlim(-max_abs*1.5 - 10, max_abs*1.5 + 10)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
