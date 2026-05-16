@@ -698,6 +698,8 @@ col7, col8 = st.columns(2)
 
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
+    # Amortiguador de altura para empatar con el radio button de la columna 8
+    st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True)
     
     # INTELIGENCIA CUELLO DE BOTELLA: Solo se activa si eligieron una Planta y NINGUNA línea ni puesto.
     if not s_pl and not s_li and not s_pu:
@@ -731,7 +733,7 @@ with col7:
             ag8_linea = ag8_linea.sort_values('C_val', ascending=True).reset_index(drop=True)
                 
             fig8, ax8 = plt.subplots(figsize=(14, 10))
-            fig8.subplots_adjust(top=0.85, bottom=0.10, left=0.25, right=0.95)
+            fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
             
             # Las barras ahora son una escala en % (Dif_pct)
             colors = ['firebrick' if val > 0 else 'darkgreen' for val in ag8_linea['Dif_pct']]
@@ -748,19 +750,19 @@ with col7:
                 c_100 = abs(c_val)
                 c_85 = abs(c_val * 0.85)
                 
-                # Caja de texto (A, B y C con valores 100% y 85%)
+                # Caja de texto DIVIDIDA EN MÚLTIPLES LÍNEAS PARA NO DESARMAR EL GRÁFICO
                 txt_a = f"[A] HH STD / HH DISP: {ef_a:.1f}%"
                 txt_b = f"[B] HH STD / HH PROD: {ef_b:.1f}%"
-                txt_c = f"DIFERENCIA (C): {c_100:.1f} U. {estado_c} AL 100% EF. REAL / {c_85:.1f} U. {estado_c} AL 85% EF. REAL"
+                txt_c = f"DIFERENCIA (C):\n➤ {c_100:.1f} U. {estado_c} AL 100% EF. REAL\n➤ {c_85:.1f} U. {estado_c} AL 85% EF. REAL"
                 full_txt = f"{txt_a}\n{txt_b}\n{txt_c}"
                 
                 ha_align = 'left' if dif >= 0 else 'right'
-                offset_x = 10 if dif >= 0 else -10
+                offset_x = 15 if dif >= 0 else -15
                 
                 ax8.annotate(full_txt, 
                              xy=(dif, i), xytext=(offset_x, 0), textcoords="offset points", 
-                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=11, 
-                             path_effects=efecto_n, bbox=dict(boxstyle="round,pad=0.4", fc="black", ec="gold", lw=1.5, alpha=0.8), zorder=10)
+                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=10, 
+                             path_effects=efecto_n, bbox=dict(boxstyle="round,pad=0.5", fc="black", ec="gold", lw=1.5, alpha=0.85), zorder=10)
 
             # Eje Y con Nombres y Cantidad en el extremo izquierdo
             yticklabels = [f"{textwrap.fill(str(row['Linea']), 20)}\n(Cant: {int(row['Cant._Prod._A1'])} U)" for _, row in ag8_linea.iterrows()]
@@ -777,7 +779,7 @@ with col7:
             
             max_abs = ag8_linea['Dif_pct'].abs().max()
             if max_abs == 0: max_abs = 10
-            ax8.set_xlim(-max_abs*1.5 - 10, max_abs*1.5 + 10)
+            ax8.set_xlim(-max_abs*1.8 - 15, max_abs*1.8 + 15)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else:
@@ -801,8 +803,8 @@ with col7:
             ag8['HH_Real_U'] = ag8[col_prod_tot] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
-            fig8.subplots_adjust(top=0.82, bottom=0.15, left=0.08, right=0.92)
-            fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+            fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
+            fig8.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
             
             ax8.plot(x_idx, ag8['HH_Real_U'], color='darkgreen', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='HH. PRODUC._C/GAP / Unidad', zorder=5)
