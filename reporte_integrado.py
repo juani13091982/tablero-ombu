@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -700,7 +699,7 @@ col7, col8 = st.columns(2)
 with col7:
     st.header("8. ESTABILIDAD DEL PROCESO")
     
-    # Lógica Inteligente para Cuello de Botella vs Estabilidad
+    # INTELIGENCIA CUELLO DE BOTELLA: Solo se activa si eligieron una Planta y NINGUNA línea ni puesto.
     if not s_pl and not s_li and not s_pu:
         st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
         st.info("🔒 Seleccione una **Planta**, **Línea** o **Puesto** en los Filtros Maestros para desbloquear el Análisis.")
@@ -708,7 +707,11 @@ with col7:
     elif s_pl and not s_li and not s_pu:
         st.markdown("<div class='sub-title'><i>Comparativa de Cuello de Botella (Tiempos de Ciclo por Línea)</i></div>", unsafe_allow_html=True)
         
+        # --- ACÁ ESTÁ LA MAGIA ---
+        # Usamos df_ef_f (en lugar de df_plot_1) para medir TODO el universo de líneas en la planta, 
+        # sin importar si tienen el tilde de "Último Puesto" o no. Ninguna línea se esconde.
         c_std_u = next((c for c in df_ef_f.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
+        
         ag8_linea = df_ef_f.groupby('Linea').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         
         if c_std_u:
