@@ -744,10 +744,14 @@ with col7:
                 c_val = row['C_val']
                 dif = row['Dif_pct']
                 
-                # Caja de texto (A, B y C) a la derecha o izquierda de la barra
+                estado_c = "PERDIDAS" if c_val >= 0 else "GANADAS"
+                c_100 = abs(c_val)
+                c_85 = abs(c_val * 0.85)
+                
+                # Caja de texto (A, B y C con valores 100% y 85%)
                 txt_a = f"[A] HH STD / HH DISP: {ef_a:.1f}%"
                 txt_b = f"[B] HH STD / HH PROD: {ef_b:.1f}%"
-                txt_c = f"DIFERENCIA (C): {c_val:.1f}"
+                txt_c = f"DIFERENCIA (C): {c_100:.1f} U. {estado_c} AL 100% EF. REAL / {c_85:.1f} U. {estado_c} AL 85% EF. REAL"
                 full_txt = f"{txt_a}\n{txt_b}\n{txt_c}"
                 
                 ha_align = 'left' if dif >= 0 else 'right'
@@ -755,7 +759,7 @@ with col7:
                 
                 ax8.annotate(full_txt, 
                              xy=(dif, i), xytext=(offset_x, 0), textcoords="offset points", 
-                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=12, 
+                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=11, 
                              path_effects=efecto_n, bbox=dict(boxstyle="round,pad=0.4", fc="black", ec="gold", lw=1.5, alpha=0.8), zorder=10)
 
             # Eje Y con Nombres y Cantidad en el extremo izquierdo
@@ -872,7 +876,7 @@ with col8:
         else:
             df_ranking = df_ef_f
             
-        ag9 = df_ranking.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', col_prod_tot:'sum'}).reset_index()
+        ag9 = df_ranking.groupby(agrupar_por).agg({'HH_STD_TOTAL':'sum', 'HH_Disponibles':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         
         if tipo_ranking == "Eficiencia Real":
             ag9 = ag9[ag9['HH_Disponibles'] > 0]
@@ -902,7 +906,11 @@ with col8:
             ax9.text(meta_val, len(ag9)-0.5, f'META {meta_val}%', color='darkgreen', fontweight='bold', ha='left', va='bottom', rotation=90)
             
             ax9.set_xlim(0, max(110, ag9['Ef'].max()*1.1)); ax9.xaxis.set_major_formatter(mtick.PercentFormatter())
-            ax9.set_yticklabels([textwrap.fill(str(t), 20) for t in ag9[agrupar_por]], fontsize=12, fontweight='bold')
+            
+            # Eje Y con Nombres y Cantidad Producida anclada
+            yticklabels = [f"{textwrap.fill(str(row[agrupar_por]), 20)}\n(Cant: {int(row['Cant._Prod._A1'])} U)" for _, row in ag9.iterrows()]
+            ax9.set_yticks(np.arange(len(ag9)))
+            ax9.set_yticklabels(yticklabels, fontsize=12, fontweight='bold')
             
             agregar_sello_agua(fig9); st.pyplot(fig9, use_container_width=True)
         else: st.warning("⚠️ Sin datos suficientes para armar el ranking.")
