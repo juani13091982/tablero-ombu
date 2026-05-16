@@ -753,15 +753,13 @@ with col7:
                 # Caja de texto DIVIDIDA EN MÚLTIPLES LÍNEAS PARA NO DESARMAR EL GRÁFICO
                 txt_a = f"[A] HH STD / HH DISP: {ef_a:.1f}%"
                 txt_b = f"[B] HH STD / HH PROD: {ef_b:.1f}%"
-                txt_c = f"DIFERENCIA (C):\n➤ {c_100:.1f} U. {estado_c} AL 100% EF. REAL\n➤ {c_85:.1f} U. {estado_c} AL 85% EF. REAL"
+                txt_c = f"DIFERENCIA (C):\n{c_100:.1f} U. {estado_c} AL 100% EF. REAL\n{c_85:.1f} U. {estado_c} AL 85% EF. REAL"
                 full_txt = f"{txt_a}\n{txt_b}\n{txt_c}"
                 
-                ha_align = 'left' if dif >= 0 else 'right'
-                offset_x = 15 if dif >= 0 else -15
-                
+                # Posición en el centro de la barra para evitar estiramientos horizontales extremos
                 ax8.annotate(full_txt, 
-                             xy=(dif, i), xytext=(offset_x, 0), textcoords="offset points", 
-                             va='center', ha=ha_align, color='gold', fontweight='bold', fontsize=10, 
+                             xy=(dif/2, i), 
+                             va='center', ha='center', color='gold', fontweight='bold', fontsize=10, 
                              path_effects=efecto_n, bbox=dict(boxstyle="round,pad=0.5", fc="black", ec="gold", lw=1.5, alpha=0.85), zorder=10)
 
             # Eje Y con Nombres y Cantidad en el extremo izquierdo
@@ -779,7 +777,7 @@ with col7:
             
             max_abs = ag8_linea['Dif_pct'].abs().max()
             if max_abs == 0: max_abs = 10
-            ax8.set_xlim(-max_abs*1.8 - 15, max_abs*1.8 + 15)
+            ax8.set_xlim(-max_abs*1.3 - 10, max_abs*1.3 + 10)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else:
@@ -788,7 +786,7 @@ with col7:
     else:
         st.markdown("<div class='sub-title'><i>Desviación Tiempos Reales vs Estándar por Unidad</i></div>", unsafe_allow_html=True)
         c_std_u = next((c for c in df_plot_1.columns if 'STD' in str(c).upper() and ('UNID' in str(c).upper() or 'UNIT' in str(c).upper() or '/ U' in str(c).upper())), None)
-        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'Cant._Prod._A1':'sum'}).reset_index()
+        ag8 = df_plot_1.groupby('Fecha').agg({'HH_STD_TOTAL':'sum', col_prod_tot:'sum', 'HH_Disponibles':'sum', 'Cant._Prod._A1':'sum'}).reset_index()
         
         if c_std_u:
             ag_std_u = df_plot_1.groupby('Fecha')[c_std_u].mean().reset_index()
@@ -800,62 +798,66 @@ with col7:
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
         
         if not ag8.empty:
-            ag8['HH_Real_U'] = ag8[col_prod_tot] / ag8['Cant._Prod._A1']
+            ag8['HH_Prod_U'] = ag8[col_prod_tot] / ag8['Cant._Prod._A1']
+            ag8['HH_Disp_U'] = ag8['HH_Disponibles'] / ag8['Cant._Prod._A1']
             
             fig8, ax8 = plt.subplots(figsize=(14, 10))
-            fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
-            fig8.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
+            fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.08, right=0.92)
+            fig8.suptitle(t_enc, x=0.08, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
             x_idx = np.arange(len(ag8))
             
-            ax8.plot(x_idx, ag8['HH_Real_U'], color='darkgreen', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='HH. PRODUC._C/GAP / Unidad', zorder=5)
-            ax8.plot(x_idx, ag8['HH_Std_U'], color='midnightblue', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
+            # GRAFICAMOS LAS 3 LÍNEAS DE LA VERDAD
+            ax8.plot(x_idx, ag8['HH_Prod_U'], color='darkgreen', marker='o', markersize=10, linewidth=4, path_effects=efecto_b, label='Tiempo PROD / Unidad', zorder=6)
+            ax8.plot(x_idx, ag8['HH_Disp_U'], color='firebrick', marker='D', markersize=10, linewidth=4, path_effects=efecto_b, label='Tiempo DISP / Unidad (Real Global)', zorder=5)
+            ax8.plot(x_idx, ag8['HH_Std_U'], color='midnightblue', linestyle='--', linewidth=3, label='Tiempo STD / Unidad (Meta)', zorder=4)
             
-            ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
-            ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
+            ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Disp_U'], where=(ag8['HH_Disp_U'] > ag8['HH_Std_U']), color='red', alpha=0.15, interpolate=True)
+            ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Disp_U'], where=(ag8['HH_Disp_U'] <= ag8['HH_Std_U']), color='green', alpha=0.15, interpolate=True)
             
-            # MOTOR ANTI-COLISIONES DE ETIQUETAS
+            # MOTOR ANTI-COLISIONES DE ETIQUETAS Y FÓRMULAS
             for i in range(len(x_idx)): 
-                val_r = ag8['HH_Real_U'].iloc[i]
+                val_p = ag8['HH_Prod_U'].iloc[i]
+                val_d = ag8['HH_Disp_U'].iloc[i]
                 val_s = ag8['HH_Std_U'].iloc[i]
                 cant_u = int(ag8['Cant._Prod._A1'].iloc[i])
                 
-                label_r = f"{val_r:.2f}h\n({cant_u} Unid)"
-                label_s = f"{val_s:.2f}h"
-                
-                # Desplazamiento inteligente
-                if val_r >= val_s:
-                    off_r, off_s = 25, -25
+                # Lógica para separar etiquetas si están muy juntas
+                if val_d >= val_p:
+                    off_d = 20; off_p = -25
                 else:
-                    off_r, off_s = -35, 20
+                    off_d = -25; off_p = 20
+                    
+                ax8.annotate(f"{val_d:.2f}h\n({cant_u} Unid)", (x_idx[i], val_d), textcoords="offset points", xytext=(0,off_d), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="firebrick", lw=1.5), zorder=10)
+                ax8.annotate(f"{val_p:.2f}h", (x_idx[i], val_p), textcoords="offset points", xytext=(0,off_p), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="darkgreen", lw=1.5), zorder=10)
                 
-                ax8.annotate(label_r, (x_idx[i], val_r), textcoords="offset points", xytext=(0,off_r), ha='center', fontweight='bold', fontsize=10, bbox=caja_o, zorder=10)
-                ax8.annotate(label_s, (x_idx[i], val_s), textcoords="offset points", xytext=(0,off_s), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="midnightblue", lw=1.5), zorder=10)
-                
-                ax8.plot([x_idx[i], x_idx[i]], [val_s, val_r], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
-                diff_val = val_r - val_s
-                mid_y = (val_r + val_s) / 2
-                
-                # Diferencia desplazada a la derecha para no solapar
+                # Diferencia (B - A) graficada a un lado
+                diff_val = val_d - val_s
+                mid_y = (val_d + val_s) / 2
                 ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.08, mid_y), color='dodgerblue', fontweight='bold', fontsize=11, path_effects=efecto_b, zorder=4)
 
-            ag8['Unid_Desvio'] = np.where(ag8['HH_Std_U'] > 0, ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U'], 0)
-            tot_desvio = ag8['Unid_Desvio'].sum()
-            
-            if tot_desvio < 0:
-                cartel_txt = f"🏆 UNIDADES GANADAS: {abs(tot_desvio):.1f}"
-                cartel_col = "#1B5E20"
-            else:
-                cartel_txt = f"⚠️ UNIDADES PERDIDAS: {abs(tot_desvio):.1f}"
-                cartel_col = "#B71C1C"
+            # CÁLCULO DEL CARTEL EXACTAMENTE IGUAL QUE LA FÓRMULA DE PLANTA (FACTOR C)
+            tot_std = ag8['HH_STD_TOTAL'].sum()
+            tot_disp = ag8['HH_Disponibles'].sum()
+            tot_prod = ag8[col_prod_tot].sum()
+            tot_cant = ag8['Cant._Prod._A1'].sum()
+
+            a_val = tot_std / tot_disp if tot_disp > 0 else 0
+            b_val = tot_std / tot_prod if tot_prod > 0 else 0
+            c_val = (b_val - a_val) * tot_cant
+            c_85 = c_val * 0.85
+
+            estado_c = "PERDIDAS" if c_val >= 0 else "GANADAS"
+            cartel_txt = f"⚠️ DIFERENCIA (C): {abs(c_val):.1f} U. {estado_c} AL 100% EF. REAL / {abs(c_85):.1f} U. {estado_c} AL 85% EF. REAL"
+            cartel_col = "#B71C1C" if c_val >= 0 else "#1B5E20"
                 
-            ax8.text(0.5, 0.95, cartel_txt, transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=16, fontweight='bold', zorder=20)
+            ax8.text(0.5, 0.95, cartel_txt, transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=15, fontweight='bold', zorder=20)
             
-            min_y = min(ag8['HH_Real_U'].min(), ag8['HH_Std_U'].min()) * 0.7
-            max_y = max(ag8['HH_Real_U'].max(), ag8['HH_Std_U'].max()) * 1.3
+            min_y = min(ag8['HH_Prod_U'].min(), ag8['HH_Std_U'].min(), ag8['HH_Disp_U'].min()) * 0.7
+            max_y = max(ag8['HH_Prod_U'].max(), ag8['HH_Std_U'].max(), ag8['HH_Disp_U'].max()) * 1.3
             ax8.set_ylim(min_y, max_y)
 
             ax8.set_xticks(x_idx); ax8.set_xticklabels(ag8['Fecha'].dt.strftime('%b-%y'), fontsize=14, fontweight='bold')
-            ax8.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=2, frameon=True)
+            ax8.legend(loc='lower left', bbox_to_anchor=(0, 1.05), ncol=3, frameon=True)
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else: st.warning("⚠️ Sin datos de producción (Cant. Producida) para esta selección.")
 
