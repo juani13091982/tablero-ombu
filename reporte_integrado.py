@@ -428,26 +428,38 @@ if not ag8_res.empty:
     ag8_res['Horas_Ritmo'] = (ag8_res['HH_STD_TOTAL'] - ag8_res[col_prod_tot])
     tot_gp_crv26 = ag8_res['Horas_Ritmo'].sum() / 130.0
 
-res_color_econ = "#1B5E20" if ahorro_usd_res >= 0 else "#B71C1C"
-res_color_prod = "#1B5E20" if tot_gp_crv26 >= 0 else "#B71C1C"
+res_color_econ = "#4CAF50" if ahorro_usd_res >= 0 else "#F44336"
+res_color_prod = "#4CAF50" if tot_gp_crv26 >= 0 else "#F44336"
 
 st.markdown(f"""
-<div style="background: #111; padding: 20px; border-radius: 10px; border: 2px solid #555; margin-top: 15px; margin-bottom: 20px; box-shadow: 0px 10px 20px rgba(0,0,0,0.5);">
-    <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 20px; white-space: normal; line-height: 1.3;">📊 BALANCE GERENCIAL<br><span style="font-size:14px; font-weight:normal; color:#ccc;">(EQUIVALENCIA MÁQUINAS CRV 26)</span></h3>
-    <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
-        <div style="text-align:center; min-width: 250px; flex: 1;">
-            <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">IMPACTO ECONÓMICO VS HISTORIA</p>
-            <h2 style="color:{res_color_econ}; font-size:42px; margin:0; padding: 5px 0;">{"+" if ahorro_usd_res >= 0 else "-"}${abs(ahorro_usd_res):,.0f}</h2>
-            <h4 style="color:{res_color_econ}; margin:0; font-size:18px;">{abs(ahorro_hh):,.0f} HH {'Recuperadas' if ahorro_hh >= 0 else 'Perdidas'}</h4>
-            <p style="color:{res_color_econ}; font-size:13px; margin:0; padding-top:5px;">(Por gestión de ineficiencias)</p>
+<div style="background: #1A1C23; padding: 25px; border-radius: 12px; border: 2px solid #333; margin-top: 15px; margin-bottom: 20px; box-shadow: 0px 10px 20px rgba(0,0,0,0.6);">
+    <h3 style="color: white; text-align: center; margin-top: 0; margin-bottom: 25px; font-size: 24px; font-weight: 800; letter-spacing: 1px;">📊 BALANCE GERENCIAL GLOBAL<br><span style="font-size:14px; font-weight:normal; color:#ccc;">(EQUIVALENCIA MÁQUINAS CRV 26)</span></h3>
+    <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+        <div style="text-align:center; min-width: 300px; flex: 1; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; border-top: 4px solid {res_color_econ};">
+            <p style="color:#E0E0E0; margin:0; font-size: 16px; font-weight: bold; letter-spacing: 0.5px;">IMPACTO ECONÓMICO VS HISTORIA</p>
+            <h2 style="color:{res_color_econ}; font-size:55px; font-weight: 900; margin:10px 0;">{"+" if ahorro_usd_res >= 0 else "-"}${abs(ahorro_usd_res):,.0f}</h2>
+            <h4 style="color:{res_color_econ}; margin:0; font-size:22px; font-weight: bold;">{abs(ahorro_hh):,.0f} HH {'Recuperadas' if ahorro_hh >= 0 else 'Perdidas'}</h4>
+            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #555;">
+                <p style="color: #bbb; font-size: 13px; margin: 0; line-height: 1.5;">
+                    <b>¿De dónde sale?</b><br>
+                    ({inc_hist_res*100:.1f}% Incidencia Histórica - {inc_act_res*100:.1f}% Incidencia Actual)<br>
+                    × <b>{tot_disp_todas_res:,.0f}</b> HH Disponibles
+                </p>
+            </div>
         </div>
-        <div style="text-align:center; min-width: 250px; flex: 1; border-left: 1px dashed #444;">
-            <p style="color:#aaa; margin:0; font-size: 14px; font-weight: bold;">CAPACIDAD DE PRODUCCIÓN EXTRA</p>
-            <h2 style="color:{res_color_prod}; font-size:42px; margin:0; padding: 5px 0;">{abs(tot_gp_crv26):.1f} Máq.</h2>
-            <p style="color:{res_color_prod}; font-size:13px; margin:0; padding-top:28px;">({'Ganadas' if tot_gp_crv26 >= 0 else 'Perdidas'} por ritmo de trabajo)</p>
+        <div style="text-align:center; min-width: 300px; flex: 1; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; border-top: 4px solid {res_color_prod};">
+            <p style="color:#E0E0E0; margin:0; font-size: 16px; font-weight: bold; letter-spacing: 0.5px;">CAPACIDAD DE PRODUCCIÓN EXTRA</p>
+            <h2 style="color:{res_color_prod}; font-size:55px; font-weight: 900; margin:10px 0;">{"+" if tot_gp_crv26 >= 0 else "-"}{abs(tot_gp_crv26):.1f} Máq.</h2>
+            <h4 style="color:{res_color_prod}; margin:0; font-size:22px; font-weight: bold;">({'Ganadas' if tot_gp_crv26 >= 0 else 'Perdidas'} por ritmo)</h4>
+            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #555;">
+                <p style="color: #bbb; font-size: 13px; margin: 0; line-height: 1.5;">
+                    <b>¿De dónde sale?</b><br>
+                    ({ag8_res['HH_STD_TOTAL'].sum() if not ag8_res.empty else 0:,.0f} HH Estándar - {ag8_res[col_prod_tot].sum() if not ag8_res.empty else 0:,.0f} HH Productivas)<br>
+                    ÷ <b>130 HH</b> (Estándar 1 Máquina CRV 26)
+                </p>
+            </div>
         </div>
     </div>
-    <p style="color: #666; font-size: 11px; text-align: center; margin-top: 10px;">* Cálculos de capacidad basados en estándar de 130 HH/Máquina CRV 26</p>
 </div>
 """, unsafe_allow_html=True)
 
