@@ -139,8 +139,13 @@ def cargar_datos():
     else: df_im['OPERARIO'] = "S/D"
     df_im['OPERARIO'] = df_im['OPERARIO'].str.strip().replace('', 'S/D')
 
-    c_fec = next((c for c in df_im.columns if 'A3' in str(c).upper() or 'INICIO' in str(c).upper() or 'FECHA' in str(c).upper()), None)
-    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce', dayfirst=True) if c_fec else pd.NaT
+    # CORRECCIÓN DE FECHA EXACTA: OBLIGAMOS A TOMAR LA COLUMNA B
+    col_b_im = df_im.columns[1] if len(df_im.columns) > 1 else df_im.columns[0]
+    df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[col_b_im], errors='coerce', dayfirst=True)
+    if df_im['FECHA_EXACTA'].isna().all():
+        c_fec = next((c for c in df_im.columns if 'A3' in str(c).upper() or 'INICIO' in str(c).upper() or 'FECHA' in str(c).upper()), None)
+        df_im['FECHA_EXACTA'] = pd.to_datetime(df_im[c_fec], errors='coerce', dayfirst=True) if c_fec else pd.NaT
+
     if 'FECHA' in df_im.columns: df_im['FECHA'] = pd.to_datetime(df_im['FECHA'], errors='coerce', dayfirst=True).dt.to_period('M').dt.to_timestamp()
     else: df_im['FECHA'] = df_im['FECHA_EXACTA'].dt.to_period('M').dt.to_timestamp()
     
@@ -556,7 +561,6 @@ with col6:
         df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
         
         fig6, ax6 = plt.subplots(figsize=(14, 10))
-        # V19: EXPANDIR GRAFICO HACIA ARRIBA Y MOVER LEYENDA ABAJO
         fig6.subplots_adjust(top=0.90, bottom=0.35, left=0.06, right=0.94) 
         fig6.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
@@ -569,7 +573,6 @@ with col6:
                 lbls_stk = [f"{int(v)}" if v > 0 else "" for v in vals]
                 ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
                 base_st += vals
-            # Leyenda horizontal en la parte inferior
             ax6.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=5, framealpha=0.9, fontsize=10)
         else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
             
@@ -601,6 +604,8 @@ with col7:
     elif s_pl and not s_li and not s_pu:
         st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True) 
         st.markdown("<div class='sub-title'><i>Análisis de Flujo y Cuello de Botella por Línea</i></div>", unsafe_allow_html=True)
+        
+        # Elimine por completo la condicion if PINTURA, ahora ordena SIEMPRE por C_val
         lineas_con_si_m8 = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']['Linea'].unique()
         m1_m8 = df_ef_f['Linea'].isin(lineas_con_si_m8) & (df_ef_f['Es_Ultimo_Puesto'] == 'SI')
         m2_m8 = ~df_ef_f['Linea'].isin(lineas_con_si_m8)
@@ -613,19 +618,9 @@ with col7:
             ag8_linea['Dif_pct'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * 100
             ag8_linea['C_val'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * ag8_linea['Cant._Prod._A1']
             ag8_linea['HH_Real_U'] = np.where(ag8_linea['Cant._Prod._A1'] > 0, ag8_linea[col_prod_tot] / ag8_linea['Cant._Prod._A1'], 0)
-            if 'PINTURA' in str(s_pl[0]).upper():
-                def obtener_orden(linea):
-                    l = linea.upper()
-                    if 'LIMPIEZA' in l: return 5
-                    if 'LAVADO' in l: return 4
-                    if 'PREPARAC' in l: return 3
-                    if 'CABINA' in l: return 2
-                    if 'TERMINAC' in l: return 1
-                    return 0
-                ag8_linea['Orden'] = ag8_linea['Linea'].apply(obtener_orden)
-                ag8_linea = ag8_linea.sort_values('Orden', ascending=True).reset_index(drop=True)
-            else:
-                ag8_linea = ag8_linea.sort_values('C_val', ascending=True).reset_index(drop=True)
+            
+            # ORDENAMIENTO ESTRICTO POR FACTOR C (Mayor C arriba)
+            ag8_linea = ag8_linea.sort_values('C_val', ascending=True).reset_index(drop=True)
                 
             fig8, ax8 = plt.subplots(figsize=(14, 10))
             fig8.subplots_adjust(top=0.85, bottom=0.15, left=0.25, right=0.95)
