@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.subplots
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.patheffects as pe
@@ -556,7 +557,6 @@ with col6:
         df6['Fecha_O'] = pd.to_datetime(df6['K_Mes'] + '-01'); df6 = df6.sort_values(by='Fecha_O')
         
         fig6, ax6 = plt.subplots(figsize=(14, 10))
-        # --- AJUSTE V19: EXPANDIR GRAFICO HACIA ARRIBA Y MOVER LEYENDA ABAJO ---
         fig6.subplots_adjust(top=0.90, bottom=0.35, left=0.06, right=0.94) 
         fig6.suptitle(t_enc, x=0.06, y=0.98, ha='left', fontsize=8, color='dimgray', fontweight='bold')
         
@@ -569,7 +569,6 @@ with col6:
                 lbls_stk = [f"{int(v)}" if v > 0 else "" for v in vals]
                 ax6.bar_label(bar_stack, labels=lbls_stk, label_type='center', color='white', fontsize=9, fontweight='bold', path_effects=efecto_n)
                 base_st += vals
-            # Leyenda horizontal en la parte inferior (afuera del grafico)
             ax6.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=5, framealpha=0.9, fontsize=10)
         else: ax6.bar(x_idx, np.zeros(len(df6)), color='white')
             
@@ -716,10 +715,8 @@ with col8:
         if not ag9.empty:
             colors = ['firebrick' if val < (60 if meta_val==85 else 80) else 'gold' if val < (70 if meta_val==85 else 90) else 'lightgreen' if val < meta_val else 'darkgreen' for val in ag9['Ef']]
             fig9, ax9 = plt.subplots(figsize=(14, 10))
-            
             fig9.subplots_adjust(top=0.95, bottom=0.15, left=0.25, right=0.95) 
             fig9.suptitle(t_enc, x=0.06, y=0.99, ha='left', fontsize=8, color='dimgray', fontweight='bold')
-            
             bars = ax9.barh(ag9[agrupar_por], ag9['Ef'], color=colors, edgecolor='white', height=0.6)
             ax9.bar_label(bars, fmt='%.1f%%', padding=5, color='black', fontweight='bold', path_effects=efecto_b)
             ax9.axvline(meta_val, color='darkgreen', linestyle='--', linewidth=3, zorder=1)
@@ -727,11 +724,9 @@ with col8:
             ax9.set_xlim(0, max(110, ag9['Ef'].max()*1.1)); ax9.xaxis.set_major_formatter(mtick.PercentFormatter())
             yticklabels = [f"{textwrap.fill(str(row[agrupar_por]), 20)}\n(Cant: {int(row['Cant._Prod._A1'])} U)" for _, row in ag9.iterrows()]
             ax9.set_yticks(np.arange(len(ag9))); ax9.set_yticklabels(yticklabels, fontsize=12, fontweight='bold')
-            
             if meta_val == 85: leg_patches = [mpatches.Patch(color='firebrick', label='< 60%'), mpatches.Patch(color='gold', label='60% - 70%'), mpatches.Patch(color='lightgreen', label='70% - 85%'), mpatches.Patch(color='darkgreen', label='> 85%')]
             else: leg_patches = [mpatches.Patch(color='firebrick', label='< 80%'), mpatches.Patch(color='gold', label='80% - 90%'), mpatches.Patch(color='lightgreen', label='90% - 100%'), mpatches.Patch(color='darkgreen', label='> 100%')]
             ax9.legend(handles=leg_patches, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=4, frameon=False, fontsize=11)
-            
             agregar_sello_agua(fig9); st.pyplot(fig9, use_container_width=True)
         else: st.warning("⚠️ Sin datos para el ranking.")
 
@@ -752,15 +747,30 @@ if not df_im_f.empty and 'DETALLE' in df_im_f.columns:
         c_pu_det = next((c for c in df_detalles.columns if 'PUESTO' in c), 'PUESTO_X')
         if c_pu_det not in df_detalles.columns: df_detalles[c_pu_det] = "S/D"
         df_detalles['OPERARIO'], df_detalles['DETALLE'], df_detalles[c_pu_det] = df_detalles['OPERARIO'].fillna('S/D'), df_detalles['DETALLE'].fillna('S/D'), df_detalles[c_pu_det].fillna('S/D')
+        
+        # Agrupación y cálculo del Subtotal HH
         ag_det = df_detalles.groupby(['FECHA_STR', 'OPERARIO', c_pu_det, 'DETALLE']).agg({'HH_IMPRODUCTIVAS': 'sum'}).reset_index().sort_values(by='HH_IMPRODUCTIVAS', ascending=False)
         t_det = ag_det['HH_IMPRODUCTIVAS'].sum()
+        
+        # NUEVAS COLUMNAS DE PORCENTAJE
         ag_det['%'] = (ag_det['HH_IMPRODUCTIVAS'] / t_det) * 100 if t_det > 0 else 0
+        ag_det['% Acumulado'] = ag_det['%'].cumsum()
+        
         ag_det['Acción Sugerida'] = ag_det['DETALLE'].apply(generar_accion_sugerida)
-        ag_det.columns = ['Fecha', 'Operario', 'Puesto', 'Detalle Registrado', 'Subtotal HH', '%', 'Acción Sugerida']
-        ag_det = pd.concat([ag_det, pd.DataFrame({'Fecha':['---'], 'Operario':['---'], 'Puesto':['---'], 'Detalle Registrado':['✅ TOTAL'], 'Subtotal HH':[t_det], '%':[100.0], 'Acción Sugerida':['🎯']})], ignore_index=True)
+        ag_det.columns = ['Fecha', 'Operario', 'Puesto', 'Detalle Registrado', 'Subtotal HH', '%', '% Acumulado', 'Acción Sugerida']
+        
+        # Fila de totales
+        ag_det = pd.concat([ag_det, pd.DataFrame({'Fecha':['---'], 'Operario':['---'], 'Puesto':['---'], 'Detalle Registrado':['✅ TOTAL SUMATORIA'], 'Subtotal HH':[t_det], '%':[100.0], '% Acumulado':[100.0], 'Acción Sugerida':['🎯 ACCIÓN GLOBAL']})], ignore_index=True)
+        
         max_hh = ag_det['Subtotal HH'].iloc[:-1].max() 
         styled_table = ag_det.style.map(lambda val: 'background-color: rgba(211,47,47,0.5); color: white;' if val == max_hh else '', subset=['Subtotal HH'])
-        st.dataframe(styled_table, use_container_width=True, hide_index=True, column_config={"Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), "%": st.column_config.NumberColumn(format="%.1f %%")})
-        st.download_button("📥 Descargar CSV", data=ag_det.to_csv(index=False).encode('utf-8'), file_name="Detalles.csv", mime="text/csv", use_container_width=True, type="primary")
+        
+        # Mostrar tabla con formato
+        st.dataframe(styled_table, use_container_width=True, hide_index=True, column_config={
+            "Subtotal HH": st.column_config.NumberColumn(format="%.1f ⏱️"), 
+            "%": st.column_config.NumberColumn(format="%.1f %%"),
+            "% Acumulado": st.column_config.NumberColumn(format="%.1f %%")
+        })
+        st.download_button("📥 Descargar CSV", data=ag_det.to_csv(index=False).encode('utf-8'), file_name="Detalles_Operativos.csv", mime="text/csv", use_container_width=True, type="primary")
     else: st.info("No hay registros.")
 else: st.info("No hay horas improductivas reportadas.")
