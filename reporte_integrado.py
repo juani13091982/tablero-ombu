@@ -714,8 +714,13 @@ with col7:
         st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True) # Espaciador para alinear con M9
         st.markdown("<div class='sub-title'><i>Análisis de Flujo y Cuello de Botella por Línea</i></div>", unsafe_allow_html=True)
         
-        # Agrupamos TODO el universo de la Planta, ignorando el filtro de "Último Puesto"
-        ag8_linea = df_ef_f.groupby('Linea').agg({
+        # LA REGLA HÍBRIDA MÁGICA: No suma puestos a lo loco, usa la lógica de "Último Puesto" para no duplicar cantidades.
+        lineas_con_si_m8 = df_ef_f[df_ef_f['Es_Ultimo_Puesto'] == 'SI']['Linea'].unique()
+        m1_m8 = df_ef_f['Linea'].isin(lineas_con_si_m8) & (df_ef_f['Es_Ultimo_Puesto'] == 'SI')
+        m2_m8 = ~df_ef_f['Linea'].isin(lineas_con_si_m8)
+        df_m8_plant = df_ef_f[m1_m8 | m2_m8]
+        
+        ag8_linea = df_m8_plant.groupby('Linea').agg({
             'HH_STD_TOTAL':'sum', 
             col_prod_tot:'sum', 
             'HH_Disponibles':'sum',
@@ -803,7 +808,7 @@ with col7:
             ag8 = pd.merge(ag8, ag_std_u, on='Fecha', how='left')
             ag8['HH_Std_U'] = ag8[c_std_u]
         else:
-            ag8['HH_Std_U'] = ag8['HH_STD_TOTAL'] / ag8['Cant._Prod._A1']
+            ag8['HH_Std_U'] = np.where(ag8['Cant._Prod._A1'] > 0, ag8['HH_STD_TOTAL'] / ag8['Cant._Prod._A1'], 0)
             
         ag8 = ag8[ag8['Cant._Prod._A1'] > 0]
         
