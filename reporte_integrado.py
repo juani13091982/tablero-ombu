@@ -751,7 +751,7 @@ with col7:
                 full_txt = f"{txt_a}\n{txt_b}\n{txt_c}"
                 
                 ha_align = 'left' if dif >= 0 else 'right'
-                offset_x = 5 if dif >= 0 else -5
+                offset_x = 10 if dif >= 0 else -10
                 
                 ax8.annotate(full_txt, 
                              xy=(dif, i), xytext=(offset_x, 0), textcoords="offset points", 
@@ -807,17 +807,30 @@ with col7:
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] > ag8['HH_Std_U']), color='red', alpha=0.2, interpolate=True)
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Real_U'], where=(ag8['HH_Real_U'] <= ag8['HH_Std_U']), color='green', alpha=0.2, interpolate=True)
             
+            # MOTOR ANTI-COLISIONES DE ETIQUETAS
             for i in range(len(x_idx)): 
+                val_r = ag8['HH_Real_U'].iloc[i]
+                val_s = ag8['HH_Std_U'].iloc[i]
                 cant_u = int(ag8['Cant._Prod._A1'].iloc[i])
-                label_r = f"{ag8['HH_Real_U'].iloc[i]:.2f}h\n({cant_u} Unid)"
                 
-                ax8.annotate(label_r, (x_idx[i], ag8['HH_Real_U'].iloc[i]), textcoords="offset points", xytext=(0,20), ha='center', fontweight='bold', fontsize=11, bbox=caja_o, zorder=10)
-                ax8.annotate(f"{ag8['HH_Std_U'].iloc[i]:.2f}h", (x_idx[i], ag8['HH_Std_U'].iloc[i]), textcoords="offset points", xytext=(0,-25), ha='center', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="midnightblue", lw=1.5), zorder=10)
+                label_r = f"{val_r:.2f}h\n({cant_u} Unid)"
+                label_s = f"{val_s:.2f}h"
                 
-                ax8.plot([x_idx[i], x_idx[i]], [ag8['HH_Std_U'].iloc[i], ag8['HH_Real_U'].iloc[i]], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
-                diff_val = ag8['HH_Real_U'].iloc[i] - ag8['HH_Std_U'].iloc[i]
-                mid_y = (ag8['HH_Real_U'].iloc[i] + ag8['HH_Std_U'].iloc[i]) / 2
-                ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.05, mid_y), color='dodgerblue', fontweight='bold', fontsize=12, zorder=4)
+                # Desplazamiento inteligente
+                if val_r >= val_s:
+                    off_r, off_s = 25, -25
+                else:
+                    off_r, off_s = -35, 20
+                
+                ax8.annotate(label_r, (x_idx[i], val_r), textcoords="offset points", xytext=(0,off_r), ha='center', fontweight='bold', fontsize=10, bbox=caja_o, zorder=10)
+                ax8.annotate(label_s, (x_idx[i], val_s), textcoords="offset points", xytext=(0,off_s), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="midnightblue", lw=1.5), zorder=10)
+                
+                ax8.plot([x_idx[i], x_idx[i]], [val_s, val_r], color='dodgerblue', linestyle=':', linewidth=3, zorder=3)
+                diff_val = val_r - val_s
+                mid_y = (val_r + val_s) / 2
+                
+                # Diferencia desplazada a la derecha para no solapar
+                ax8.annotate(f"{diff_val:+.2f}h", (x_idx[i] + 0.08, mid_y), color='dodgerblue', fontweight='bold', fontsize=11, path_effects=efecto_b, zorder=4)
 
             ag8['Unid_Desvio'] = np.where(ag8['HH_Std_U'] > 0, ((ag8['HH_Real_U'] - ag8['HH_Std_U']) * ag8['Cant._Prod._A1']) / ag8['HH_Std_U'], 0)
             tot_desvio = ag8['Unid_Desvio'].sum()
@@ -831,7 +844,7 @@ with col7:
                 
             ax8.text(0.5, 0.95, cartel_txt, transform=ax8.transAxes, ha='center', va='top', bbox=dict(boxstyle="round,pad=0.5", fc=cartel_col, ec="white", lw=2), color="white", fontsize=16, fontweight='bold', zorder=20)
             
-            min_y = min(ag8['HH_Real_U'].min(), ag8['HH_Std_U'].min()) * 0.8
+            min_y = min(ag8['HH_Real_U'].min(), ag8['HH_Std_U'].min()) * 0.7
             max_y = max(ag8['HH_Real_U'].max(), ag8['HH_Std_U'].max()) * 1.3
             ax8.set_ylim(min_y, max_y)
 
