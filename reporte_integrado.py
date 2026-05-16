@@ -725,23 +725,25 @@ with col7:
             # Factor C (Diferencia multiplicada por cantidad, la matemática pedida)
             ag8_linea['C_val'] = (ag8_linea['B_val'] - ag8_linea['A_val']) * ag8_linea['Cant._Prod._A1']
             
+            # Buscamos el verdadero Cuello de Botella Físico (El proceso más lento: Mayor HH_Prod/Unidad)
+            ag8_linea['HH_Real_U'] = np.where(ag8_linea['Cant._Prod._A1'] > 0, ag8_linea[col_prod_tot] / ag8_linea['Cant._Prod._A1'], 0)
+            
             # ORDENAMIENTO INALTERABLE PARA PINTURA (De Limpieza a Terminación)
             if 'PINTURA' in str(s_pl[0]).upper():
                 def obtener_orden(linea):
                     l = linea.upper()
-                    if 'LIMPIEZA' in l: return 6
-                    if 'LAVADO' in l: return 5
-                    if 'PREPARAC' in l: return 4
-                    if 'CABINA' in l: return 3
-                    if 'ANEXO' in l: return 2
+                    if 'LIMPIEZA' in l: return 5
+                    if 'LAVADO' in l: return 4
+                    if 'PREPARAC' in l: return 3
+                    if 'CABINA' in l: return 2
                     if 'TERMINAC' in l: return 1
                     return 0
                 ag8_linea['Orden'] = ag8_linea['Linea'].apply(obtener_orden)
-                # Ordenar ascendente coloca a Limpieza (6) arriba de todo en el gráfico de barras horizontales
+                # Ordenar ascendente coloca a Limpieza (5) arriba de todo en el gráfico de barras horizontales
                 ag8_linea = ag8_linea.sort_values('Orden', ascending=True)
             else:
-                # Para otras plantas, se ordenan por el Factor C de mayor a menor (mayor C queda arriba)
-                ag8_linea = ag8_linea.sort_values('C_val', ascending=True)
+                # Para otras plantas, se ordenan por el Tiempo Real por Unidad (Mayor arriba)
+                ag8_linea = ag8_linea.sort_values('HH_Real_U', ascending=True)
                 
             fig8, ax8 = plt.subplots(figsize=(14, 10))
             fig8.subplots_adjust(top=0.90, bottom=0.05, left=0.25, right=0.95)
@@ -771,12 +773,12 @@ with col7:
             ax8.get_xaxis().set_visible(False)
             ax8.set_yticklabels([textwrap.fill(str(t), 20) for t in ag8_linea['Linea']], fontsize=14, fontweight='bold')
             
-            # Detectar al cuello de botella matemático (el de mayor "C")
-            idx_max_c = ag8_linea['C_val'].idxmax()
-            peor_linea_c = ag8_linea.loc[idx_max_c, 'Linea']
-            peor_c_val = ag8_linea.loc[idx_max_c, 'C_val']
+            # Detectar al CUELLO DE BOTELLA FÍSICO (El de mayor Tiempo Real / Unidad)
+            idx_max_cb = ag8_linea['HH_Real_U'].idxmax()
+            peor_linea_cb = ag8_linea.loc[idx_max_cb, 'Linea']
+            peor_cb_val = ag8_linea.loc[idx_max_cb, 'HH_Real_U']
             
-            ax8.set_title(f"⚠️ CUELLO DE BOTELLA SEGÚN 'C': {peor_linea_c} (C = {peor_c_val:.1f})", color="firebrick", fontweight="bold", fontsize=18)
+            ax8.set_title(f"⚠️ CUELLO DE BOTELLA FÍSICO: {peor_linea_cb} ({peor_cb_val:.1f} HH/Unid)", color="firebrick", fontweight="bold", fontsize=18)
             
             agregar_sello_agua(fig8); st.pyplot(fig8, use_container_width=True)
         else:
