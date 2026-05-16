@@ -813,7 +813,7 @@ with col7:
             x_idx = np.arange(len(ag8))
             
             # GRAFICAMOS SÓLO LAS 2 LÍNEAS PEDIDAS (DISPONIBLES Y ESTÁNDAR)
-            ax8.plot(x_idx, ag8['HH_Disp_U'], color='darkgreen', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='Tiempo DISP / Unidad (Real Global)', zorder=6)
+            ax8.plot(x_idx, ag8['HH_Disp_U'], color='black', marker='o', markersize=12, linewidth=5, path_effects=efecto_b, label='Tiempo DISP / Unidad (Real Global)', zorder=6)
             ax8.plot(x_idx, ag8['HH_Std_U'], color='midnightblue', linestyle='--', linewidth=4, label='Tiempo STD / Unidad (Meta)', zorder=4)
             
             ax8.fill_between(x_idx, ag8['HH_Std_U'], ag8['HH_Disp_U'], where=(ag8['HH_Disp_U'] > ag8['HH_Std_U']), color='red', alpha=0.15, interpolate=True)
@@ -831,7 +831,7 @@ with col7:
                 else:
                     off_d = -25; off_s = 20
                     
-                ax8.annotate(f"{val_d:.2f}h\n({cant_u} Unid)", (x_idx[i], val_d), textcoords="offset points", xytext=(0,off_d), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="darkgreen", lw=1.5), zorder=10)
+                ax8.annotate(f"{val_d:.2f}h\n({cant_u} Unid)", (x_idx[i], val_d), textcoords="offset points", xytext=(0,off_d), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="black", lw=1.5), zorder=10)
                 ax8.annotate(f"{val_s:.2f}h", (x_idx[i], val_s), textcoords="offset points", xytext=(0,off_s), ha='center', fontweight='bold', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="midnightblue", lw=1.5), zorder=10)
                 
                 # Diferencia graficada a un lado
